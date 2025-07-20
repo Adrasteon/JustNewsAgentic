@@ -21,7 +21,7 @@ Each "service" from the V2 plan is now an **Agent**: a self-contained unit hosti
 | Synthesizer | **Synthesizer Agent** | `cluster_articles`, `neutralize_text`, `aggregate_cluster` |
 | Publisher | **Librarian Agent** | `find_related_story`, `update_story_timeline` |
 | Critic | **Critic Agent** | `critique_neutrality`, `critique_synthesis` |
-| Data Layer | **Memory Agent** | `save_article`, `find_article_by_id`, `vector_search_articles` |
+| Data Layer | **Memory Agent** | `save_article`, `find_article_by_id`, `vector_search_articles`, `log_training_example` |
 
 ## 3. The Agentic Workflow: A Dynamic Conversation
 
@@ -43,11 +43,12 @@ The workflow is no longer a rigid, linear sequence. It's a dynamic, goal-driven 
 4.  **Synthesis & Review:**
     *   The **Chief Editor**, monitoring the bus, sees enough high-quality, low-bias articles have been collected. It calls the **Synthesizer Agent**: `"@Synthesizer, cluster these articles and produce a neutral summary."`
     *   The **Synthesizer** performs its internal clustering, neutralization, and aggregation, then presents the draft summary to the **Chief Editor**.
-    *   The **Chief Editor** then invokes the **Critic Agent**: `"@Critic, review this summary for factual consistency against the source articles."` The Critic has access to the Memory agent to retrieve the original sources.
+
+    *   The **Chief Editor** then invokes the **Critic Agent**: `"@Critic, review this summary for factual consistency against the source articles."` The Critic has access to the Memory agent to retrieve the original sources. The Critic agent uses an LLM for critique and logs all feedback for continual learning and retraining.
 
 5.  **Learning & Archiving:**
     *   The **Critic's** feedback is used by the **Chief Editor** to decide whether to request a revision from the **Synthesizer** or approve the story.
-    *   This feedback loop (summary + critique) is automatically logged by the **Memory Agent** as a new training example.
+    *   This feedback loop (summary + critique) is automatically logged by the **Memory Agent** as a new training example. The Memory agent now supports semantic retrieval with embeddings, vector search, and logs all retrievals and outcomes for future learning-to-rank and model improvement.
     *   Once approved, the **Chief Editor** calls the **Librarian Agent** to link the new story to any existing timelines about the Artemis program and publish the final output.
 
 ## 4. Key Advantages of the V3 Architecture
@@ -63,3 +64,11 @@ The workflow is no longer a rigid, linear sequence. It's a dynamic, goal-driven 
 The next step is to create a new `JustNews_Plan_V3.md` that reflects this agentic architecture. This will involve defining the specific tools for each agent, the core message schemas for the MCP bus, and a revised project structure that organizes the code by agents rather than by pipeline stages.
 
 This V3 proposal represents a paradigm shift. It moves JustNews from a well-engineered but rigid data processing system to a truly intelligent, adaptable, and self-improving news analysis ecosystem, ready to grow into a substantial and trustworthy information source.
+
+## ML & Feedback Loop Implementation (2025-07-20)
+
+- **Synthesizer Agent**: Now uses sentence-transformers for clustering, LLM for neutralization/aggregation, and logs feedback for continual learning.
+- **Critic Agent**: Now uses LLM for critique, logs all feedback and editorial outcomes for retraining and adaptation.
+- **Memory Agent**: Now provides semantic retrieval with embeddings and vector search, logs all retrievals and downstream outcomes for future learning-to-rank and model improvement.
+
+All feedback is logged to agent-specific files and/or the database, supporting both online and scheduled retraining. See `CHANGELOG.md` and `JustNews_Plan_V3.md` for technical details.

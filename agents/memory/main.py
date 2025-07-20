@@ -1,12 +1,22 @@
 
 from typing import List
 # main.py for Memory Agent
+
 import logging
 import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from typing import List
+from datetime import datetime
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
+
+EMBEDDING_MODEL_NAME = os.environ.get("MEMORY_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+FEEDBACK_LOG = os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log")
 
 app = FastAPI()
 
@@ -32,6 +42,11 @@ def get_db_connection():
     except psycopg2.OperationalError as e:
         logger.error(f"Could not connect to PostgreSQL database: {e}")
         raise HTTPException(status_code=500, detail="Database connection error")
+
+def get_embedding_model():
+    if SentenceTransformer is None:
+        raise ImportError("sentence-transformers is not installed.")
+    return SentenceTransformer(EMBEDDING_MODEL_NAME)
 
 class Article(BaseModel):
     content: str
@@ -81,16 +96,63 @@ def get_article(article_id: int):
 
 
 # --- MCP Tool: Vector Search Articles ---
+
 @app.post("/vector_search_articles")
 def vector_search_articles(query: str, top_k: int = 5):
-    # Placeholder: In production, use pgvector or similar for semantic search
+    """
+    Semantic search over articles using embeddings and pgvector.
+    """
     logger.info(f"Vector searching articles for query: {query}, top_k: {top_k}")
-    # Return dummy results
-    return [{"id": i, "score": 1.0 - i * 0.1} for i in range(1, top_k + 1)]
+    try:
+        model = get_embedding_model()
+        query_emb = model.encode([query])[0].tolist()
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        # pgvector: '<->' is the Euclidean distance operator
+        cur.execute(
+            """
+            SELECT id, content, metadata, embedding, (embedding <-> %s) AS distance
+            FROM articles
+            ORDER BY embedding <-> %s
+            LIMIT %s
+            """,
+            (query_emb, query_emb, top_k)
+        )
+        results = cur.fetchall()
+        cur.close()
+        conn.close()
+        # Log retrieval for feedback loop
+        log_feedback("vector_search", {"query": query, "top_k": top_k, "results": [r["id"] for r in results]})
+        return results
+    except Exception as e:
+        logger.error(f"Error in vector search: {e}")
+        raise HTTPException(status_code=500, detail="Error in vector search")
+
 
 # --- MCP Tool: Log Training Example ---
 @app.post("/log_training_example")
 def log_training_example(task: str, input: dict, output: dict, critique: str):
-    # Placeholder: In production, log to a training examples table
-    logger.info(f"Logging training example for task: {task}")
-    return {"status": "logged", "task": task}
+    """
+    Log a new training example for feedback and model improvement.
+    Stores in DB and logs to feedback file for continual learning.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO training_examples (task, input, output, critique, created_at) VALUES (%s, %s, %s, %s, %s)",
+            (task, input, output, critique, datetime.utcnow())
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        log_feedback("log_training_example", {"task": task, "input": input, "output": output, "critique": critique})
+        logger.info(f"Logged training example for task: {task}")
+        return {"status": "logged", "task": task}
+    except Exception as e:
+        logger.error(f"Error logging training example: {e}")
+        raise HTTPException(status_code=500, detail="Error logging training example")
+
+def log_feedback(event: str, details: dict):
+    with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
+        f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
