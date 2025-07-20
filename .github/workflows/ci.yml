@@ -47,6 +47,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libpq-dev
+      - name: Install Docker Compose plugin
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-plugin
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
@@ -73,7 +77,7 @@ jobs:
         run: pytest tests --maxfail=2 --disable-warnings -v
       - name: Build and start services for integration tests
         run: |
-          docker-compose up -d db memory mcp_bus chief_editor scout fact_checker analyst synthesizer critic
+          docker compose up -d db memory mcp_bus chief_editor scout fact_checker analyst synthesizer critic
           sleep 30  # Wait for all services to be ready
 
       - name: Health check all services
@@ -90,7 +94,7 @@ jobs:
               fi
               if [ $i -eq 20 ]; then
                 echo "Service on port $port failed health check.";
-                docker-compose logs
+                docker compose logs
                 exit 1
               fi
             done
@@ -101,7 +105,7 @@ jobs:
 
       - name: Print docker-compose logs (always)
         if: always()
-        run: docker-compose logs
+        run: docker compose logs
 
 
   deploy:
