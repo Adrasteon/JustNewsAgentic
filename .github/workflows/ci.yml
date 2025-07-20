@@ -74,7 +74,8 @@ jobs:
       - name: Build and start services for integration tests
         run: |
           docker-compose up -d db memory mcp_bus chief_editor scout fact_checker analyst synthesizer critic
-          sleep 20  # Wait for all services to be ready
+          sleep 30  # Wait for all services to be ready
+
       - name: Health check all services
         run: |
           for port in 8000 8001 8002 8003 8004 8005 8006 8007; do
@@ -88,7 +89,9 @@ jobs:
                 sleep 2
               fi
               if [ $i -eq 20 ]; then
-                echo "Service on port $port failed health check."; exit 1
+                echo "Service on port $port failed health check.";
+                docker-compose logs
+                exit 1
               fi
             done
           done
