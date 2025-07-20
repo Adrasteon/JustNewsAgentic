@@ -1,0 +1,6 @@
+CREATE TABLE articles (
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

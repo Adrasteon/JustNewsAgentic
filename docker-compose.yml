@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  mcp_bus:
+    build: ./mcp_bus
+    ports:
+      - "8000:8000"
+  chief_editor:
+    build: ./agents/chief_editor
+    depends_on:
+      - mcp_bus
+  scout:
+    build: ./agents/scout
+  fact_checker:
+    build: ./agents/fact_checker
+  analyst:
+    build: ./agents/analyst
+  synthesizer:
+    build: ./agents/synthesizer
+  critic:
+    build: ./agents/critic
+  memory:
+    build: ./agents/memory
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=justnews
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=justnews
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r agents/chief_editor/requirements.txt
+        pip install -r agents/scout/requirements.txt
+        pip install -r agents/fact_checker/requirements.txt
+        pip install -r agents/analyst/requirements.txt
+        pip install -r agents/synthesizer/requirements.txt
+        pip install -r agents/critic/requirements.txt
+        pip install -r agents/memory/requirements.txt
+        pip install -r tests/requirements.txt
+    - name: Lint with ruff
+      run: |
+        pip install ruff
+        ruff check .
+    - name: Build and start services for integration tests
+      run: |
+        docker-compose up -d db memory mcp_bus chief_editor scout fact_checker analyst synthesizer critic
+        sleep 20  # Wait for all services to be ready
+
+    - name: Health check all services
+      run: |
+        for port in 8000 8001 8002 8003 8004 8005 8006 8007; do
+          echo "Checking health for service on port $port..."
+          for i in {1..20}; do
+            if curl -sf http://localhost:$port/health; then
+              echo "Service on port $port is healthy."
+              break
+            else
+              echo "Waiting for service on port $port..."
+              sleep 2
+            fi
+            if [ $i -eq 20 ]; then
+              echo "Service on port $port failed health check."; exit 1
+            fi
+          done
+        done
+
+    - name: Run integration tests
+      run: |
+        pytest tests/test_integration_agents.py
