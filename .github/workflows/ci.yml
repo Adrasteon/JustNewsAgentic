@@ -63,6 +63,9 @@ jobs:
           pip install -r agents/scout/requirements.txt
           pip install -r agents/chief_editor/requirements.txt
           pip install -r tests/requirements.txt
+      - name: Install pgvector in Postgres container
+        run: |
+          docker exec $(docker ps -qf "ancestor=postgres:16") bash -c "apt-get update && apt-get install -y postgresql-16-pgvector"
       - name: Enable pgvector extension
         run: |
           psql -h localhost -U user -d justnews -c "CREATE EXTENSION IF NOT EXISTS vector;"
