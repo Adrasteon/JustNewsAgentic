@@ -99,6 +99,11 @@ jobs:
       - name: Run integration tests
         run: pytest tests/test_integration_agents.py
 
+      - name: Print docker-compose logs (always)
+        if: always()
+        run: docker-compose logs
+
+
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
