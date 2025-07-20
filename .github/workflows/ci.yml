@@ -79,7 +79,7 @@ jobs:
       - name: Build and start services for integration tests
         run: |
           docker compose up -d db memory mcp_bus chief_editor scout fact_checker analyst synthesizer critic
-          sleep 30  # Wait for all services to be ready
+          sleep 60  # Wait for all services to be ready
 
       - name: Health check all services
         run: |
