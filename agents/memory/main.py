@@ -18,6 +18,12 @@ except ImportError:
     np = None
     faiss = None
 
+# Optional import for embedding model
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
+
 # ...existing code...
 
     # Removed unused import

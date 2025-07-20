@@ -1,5 +1,13 @@
 # Model loading for Scout Agent (Llama-3-8B-Instruct)
 import os
+import logging
+import requests
+import asyncio
+from datetime import datetime
+
+from crawl4ai.adaptive_crawler import AdaptiveCrawler, AdaptiveConfig
+
+
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 except ImportError:
@@ -23,11 +31,7 @@ def get_llama_model():
     return model, tokenizer
 # tools.py for Scout Agent
 
-import logging
-import requests
-from datetime import datetime
 
-from crawl4ai.adaptive_crawler import AdaptiveCrawler, AdaptiveConfig
 
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 FEEDBACK_LOG = os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log")
@@ -66,7 +70,7 @@ def discover_sources(query: str) -> list[str]:
         log_feedback("discover_sources_error", {"query": query, "error": str(e)})
         return []
 
-import asyncio
+
 
 async def async_crawl_url(url: str, extraction_prompt: str | None) -> str:
     """
