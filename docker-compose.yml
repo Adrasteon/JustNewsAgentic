@@ -4,22 +4,52 @@ services:
     build: ./mcp_bus
     ports:
       - "8000:8000"
+    environment:
+      - LLAMA_3_70B_PATH=./models/llama-3-70b-instruct
+      - LLAMA_3_8B_PATH=./models/llama-3-8b-instruct
+      - MISTRAL_7B_PATH=./models/mistral-7b-instruct-v0.2
+      - SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
+      - SYNTHESIZER_FEEDBACK_LOG=./feedback_synthesizer.log
+      - CRITIC_FEEDBACK_LOG=./feedback_critic.log
+      - MEMORY_FEEDBACK_LOG=./feedback_memory.log
+      - ANALYST_FEEDBACK_LOG=./feedback_analyst.log
+      - FACT_CHECKER_FEEDBACK_LOG=./feedback_fact_checker.log
+      - SCOUT_FEEDBACK_LOG=./feedback_scout.log
+      - CHIEF_EDITOR_FEEDBACK_LOG=./feedback_chief_editor.log
+      - SERPAPI_KEY=dummy
   chief_editor:
     build: ./agents/chief_editor
     depends_on:
       - mcp_bus
     ports:
       - "8001:8001"
+    environment:
+      - CHIEF_EDITOR_FEEDBACK_LOG=./feedback_chief_editor.log
   scout:
     build: ./agents/scout
+    environment:
+      - LLAMA_3_8B_PATH=./models/llama-3-8b-instruct
+      - SCOUT_FEEDBACK_LOG=./feedback_scout.log
+      - SERPAPI_KEY=dummy
   fact_checker:
     build: ./agents/fact_checker
+    environment:
+      - FACT_CHECKER_FEEDBACK_LOG=./feedback_fact_checker.log
   analyst:
     build: ./agents/analyst
+    environment:
+      - MISTRAL_7B_PATH=./models/mistral-7b-instruct-v0.2
+      - ANALYST_FEEDBACK_LOG=./feedback_analyst.log
   synthesizer:
     build: ./agents/synthesizer
+    environment:
+      - LLAMA_3_70B_PATH=./models/llama-3-70b-instruct
+      - SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
+      - SYNTHESIZER_FEEDBACK_LOG=./feedback_synthesizer.log
   critic:
     build: ./agents/critic
+    environment:
+      - CRITIC_FEEDBACK_LOG=./feedback_critic.log
   memory:
     build: ./agents/memory
     depends_on:
@@ -29,6 +59,8 @@ services:
       - POSTGRES_DB=justnews
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
+      - MEMORY_FEEDBACK_LOG=./feedback_memory.log
+      - SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
 
   db:
     image: postgres:16
