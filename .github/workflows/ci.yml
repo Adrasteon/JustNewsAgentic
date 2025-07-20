@@ -101,24 +101,38 @@ jobs:
       - name: Print chief_editor logs
         run: docker compose logs chief_editor
 
-      - name: Health check all services
+      - name: Health check mcp_bus
         run: |
-          for port in 8000 8001 8002 8003 8004 8005 8006 8007; do
-            echo "Checking health for service on port $port..."
-            for i in {1..20}; do
-              if curl -sf http://localhost:$port/health; then
-                echo "Service on port $port is healthy."
-                break
-              else
-                echo "Waiting for service on port $port..."
-                sleep 2
-              fi
-              if [ $i -eq 20 ]; then
-                echo "Service on port $port failed health check.";
-                docker compose logs
-                exit 1
-              fi
-            done
+          for i in {1..20}; do
+            if curl -sf http://localhost:8000/health; then
+              echo "mcp_bus is healthy."
+              break
+            else
+              echo "Waiting for mcp_bus on port 8000..."
+              sleep 2
+            fi
+            if [ $i -eq 20 ]; then
+              echo "mcp_bus failed health check.";
+              docker compose logs mcp_bus
+              exit 1
+            fi
+          done
+
+      - name: Health check chief_editor
+        run: |
+          for i in {1..20}; do
+            if curl -sf http://localhost:8001/health; then
+              echo "chief_editor is healthy."
+              break
+            else
+              echo "Waiting for chief_editor on port 8001..."
+              sleep 2
+            fi
+            if [ $i -eq 20 ]; then
+              echo "chief_editor failed health check.";
+              docker compose logs chief_editor
+              exit 1
+            fi
           done
 
       - name: Run integration tests
