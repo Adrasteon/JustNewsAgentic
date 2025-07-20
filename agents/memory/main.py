@@ -1,5 +1,5 @@
 
-from typing import List
+
 # main.py for Memory Agent
 
 import logging
@@ -8,15 +8,21 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from typing import List
 from datetime import datetime
-try:
-    from sentence_transformers import SentenceTransformer
-except ImportError:
-    SentenceTransformer = None
 
-EMBEDDING_MODEL_NAME = os.environ.get("MEMORY_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-FEEDBACK_LOG = os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log")
+# Removed unused import
+try:
+    import numpy as np
+    import faiss
+except ImportError:
+    np = None
+    faiss = None
+
+# ...existing code...
+
+    # Removed unused import
+    EMBEDDING_MODEL_NAME = os.environ.get("MEMORY_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    FEEDBACK_LOG = os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log")
 
 app = FastAPI()
 

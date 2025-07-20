@@ -1,5 +1,10 @@
+
 # Model loading for Chief Editor Agent (Llama-3-70B-Instruct)
 import os
+import logging
+import requests
+from datetime import datetime
+
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 except ImportError:
@@ -21,11 +26,6 @@ def get_llama_model():
         model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
         tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
     return model, tokenizer
-# tools.py for Chief Editor Agent
-
-import logging
-import requests
-from datetime import datetime
 
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
 FEEDBACK_LOG = os.environ.get("CHIEF_EDITOR_FEEDBACK_LOG", "./feedback_chief_editor.log")

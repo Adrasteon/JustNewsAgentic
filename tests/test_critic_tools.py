@@ -1,4 +1,3 @@
-import pytest
 from agents.critic import tools
 
 def test_critique_synthesis_stub(monkeypatch):

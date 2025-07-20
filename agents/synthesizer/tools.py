@@ -7,25 +7,29 @@ from datetime import datetime
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from transformers.pipelines import pipeline
-    from sentence_transformers import SentenceTransformer
-    import numpy as np
-    from sklearn.cluster import KMeans
-    try:
-        from bertopic import BERTopic
-    except ImportError:
-        BERTopic = None
-    try:
-        import hdbscan
-    except ImportError:
-        hdbscan = None
 except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
     pipeline = None
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
     SentenceTransformer = None
+try:
+    import numpy as np
+except ImportError:
     np = None
+try:
+    from sklearn.cluster import KMeans
+except ImportError:
     KMeans = None
+try:
+    from bertopic import BERTopic
+except ImportError:
     BERTopic = None
+try:
+    import hdbscan
+except ImportError:
     hdbscan = None
 
 MODEL_NAME = "meta-llama/Llama-3-70B-Instruct"

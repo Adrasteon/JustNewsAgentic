@@ -1,4 +1,3 @@
-import pytest
 from agents.synthesizer import tools
 
 def test_cluster_articles_kmeans():

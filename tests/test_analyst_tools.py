@@ -1,4 +1,3 @@
-import pytest
 from agents.analyst import tools
 
 def test_log_feedback(tmp_path, monkeypatch):

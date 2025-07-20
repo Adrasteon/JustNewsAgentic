@@ -1,10 +1,15 @@
 # Model loading for Analyst Agent (Mistral-7B-Instruct-v0.2)
 import os
+import logging
+from datetime import datetime
+
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
+    from transformers.pipelines import pipeline
 except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
+    pipeline = None
 
 MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
 MODEL_PATH = os.environ.get("MISTRAL_7B_PATH", "./models/mistral-7b-instruct-v0.2")
@@ -21,18 +26,8 @@ def get_mistral_model():
         model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
         tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
     return model, tokenizer
+
 # tools.py for Analyst Agent
-
-import logging
-from datetime import datetime
-
-try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    from transformers.pipelines import pipeline
-except ImportError:
-    AutoModelForCausalLM = None
-    AutoTokenizer = None
-    pipeline = None
 
 
 FEEDBACK_LOG = os.environ.get("ANALYST_FEEDBACK_LOG", "./feedback_analyst.log")
