@@ -21,11 +21,11 @@ def get_llama_model():
     if AutoModelForCausalLM is None or AutoTokenizer is None:
         raise ImportError("transformers library is not installed.")
     if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):
-        print(f"Downloading {MODEL_NAME} to {MODEL_PATH}...")
+        logger.info(f"Downloading {MODEL_NAME} to {MODEL_PATH}...")
         model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, cache_dir=MODEL_PATH)
         tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, cache_dir=MODEL_PATH)
     else:
-        print(f"Loading {MODEL_NAME} from local cache {MODEL_PATH}...")
+        logger.info(f"Loading {MODEL_NAME} from local cache {MODEL_PATH}...")
         model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
         tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
     return model, tokenizer

@@ -1,1 +1,3 @@
-# Placeholder for mcp_bus tools. Add any bus-specific utilities here.
+"""
+Utilities for mcp_bus agent. Extend as needed.
+"""

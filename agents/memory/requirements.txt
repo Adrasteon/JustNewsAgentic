@@ -1,4 +1,9 @@
+
 fastapi
 psycopg2-binary
 pgvector
 neo4j
+sentence-transformers
+numpy
+faiss-cpu
+uvicorn
