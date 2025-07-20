@@ -8,6 +8,8 @@ services:
     build: ./agents/chief_editor
     depends_on:
       - mcp_bus
+    ports:
+      - "8001:8001"
   scout:
     build: ./agents/scout
   fact_checker:
