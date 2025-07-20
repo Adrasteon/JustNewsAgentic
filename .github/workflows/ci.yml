@@ -87,7 +87,8 @@ jobs:
       - name: Build and start services for integration tests
         run: |
           docker compose up -d db memory mcp_bus chief_editor scout fact_checker analyst synthesizer critic
-          sleep 60  # Wait for all services to be ready
+          # Wait for containers to be up before health checks
+          sleep 5
 
       - name: Print docker compose ps
         run: docker compose ps -a
