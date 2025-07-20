@@ -84,6 +84,9 @@ jobs:
       - name: Print docker compose ps
         run: docker compose ps -a
 
+      - name: Print last 100 lines of logs for all containers
+        run: docker compose logs --tail=100
+
       - name: Print mcp_bus logs
         run: docker compose logs mcp_bus
 
