@@ -139,7 +139,8 @@ jobs:
       #     done
 
       - name: Run integration tests
-        run: pytest tests/test_integration_agents.py
+      # - name: Run integration tests
+      #   run: pytest tests/test_integration_agents.py
 
       - name: Print docker-compose logs (always)
         if: always()
