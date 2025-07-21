@@ -138,7 +138,6 @@ jobs:
       #       fi
       #     done
 
-      - name: Run integration tests
       # - name: Run integration tests
       #   run: pytest tests/test_integration_agents.py
 
