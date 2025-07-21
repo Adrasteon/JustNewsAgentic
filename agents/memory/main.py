@@ -10,13 +10,6 @@ from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
-import numpy as np
-
-# Correcting faiss import for GPU
-try:
-    import faiss
-except ImportError:
-    raise ImportError("faiss library is required but not installed. Please install it using 'pip install faiss-gpu'.")
 
 # Optional import for embedding model
 try:
@@ -178,30 +171,3 @@ def log_feedback(tool_name, feedback_data):
     except Exception as e:
         logger.error(f"An error occurred in log_feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-# Corrected example usage of faiss with explicit dimensions
-@app.post("/search")
-def search(query: str) -> dict:
-    try:
-        import numpy as np
-        # Create a FAISS index
-        dimension: int = 128  # Example dimension for embeddings
-        index: faiss.IndexFlatL2 = faiss.IndexFlatL2(dimension)
-
-        # Add some example vectors to the index
-        nb: int = 2  # Number of vectors
-        vectors: np.ndarray = np.array([[0.1] * dimension, [0.2] * dimension], dtype=np.float32).reshape(nb, dimension)
-        index.add(vectors)
-
-        # Perform a search
-        nq: int = 1  # Number of queries
-        query_vector: np.ndarray = np.array([0.15] * dimension, dtype=np.float32).reshape(nq, dimension)
-        k: int = 2  # Number of nearest neighbors
-        distances: np.ndarray
-        indices: np.ndarray
-        distances, indices = index.search(query_vector, k)
-
-        return {"distances": distances.tolist(), "indices": indices.tolist()}
-    except Exception as e:
-        logger.error(f"Error during FAISS search: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
