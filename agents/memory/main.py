@@ -1,5 +1,6 @@
-
-
+"""
+Main file for the Memory Agent.
+"""
 # main.py for Memory Agent
 
 import logging
@@ -10,13 +11,11 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 
-# Removed unused import
+# Correcting faiss import for GPU
 try:
-    import numpy as np
     import faiss
 except ImportError:
-    np = None
-    faiss = None
+    raise ImportError("faiss library is required but not installed. Please install it using 'pip install faiss-gpu'.")
 
 # Optional import for embedding model
 try:
@@ -24,11 +23,8 @@ try:
 except ImportError:
     SentenceTransformer = None
 
-# ...existing code...
-
-    # Removed unused import
-    EMBEDDING_MODEL_NAME = os.environ.get("MEMORY_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-    FEEDBACK_LOG = os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log")
+EMBEDDING_MODEL_NAME = os.environ.get("MEMORY_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+FEEDBACK_LOG = os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log")
 
 app = FastAPI()
 
@@ -165,6 +161,19 @@ def log_training_example(task: str, input: dict, output: dict, critique: str):
         logger.error(f"Error logging training example: {e}")
         raise HTTPException(status_code=500, detail="Error logging training example")
 
-def log_feedback(event: str, details: dict):
-    with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
-        f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
+# Define ToolCall class
+class ToolCall:
+    def __init__(self, args, kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+# Update log_feedback function to accept correct arguments
+def log_feedback(tool_name, feedback_data):
+    try:
+        feedback_data.update({"tool": tool_name, "timestamp": datetime.now().isoformat()})
+        with open(os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log"), "a") as log_file:
+            log_file.write(f"{feedback_data}\n")
+        return {"status": "logged"}
+    except Exception as e:
+        logger.error(f"An error occurred in log_feedback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

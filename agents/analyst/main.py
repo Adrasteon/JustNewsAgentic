@@ -1,8 +1,12 @@
-
+"""
+Main file for the Analyst Agent.
+"""
 # main.py for Analyst Agent
 import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from datetime import datetime
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,4 +50,21 @@ def identify_entities(call: ToolCall):
         return identify_entities(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in identify_entities: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Add feedback logging for Analyst Agent
+@app.post("/log_feedback")
+def log_feedback(call: ToolCall):
+    try:
+        feedback_data = {
+            "tool": call.kwargs.get("tool"),
+            "args": call.args,
+            "outcome": call.kwargs.get("outcome"),
+            "timestamp": datetime.now().isoformat()
+        }
+        with open(os.environ.get("ANALYST_FEEDBACK_LOG", "./feedback_analyst.log"), "a") as log_file:
+            log_file.write(f"{feedback_data}\n")
+        return {"status": "logged"}
+    except Exception as e:
+        logger.error(f"An error occurred in log_feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))

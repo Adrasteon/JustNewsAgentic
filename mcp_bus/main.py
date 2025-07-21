@@ -1,4 +1,7 @@
 
+"""
+Main file for the MCP Bus.
+"""
 # main.py for MCP Message Bus
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel

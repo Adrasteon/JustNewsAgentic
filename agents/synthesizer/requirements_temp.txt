@@ -1,0 +1,8 @@
+fastapi
+transformers
+sentence-transformers
+numpy
+scikit-learn
+bertopic
+hdbscan
+uvicorn

@@ -1,3 +1,6 @@
+"""
+Main file for the Synthesizer Agent.
+"""
 # main.py for Synthesizer Agent
 
 # main.py for Synthesizer Agent

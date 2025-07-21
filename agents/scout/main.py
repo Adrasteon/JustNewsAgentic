@@ -1,7 +1,12 @@
+"""
+Main file for the Scout Agent.
+"""
 # main.py for Scout Agent
 import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from datetime import datetime
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,6 +36,23 @@ def crawl_url(call: ToolCall):
         return crawl_url(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in crawl_url: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Add feedback logging for Scout Agent
+@app.post("/log_feedback")
+def log_feedback(call: ToolCall):
+    try:
+        feedback_data = {
+            "tool": call.kwargs.get("tool"),
+            "args": call.args,
+            "outcome": call.kwargs.get("outcome"),
+            "timestamp": datetime.now().isoformat()
+        }
+        with open(os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log"), "a") as log_file:
+            log_file.write(f"{feedback_data}\n")
+        return {"status": "logged"}
+    except Exception as e:
+        logger.error(f"An error occurred in log_feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

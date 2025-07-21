@@ -1,8 +1,12 @@
-
+"""
+Main file for the Critic Agent.
+"""
 # main.py for Critic Agent
 import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from datetime import datetime
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -36,4 +40,21 @@ def critique_neutrality(call: ToolCall):
         return critique_neutrality(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in critique_neutrality: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Add feedback logging for Critic Agent
+@app.post("/log_feedback")
+def log_feedback(call: ToolCall):
+    try:
+        feedback_data = {
+            "tool": call.kwargs.get("tool"),
+            "args": call.args,
+            "outcome": call.kwargs.get("outcome"),
+            "timestamp": datetime.now().isoformat()
+        }
+        with open(os.environ.get("CRITIC_FEEDBACK_LOG", "./feedback_critic.log"), "a") as log_file:
+            log_file.write(f"{feedback_data}\n")
+        return {"status": "logged"}
+    except Exception as e:
+        logger.error(f"An error occurred in log_feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
