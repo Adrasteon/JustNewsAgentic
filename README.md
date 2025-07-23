@@ -69,3 +69,112 @@ All major agents implement machine learning-based feedback loops for continual i
 
 Each agent exposes its tools as HTTP endpoints (see `main.py` in each agent folder). The MCP bus provides `/register`, `/call`, and `/agents` endpoints for agent discovery and tool invocation.
 
+### Dual Functionality: Standalone Execution & MCP Bus Integration
+
+Each agent can be started independently while maintaining the ability to communicate with other agents via the MCP Bus. Follow the instructions below for standalone execution and MCP Bus integration:
+
+#### Standalone Execution
+Each agent can operate independently without relying on other agents or services. See the "Standalone Execution" section above for detailed instructions.
+
+#### MCP Bus Integration
+When the MCP Bus is available, agents will automatically register their tools and use the bus for inter-agent communication. This allows for dynamic collaboration between agents.
+
+**Key Features:**
+- Agents register their tools with the MCP Bus upon startup.
+- If the MCP Bus is unavailable, agents will continue to operate independently.
+- Error handling ensures smooth operation in standalone mode.
+
+**Starting the MCP Bus:**
+1. Navigate to the `mcp_bus` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the MCP Bus:
+    ```bash
+    uvicorn main:app --reload --port 8000
+    ```
+
+**Agent Registration:**
+Agents will automatically attempt to register their tools with the MCP Bus at `http://localhost:8000`. Ensure the MCP Bus is running before starting agents for full functionality.
+
+### Standalone Execution
+
+Each agent can be started independently without relying on other agents or services. Follow the instructions below for standalone execution:
+
+#### Chief Editor Agent
+1. Navigate to the `agents/chief_editor` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the agent:
+    ```bash
+    uvicorn main:app --reload --port 8001
+    ```
+
+#### Scout Agent
+1. Navigate to the `agents/scout` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the agent:
+    ```bash
+    uvicorn main:app --reload --port 8002
+    ```
+
+#### Fact-Checker Agent
+1. Navigate to the `agents/fact_checker` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the agent:
+    ```bash
+    uvicorn main:app --reload --port 8003
+    ```
+
+#### Analyst Agent
+1. Navigate to the `agents/analyst` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the agent:
+    ```bash
+    uvicorn main:app --reload --port 8004
+    ```
+
+#### Synthesizer Agent
+1. Navigate to the `agents/synthesizer` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the agent:
+    ```bash
+    uvicorn main:app --reload --port 8005
+    ```
+
+#### Critic Agent
+1. Navigate to the `agents/critic` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the agent:
+    ```bash
+    uvicorn main:app --reload --port 8006
+    ```
+
+#### Memory Agent
+1. Navigate to the `agents/memory` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the agent:
+    ```bash
+    uvicorn main:app --reload --port 8007
+    ```

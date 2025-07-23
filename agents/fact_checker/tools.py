@@ -1,4 +1,3 @@
-
 # Model loading for Fact-Checker Agent (Mistral-7B-Instruct-v0.2)
 import os
 import logging
@@ -38,24 +37,13 @@ def log_feedback(event: str, details: dict):
         f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
 
 def validate_is_news(content: str) -> bool:
-    """
-    Uses the LLM to validate if the given content is a news article.
-    """
-    logger.info(f"Validating if content is a news article: '{content[:50]}...' ")
-    try:
-        model, tokenizer = get_mistral_model()
-        if pipeline is None:
-            raise ImportError("transformers pipeline is not available.")
-        pipe = pipeline("text-classification", model=model, tokenizer=tokenizer)
-        prompt = f"Is the following text a news article? Answer yes or no.\nText: {content}"
-        result = pipe(prompt, truncation=True, max_length=512)[0]
-        is_news = 'yes' in result['label'].lower() or result.get('score', 0) > 0.5
-        log_feedback("validate_is_news", {"content": content[:100], "result": is_news, "raw": result})
-        return is_news
-    except Exception as e:
-        logger.error(f"Error in validate_is_news: {e}")
-        log_feedback("validate_is_news_error", {"content": content[:100], "error": str(e)})
-        return False
+    """Validate if the given content qualifies as news."""
+    logger.info(f"Validating content for news: {content[:50]}...")
+    # Example logic: Check for keywords or patterns typical of news articles
+    keywords = ["breaking", "report", "headline", "news"]
+    is_news = any(keyword in content.lower() for keyword in keywords)
+    log_feedback("validate_is_news", {"content": content, "is_news": is_news})
+    return is_news
 
 def verify_claims(claims: list[str], sources: list[str]) -> dict:
     """

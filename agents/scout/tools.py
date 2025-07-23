@@ -2,38 +2,8 @@
 import os
 import logging
 import requests
-import asyncio
 from datetime import datetime
 
-from crawl4ai.adaptive_crawler import AdaptiveCrawler, AdaptiveConfig
-
-
-try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-except ImportError:
-    AutoModelForCausalLM = None
-    AutoTokenizer = None
-
-MODEL_NAME = "meta-llama/Llama-3-8B-Instruct"
-MODEL_PATH = os.environ.get("LLAMA_3_8B_PATH", "./models/llama-3-8b-instruct")
-
-def get_llama_model():
-    if AutoModelForCausalLM is None or AutoTokenizer is None:
-        raise ImportError("transformers library is not installed.")
-    if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):
-        logger.info(f"Downloading {MODEL_NAME} to {MODEL_PATH}...")
-        model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, cache_dir=MODEL_PATH)
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, cache_dir=MODEL_PATH)
-    else:
-        logger.info(f"Loading {MODEL_NAME} from local cache {MODEL_PATH}...")
-        model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-    return model, tokenizer
-# tools.py for Scout Agent
-
-
-
-SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 FEEDBACK_LOG = os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log")
 
 logging.basicConfig(level=logging.INFO)
@@ -43,79 +13,49 @@ def log_feedback(event: str, details: dict):
     with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
         f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
 
-def discover_sources(query: str) -> list[str]:
+def discover_sources(*args, **kwargs):
     """
-    Discovers news sources for a given query using SerpAPI.
+    Discover sources for a given query using the crawl4ai Docker container.
     """
-    logger.info(f"[ScoutAgent] Discovering sources for query: {query}")
-    if not SERPAPI_KEY:
-        logger.error("SERPAPI_KEY not set in environment.")
-        log_feedback("discover_sources_error", {"query": query, "error": "SERPAPI_KEY not set"})
-        return []
+    logger.info(f"[ScoutAgent] Discovering sources with args: {args}, kwargs: {kwargs}")
     try:
-        params = {
-            "q": query,
-            "api_key": SERPAPI_KEY,
-            "engine": "google",
-            "num": 10
-        }
-        resp = requests.get("https://serpapi.com/search", params=params, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        links = [r["link"] for r in data.get("organic_results", []) if "link" in r]
-        log_feedback("discover_sources", {"query": query, "results": links})
+        # Call the running crawl4ai container
+        response = requests.post("http://localhost:32768/discover_sources", json={"args": args, "kwargs": kwargs})
+        response.raise_for_status()
+        links = response.json()
+        log_feedback("discover_sources", {"args": args, "results": links})
         return links
     except Exception as e:
         logger.error(f"An error occurred during web search: {e}")
-        log_feedback("discover_sources_error", {"query": query, "error": str(e)})
+        log_feedback("discover_sources_error", {"args": args, "error": str(e)})
         return []
 
-
-
-async def async_crawl_url(url: str, extraction_prompt: str | None) -> str:
+def crawl_url(*args, **kwargs):
     """
-    Asynchronously crawl a given URL and extract content using crawl4ai AdaptiveCrawler.
-    Supports custom extraction prompts.
+    Crawl a given URL and extract content. Interacts with crawl4ai Docker container.
     """
-    logger.info(f"[ScoutAgent] Crawling URL: {url} with prompt: {extraction_prompt}")
+    logger.info(f"[ScoutAgent] Crawling URL with args: {args}, kwargs: {kwargs}")
     try:
-        config = AdaptiveConfig()
-        crawler = AdaptiveCrawler(config=config)
-        state = await crawler.digest(start_url=url, query=extraction_prompt or "")
-        content = "\n".join([r.content for r in getattr(state, 'results', []) if hasattr(r, 'content')])
-        log_feedback("crawl_url", {"url": url, "prompt": extraction_prompt, "content_len": len(content)})
-        return content
+        # Call the running crawl4ai container
+        response = requests.post("http://localhost:32768/crawl_url", json={"args": args, "kwargs": kwargs})
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
         logger.error(f"An error occurred during crawling: {e}")
-        log_feedback("crawl_url_error", {"url": url, "prompt": extraction_prompt, "error": str(e)})
-        return ""
-
-def crawl_url(url: str, extraction_prompt: str | None) -> str:
-    """
-    Synchronous wrapper for async_crawl_url.
-    """
-    return asyncio.run(async_crawl_url(url, extraction_prompt))
-
-async def async_deep_crawl_site(domain: str, keywords: list[str]) -> list[str]:
-    """
-    Asynchronously perform a deep crawl on a specific website for given keywords using crawl4ai AdaptiveCrawler.
-    """
-    logger.info(f"[ScoutAgent] Deep crawling domain: {domain} for keywords: {keywords}")
-    try:
-        config = AdaptiveConfig()
-        crawler = AdaptiveCrawler(config=config)
-        start_url = f"https://{domain}"
-        state = await crawler.digest(start_url=start_url, query=" ".join(keywords))
-        links = [r.url for r in getattr(state, 'results', []) if hasattr(r, 'url')]
-        log_feedback("deep_crawl_site", {"domain": domain, "keywords": keywords, "results": links})
-        return links
-    except Exception as e:
-        logger.error(f"An error occurred during deep crawl: {e}")
-        log_feedback("deep_crawl_site_error", {"domain": domain, "keywords": keywords, "error": str(e)})
+        log_feedback("crawl_url_error", {"args": args, "error": str(e)})
         return []
 
-def deep_crawl_site(domain: str, keywords: list[str]) -> list[str]:
+def deep_crawl_site(*args, **kwargs):
     """
-    Synchronous wrapper for async_deep_crawl_site.
+    Perform a deep crawl on a specific website for given keywords. Interacts with crawl4ai Docker container.
     """
-    return asyncio.run(async_deep_crawl_site(domain, keywords))
+    logger.info(f"[ScoutAgent] Deep crawling site with args: {args}, kwargs: {kwargs}")
+    try:
+        # Call the running crawl4ai container
+        response = requests.post("http://localhost:32768/deep_crawl_site", json={"args": args, "kwargs": kwargs})
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"An error occurred during deep crawl: {e}")
+        log_feedback("deep_crawl_site_error", {"args": args, "error": str(e)})
+        return []

@@ -1,4 +1,3 @@
-
 services:
   mcp_bus:
     build: ./mcp_bus
@@ -27,27 +26,37 @@ services:
       - CHIEF_EDITOR_FEEDBACK_LOG=./feedback_chief_editor.log
   scout:
     build: ./agents/scout
+    depends_on:
+      - mcp_bus
     environment:
       - LLAMA_3_8B_PATH=./models/llama-3-8b-instruct
       - SCOUT_FEEDBACK_LOG=./feedback_scout.log
       - SERPAPI_KEY=dummy
   fact_checker:
     build: ./agents/fact_checker
+    depends_on:
+      - mcp_bus
     environment:
       - FACT_CHECKER_FEEDBACK_LOG=./feedback_fact_checker.log
   analyst:
     build: ./agents/analyst
+    depends_on:
+      - mcp_bus
     environment:
       - MISTRAL_7B_PATH=./models/mistral-7b-instruct-v0.2
       - ANALYST_FEEDBACK_LOG=./feedback_analyst.log
   synthesizer:
     build: ./agents/synthesizer
+    depends_on:
+      - mcp_bus
     environment:
       - LLAMA_3_70B_PATH=./models/llama-3-70b-instruct
       - SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
       - SYNTHESIZER_FEEDBACK_LOG=./feedback_synthesizer.log
   critic:
     build: ./agents/critic
+    depends_on:
+      - mcp_bus
     environment:
       - CRITIC_FEEDBACK_LOG=./feedback_critic.log
   memory:
@@ -61,6 +70,16 @@ services:
       - POSTGRES_PASSWORD=password
       - MEMORY_FEEDBACK_LOG=./feedback_memory.log
       - SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
+  crawl4ai-container:
+    image: unclecode/crawl4ai:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - CRAWL4AI_CONFIG=/config/crawl4ai_config.yaml
+    volumes:
+      - ./config:/config
+    networks:
+      - justnews-network
 
   db:
     image: postgres:16
@@ -73,3 +92,7 @@ services:
 
 volumes:
   postgres_data:
+  
+networks:
+  justnews-network:
+    driver: bridge

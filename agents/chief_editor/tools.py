@@ -1,4 +1,3 @@
-
 # Model loading for Chief Editor Agent (Llama-3-70B-Instruct)
 import os
 import logging
@@ -38,38 +37,12 @@ def log_feedback(event: str, details: dict):
         f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
 
 def request_story_brief(topic: str, scope: str):
-    """
-    Orchestrates the initiation of a new story brief workflow by posting to the MCP bus.
-    Logs feedback for continual learning.
-    """
-    logger.info(f"[ChiefEditor] Initiating story brief for topic: {topic}, scope: {scope}")
-    payload = {
-        "agent": "scout",
-        "tool": "discover_sources",
-        "args": [f"news {topic} {scope}"],
-        "kwargs": {}
-    }
-    try:
-        resp = requests.post(f"{MCP_BUS_URL}/call", json=payload, timeout=10)
-        resp.raise_for_status()
-        result = resp.json()
-        log_feedback("request_story_brief", {"topic": topic, "scope": scope, "result": result})
-        return {
-            "status": "brief requested",
-            "topic": topic,
-            "scope": scope,
-            "mcp_result": result,
-            "message": "Scout Agent tasked to discover sources via MCP bus."
-        }
-    except Exception as e:
-        logger.error(f"Error calling MCP bus for story brief: {e}")
-        log_feedback("request_story_brief_error", {"topic": topic, "scope": scope, "error": str(e)})
-        return {
-            "status": "error",
-            "topic": topic,
-            "scope": scope,
-            "error": str(e)
-        }
+    """Generate a story brief based on the given topic and scope."""
+    logger.info(f"Requesting story brief for topic: {topic}, scope: {scope}")
+    # Example logic: Combine topic and scope into a brief
+    brief = f"Story brief for topic '{topic}' within scope '{scope}'."
+    log_feedback("request_story_brief", {"topic": topic, "scope": scope, "brief": brief})
+    return brief
 
 def publish_story(story_id: str):
     """

@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from datetime import datetime
 import os
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,21 +39,14 @@ def crawl_url(call: ToolCall):
         logger.error(f"An error occurred in crawl_url: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Add feedback logging for Scout Agent
-@app.post("/log_feedback")
-def log_feedback(call: ToolCall):
+@app.post("/deep_crawl_site")
+def deep_crawl_site(call: ToolCall):
     try:
-        feedback_data = {
-            "tool": call.kwargs.get("tool"),
-            "args": call.args,
-            "outcome": call.kwargs.get("outcome"),
-            "timestamp": datetime.now().isoformat()
-        }
-        with open(os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log"), "a") as log_file:
-            log_file.write(f"{feedback_data}\n")
-        return {"status": "logged"}
+        from tools import deep_crawl_site
+        logger.info(f"Calling deep_crawl_site with args: {call.args} and kwargs: {call.kwargs}")
+        return deep_crawl_site(*call.args, **call.kwargs)
     except Exception as e:
-        logger.error(f"An error occurred in log_feedback: {e}")
+        logger.error(f"An error occurred in deep_crawl_site: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
