@@ -1,0 +1,70 @@
+# V4 RTX-Enhanced Requirements for Analyst Agent
+# Includes NVIDIA RTX AI Toolkit and TensorRT-LLM dependencies
+
+# Core FastAPI and Web Framework
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+
+# HTTP and Networking
+requests>=2.31.0
+httpx>=0.25.2
+
+# Machine Learning Core
+torch>=2.1.0
+transformers>=4.36.0
+tokenizers>=0.15.0
+
+# NVIDIA RTX AI Toolkit (Phase 1 - Preparation)
+# Note: AIM SDK requires early access approval
+# tensorrt-llm  # Will be added after AIM SDK approval
+# nvidia-aim    # Will be added after AIM SDK approval
+
+# TensorRT and GPU Optimization
+tensorrt>=8.6.0
+nvidia-tensorrt>=8.6.0
+nvidia-ml-py3>=12.535.0
+
+# Model Optimization and Quantization
+optimum[onnxruntime-gpu]>=1.16.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+
+# Text Processing
+sentencepiece>=0.1.99
+protobuf>=4.25.0
+
+# Performance Monitoring
+psutil>=5.9.6
+py-cpuinfo>=9.0.0
+
+# Logging and Debugging
+coloredlogs>=15.0.1
+rich>=13.7.0
+
+# Development and Testing
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+
+# Legacy V3 Compatibility (maintained during migration)
+sentence-transformers>=2.2.2
+
+# Docker Model Runner Integration
+docker>=6.1.3
+
+# RTX-Specific Performance Libraries
+numba>=0.58.1  # CUDA acceleration
+cupy-cuda11x>=12.3.0  # GPU array processing
+
+# NVIDIA RAPIDS for GPU-Accelerated Data Science
+# Provides 150x faster pandas, 50x faster scikit-learn, 48x faster NetworkX
+cudf-cu11>=23.10.0  # GPU-accelerated pandas replacement
+cuml-cu11>=23.10.0  # GPU-accelerated scikit-learn replacement  
+cugraph-cu11>=23.10.0  # GPU-accelerated NetworkX replacement
+cupy-cuda11x>=12.3.0  # GPU array processing (RAPIDS dependency)
+
+# RAPIDS Integration Notes:
+# - cuDF provides drop-in pandas replacement with 150x speedup
+# - cuML accelerates ML pipelines for bias/sentiment analysis
+# - cuGraph enables 48x faster entity relationship mapping
+# - Perfect complement to TensorRT-LLM inference acceleration

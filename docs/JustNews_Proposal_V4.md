@@ -20,34 +20,53 @@ JustNews V4 introduces a revolutionary **Hybrid AI Architecture** that combines 
 
 ## 2. V4 Hybrid Architecture Overview
 
-### Core Innovation: Two-Stage AI Pipeline
+### Core Innovation: NVIDIA RTX AI Toolkit Integration
 
-#### Stage 1: Bootstrap Phase (Docker Model Runner)
-- **Immediate Capability**: Production-ready inference from day one
-- **Zero Setup Complexity**: Docker-native model management
-- **Reliable Foundation**: Battle-tested models with guaranteed compatibility
-- **Data Collection**: Real-world news analysis generates high-quality training data
+**JustNews V4 leverages the NVIDIA RTX AI Toolkit** to achieve unprecedented performance and development efficiency:
 
-#### Stage 2: Evolution Phase (Custom Models)
-- **Domain Specialization**: Models trained specifically for news analysis tasks
-- **Continuous Improvement**: Feedback loops enable constant model refinement
-- **Complete Independence**: Eliminate all external dependencies over time
-- **Superior Performance**: Custom models optimized for specific use cases
+- **4x Performance Improvement**: TensorRT-LLM optimization delivers 4x faster inference on RTX 3090
+- **3x Model Compression**: Advanced quantization reduces model size by 3x while maintaining accuracy
+- **Professional Development**: NVIDIA AI Workbench provides enterprise-grade model customization
+- **Native GPU Integration**: AI Inference Manager (AIM) SDK eliminates subprocess complexity
+
+### Two-Stage AI Pipeline Enhanced with RTX Toolkit
+
+#### Stage 1: RTX-Optimized Bootstrap (TensorRT-LLM + Docker Fallback)
+- **TensorRT-LLM Primary**: 4x faster inference with native GPU memory management
+- **Docker Model Runner Fallback**: Reliable backup for maximum system stability
+- **Intelligent Routing**: AIM SDK automatically selects optimal inference backend
+- **Crash-Free Operation**: Professional-grade error handling eliminates system crashes
+
+#### Stage 2: AI Workbench Evolution (Custom Model Training)
+- **QLoRA Fine-tuning**: Parameter-efficient training with NVIDIA AI Workbench
+- **Domain Specialization**: News-analysis optimized models using RTX AI Toolkit
+- **Continuous Improvement**: Integrated feedback loops with TensorRT Model Optimizer
+- **Complete Independence**: Progressive replacement with RTX-optimized custom models
 
 ### Technical Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   JustNews V4 Hybrid System                │
-├─────────────────────────────────────────────────────────────┤
-│  Docker Model Runner (Inference)  │  Custom Training Pipeline │
-│  ├─ ai/mistral (Mistral 7B)      │  ├─ Feedback Collection    │
-│  ├─ ai/llama3.2 (Llama 3.2)     │  ├─ Training Data Prep     │
-│  ├─ ai/gemma3 (Gemma 3)         │  ├─ Model Fine-tuning      │
-│  └─ OpenAI-Compatible API        │  └─ A/B Testing Framework  │
-├─────────────────────────────────────────────────────────────┤
-│                      Agent Layer                            │
-│  ├─ Analyst Agent (Bias/Sentiment/Entity Analysis)         │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     JustNews V4 RTX-Optimized Hybrid System                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  NVIDIA RTX AI Toolkit Core    │  Custom Training Pipeline                  │
+│  ├─ TensorRT-LLM (Primary)     │  ├─ AI Workbench (QLoRA Training)         │
+│  │  ├─ 4x Faster Inference     │  ├─ TensorRT Model Optimizer              │
+│  │  ├─ Native GPU Memory       │  ├─ Feedback Collection & Analysis        │
+│  │  └─ INT4/INT8 Quantization  │  └─ A/B Testing Framework                 │
+│  ├─ AIM SDK (Orchestration)    │                                           │
+│  │  ├─ Intelligent Routing     │  Docker Model Runner (Fallback)          │
+│  │  ├─ Local/Cloud Policy      │  ├─ ai/mistral (Mistral 7B)              │
+│  │  └─ Error Handling          │  ├─ ai/llama3.2 (Llama 3.2)             │
+│  └─ AI Inference Manager       │  └─ Stability Backup Layer               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                         Agent Layer (RTX Accelerated)                      │
+│  ├─ Analyst Agent (Bias/Sentiment/Entity Analysis) - 4x Performance        │
+│  ├─ Fact Checker Agent (Enhanced with TensorRT optimization)              │
+│  ├─ Scout Agent (Accelerated content discovery)                           │
+│  └─ Memory Agent (Optimized vector operations)                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 │  ├─ Critic Agent (Quality Assessment & Feedback)           │
 │  ├─ Synthesizer Agent (Content Aggregation)                │
 │  └─ Other Agents (Scout, Fact-Checker, etc.)              │
@@ -61,25 +80,26 @@ JustNews V4 introduces a revolutionary **Hybrid AI Architecture** that combines 
 
 ## 3. Key Benefits
 
-### Immediate Advantages
-- **Zero Bootstrap Time**: System operational immediately without model setup
-- **Guaranteed Reliability**: Docker Model Runner eliminates corruption and compatibility issues
-- **GPU Optimization**: Native NVIDIA GPU support on Windows (Docker Desktop 4.41+)
-- **Familiar Workflow**: Standard Docker commands for model management
-- **OCI Artifact Distribution**: Versioned, registry-based model distribution
+### NVIDIA RTX AI Toolkit Advantages
+- **4x Performance Boost**: TensorRT-LLM delivers unprecedented inference speed on RTX 3090
+- **3x Model Compression**: Advanced quantization reduces memory usage while maintaining accuracy
+- **Crash-Free Operation**: Professional GPU memory management eliminates system crashes
+- **Native RTX Integration**: Built specifically for NVIDIA RTX 3090 Ampere architecture
+- **Enterprise Toolchain**: AI Workbench provides production-grade development environment
+
+### Immediate Technical Benefits
+- **Zero Bootstrap Complexity**: AIM SDK handles all inference backend orchestration
+- **Intelligent Routing**: Automatic selection between TensorRT-LLM and Docker fallback
+- **Cross-Platform Engines**: Ampere architecture supports cross-OS deployment
+- **Sub-200MB Footprint**: TensorRT for RTX minimizes memory requirements
+- **15-30 Second Build**: Optimized engine builds directly on target RTX hardware
 
 ### Long-term Strategic Benefits
-- **AI Sovereignty**: Complete independence from external AI services
-- **Domain Expertise**: News-analysis specialized models outperform general alternatives
-- **Cost Elimination**: Zero ongoing API costs once custom models mature
-- **Competitive Advantage**: Proprietary AI capabilities not available to competitors
-- **Adaptive Intelligence**: Models that improve specifically for your use cases
-
-### Operational Benefits
-- **Risk Mitigation**: Docker models provide reliable fallback during custom model development
-- **Zero Downtime Migration**: Gradual replacement without service interruption
-- **Simplified Debugging**: Clear separation between inference and training concerns
-- **Enhanced Monitoring**: Docker Model Runner provides built-in observability
+- **AI Sovereignty**: Complete independence from external AI services enhanced with RTX optimization
+- **Domain Expertise**: QLoRA fine-tuning creates news-analysis specialized models
+- **Cost + Performance**: Eliminate API costs while achieving 4x faster inference
+- **RTX Ecosystem**: Native compatibility with LangChain, LlamaIndex, Jan.AI, OobaBooga
+- **Future-Proof Architecture**: Ready for RTX 4000/5000 series with same codebase
 
 ## 4. Technical Implementation Strategy
 
@@ -103,11 +123,71 @@ services:
       - FEEDBACK_COLLECTION=enhanced
 ```
 
-### Phase 2: Custom Training Pipeline (Weeks 3-6)
-- **Training Infrastructure**: PyTorch-based fine-tuning pipeline
-- **Data Pipeline**: Automated conversion of feedback logs to training data
-- **A/B Testing Framework**: Compare Docker models vs. custom models
-- **Model Registry**: Version control for custom model iterations
+### Phase 1: RTX AI Toolkit Foundation (Weeks 1-2)
+
+```python
+# Enhanced hybrid_tools_v4.py with RTX AI Toolkit
+from nvidia_aim import InferenceManager  # AIM SDK
+import tensorrt_llm  # TensorRT-LLM
+
+class RTXOptimizedHybridManager:
+    def __init__(self):
+        # Primary: TensorRT-LLM for 4x performance
+        self.aim_client = InferenceManager()
+        self.tensorrt_model = self.aim_client.load_model(
+            "mistral-7b-news-bias",
+            backend="tensorrt-llm",
+            precision="int4",  # 3x compression
+            optimization_level="max_performance"
+        )
+        
+        # Fallback: Docker Model Runner for stability
+        self.docker_client = DockerModelClient("ai/mistral")
+        
+    def query_with_rtx_optimization(self, prompt: str) -> Tuple[str, str]:
+        try:
+            # Try TensorRT-LLM first (4x faster)
+            response = self.tensorrt_model.generate(prompt)
+            return response, "tensorrt-llm"
+        except Exception:
+            # Fallback to Docker Model Runner
+            response = self.docker_client.query_model(prompt)
+            return response, "docker-fallback"
+```
+
+**Phase 1 RTX Setup Requirements:**
+- Apply for NVIDIA AIM SDK early access
+- Install NVIDIA AI Workbench for development
+- Download TensorRT for RTX (RTX 3090 Ampere SM86 support)
+- Configure RTX-specific optimization settings
+
+### Phase 2: AI Workbench Training Pipeline (Weeks 3-6)
+```yaml
+# AI Workbench Project Configuration
+project:
+  name: "justnews-v4-news-analysis"
+  base_image: "nvidia/tensorrt-llm:latest"
+  
+training:
+  technique: "QLoRA"  # Parameter Efficient Fine-Tuning
+  base_model: "mistral-7b-instruct-v0.3"
+  dataset: "feedback_logs_processed"
+  optimization:
+    quantization: "int4"
+    tensorrt_optimization: true
+    target_gpu: "rtx_3090"
+  
+deployment:
+  backend: "tensorrt-llm"
+  inference_mode: "optimized"
+  fallback: "docker-model-runner"
+```
+
+**Phase 2 Features:**
+- **QLoRA Fine-tuning**: Domain-specific news analysis models
+- **TensorRT Model Optimizer**: Advanced compression and optimization
+- **A/B Testing**: Compare RTX-optimized vs Docker models
+- **Performance Monitoring**: RTX-specific metrics collection
 
 ### Phase 3: Progressive Model Replacement (Months 2-6)
 - **Performance Benchmarking**: Automated evaluation of model improvements

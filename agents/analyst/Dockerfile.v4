@@ -1,0 +1,70 @@
+# V4 RTX-Enhanced Dockerfile for Analyst Agent
+# Includes TensorRT-LLM and NVIDIA RTX AI Toolkit dependencies
+
+FROM nvidia/cuda:11.8-devel-ubuntu20.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONPATH="/app"
+ENV CUDA_VISIBLE_DEVICES=0
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    build-essential \
+    cmake \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symbolic link for python
+RUN ln -s /usr/bin/python3.11 /usr/bin/python
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY agents/analyst/requirements_v4.txt ./requirements.txt
+RUN pip install --upgrade pip
+
+# Install PyTorch with CUDA support
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Install TensorRT and RTX AI Toolkit dependencies
+RUN pip install --no-cache-dir \
+    tensorrt \
+    tensorrt-llm \
+    nvidia-tensorrt \
+    nvidia-ml-py3
+
+# Install standard ML dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional RTX optimization dependencies
+RUN pip install --no-cache-dir \
+    transformers[torch] \
+    accelerate \
+    safetensors \
+    sentencepiece \
+    protobuf \
+    optimum[onnxruntime-gpu]
+
+# Copy application files
+COPY agents/analyst/main.py .
+COPY agents/analyst/tools.py .
+COPY agents/analyst/hybrid_tools_v4.py .
+COPY agents/analyst/rtx_manager.py .
+
+# Create directories for models
+RUN mkdir -p /app/models /app/rtx_models /app/tensorrt_engines
+
+# Set permissions
+RUN chmod +x /app/*.py
+
+EXPOSE 8004
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8004/health || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004", "--workers", "1"]

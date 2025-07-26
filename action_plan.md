@@ -1,19 +1,56 @@
-# Action Plan: Agent Improvements for JustNews V3
+# Action Plan: JustNews V4 RTX-Accelerated Development
 
-This action plan details the steps required to address errors, omissions, stubs, and areas for improvement identified in the current codebase for each agent. The goal is to move all agents toward robust, production-ready, ML/LLM-powered, feedback-driven implementations as described in the V3 Plan.
+**Current Status**: TensorRT-LLM integration complete - Ready for Production Development
+
+This action plan outlines the next phases for JustNews V4 development now that the RTX AI Toolkit foundation is fully operational.
 
 ---
 
-## 1. Chief Editor Agent
-- **Replace stubs with real MCP bus integration:**
-  - Implement actual HTTP calls to the MCP bus for `request_story_brief` and `publish_story`.
-  - Handle responses and errors from the bus.
-- **Add feedback logging:**
-  - Log all editorial decisions and workflow outcomes for continual learning.
-- **Enhance orchestration logic:**
-  - Support dynamic task delegation and monitoring of agent responses.
-- **Testing:**
-  - Add unit and integration tests for orchestration flows.
+## ✅ Phase 0: RTX Foundation (COMPLETED - July 26, 2025)
+
+### Infrastructure Complete
+- **TensorRT-LLM 0.20.0**: ✅ Fully operational on RTX 3090
+- **NVIDIA RAPIDS 25.6.0**: ✅ GPU data processing suite ready
+- **Hardware Validation**: ✅ RTX 3090 performance confirmed (24GB VRAM)
+- **Environment Setup**: ✅ Professional-grade GPU stability
+
+### Test Results: 6/6 PASS (100% Success Rate)
+- Basic Imports, CUDA Support, MPI Support, TensorRT, Transformers, TensorRT-LLM
+
+---
+
+## 🚀 Phase 1: Model Integration (CURRENT PRIORITY)
+
+### 1.1 Download Optimized Models
+- **Primary Focus**: News analysis models optimized for TensorRT-LLM
+  - BERT variants for sentiment analysis and classification
+  - Summarization models (T5, BART variants)
+  - Named Entity Recognition models for news processing
+- **Quantization**: Apply INT4_AWQ for 3x compression without quality loss
+- **Timeline**: 2-3 days
+
+### 1.2 Engine Building
+- Convert models to TensorRT engines optimized for RTX 3090
+- Test inference performance with target 10-20x speedup
+- Implement model caching and management
+- **Timeline**: 3-5 days
+
+---
+
+## 🔧 Phase 2: Agent Enhancement (HIGH PRIORITY)
+
+### 2.1 Analyst Agent GPU Acceleration
+- **Integrate TensorRT-LLM inference** into existing analyst workflows
+- **Implement batch processing** for efficiency improvements
+- **Add performance monitoring** with real-time metrics
+- **Hybrid routing**: TensorRT-LLM primary, Docker fallback
+- **Timeline**: 5-7 days
+
+### 2.2 RTX Manager Production Enhancement
+- Complete integration patterns from `rtx_manager.py`
+- Implement professional error handling and recovery
+- Add comprehensive performance dashboards
+- **Timeline**: 3-4 days
 
 ---
 
