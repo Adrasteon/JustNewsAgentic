@@ -6,29 +6,74 @@ This project implements the JustNews V3 system, an agentic, MCP-first news analy
 
 The system is built on a microservices architecture where each service is an independent AI agent. These agents communicate via a central **MCP (Model Context Protocol) Message Bus**. This allows for a flexible, scalable, and dynamic system where agents can delegate tasks and collaborate to achieve complex goals.
 
-For full architectural details, see `docs/JustNews_Proposal_V3.md` and `docs/JustNews_Plan_V3.md`.
+**V4 Hybrid Architecture**: JustNews V4 introduces a groundbreaking hybrid approach that combines Docker Model Runner for reliable inference with custom-trained models for specialized news analysis. This ensures immediate operational capability while building toward complete AI independence.
+
+For full architectural details, see:
+- **V4 (Current)**: `docs/JustNews_Proposal_V4.md` and `docs/JustNews_Plan_V4.md`
+- **V3 (Legacy)**: `docs/JustNews_Proposal_V3.md` and `docs/JustNews_Plan_V3.md`
 
 
 ## Getting Started
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Docker and Docker Compose with GPU support (NVIDIA Container Toolkit)
 - Python 3.11+ (for local development)
+- NVIDIA GPU with CUDA support (recommended: RTX 3090 or better)
+- Hugging Face account with access to gated models
+
+### GPU & Model Setup
+
+This system is optimized for GPU acceleration using your RTX 3090. The Mistral-7B-Instruct-v0.3 model has been optimized for local caching and GPU inference.
+
+1. **Download and cache the model locally (recommended):**
+   ```bash
+   # Create virtual environment for setup
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   
+   # Install dependencies
+   pip install transformers huggingface_hub torch
+   
+   # Run the model setup script
+   python setup_models.py
+   ```
+
+2. **Get your Hugging Face token (for fallback only):**
+   - Go to https://huggingface.co/settings/tokens
+   - Create a new token with "Read" permissions
+   - Note: Mistral-7B-Instruct-v0.3 is not gated, so token is optional
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env and replace 'your_hf_token_here' with your actual token (optional)
+   ```
+
+4. **Install NVIDIA Container Toolkit (Windows WSL2 or Linux):**
+   ```bash
+   # Follow: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+   ```
 
 ### Build & Run
 
-1. Build and start all services:
+1. **Ensure your local model cache exists:**
+   ```bash
+   # Verify model files are cached (should be ~13.8GB)
+   ls -la ~/mistral_models/7B-Instruct-v0.3/
+   ```
+
+2. **Build and start all services with GPU support:**
     ```bash
     docker-compose up --build
     ```
 
-2. The following services will be started:
+3. The following services will be started:
     - `mcp_bus`: Central message bus for agent communication
     - `chief_editor`: Orchestrates news workflows
     - `scout`: Discovers and crawls news sources
     - `fact_checker`: Validates news and verifies claims
-    - `analyst`: Scores bias, sentiment, and extracts entities
+    - `analyst`: Scores bias, sentiment, and extracts entities (GPU-accelerated with Mistral-7B-Instruct-v0.3, ~14.5GB VRAM usage)
 
     - `synthesizer`: Clusters and synthesizes articles using ML models (sentence-transformers for clustering, LLM for neutralization/aggregation, feedback logging for continual learning). Supports KMeans, BERTopic, and HDBSCAN clustering (set `SYNTHESIZER_CLUSTER_METHOD`).
     - `critic`: Reviews synthesis and neutrality using LLM-based critique, logs feedback for continual learning and retraining. Optional fact-checking pipeline for cross-referencing (enable with `CRITIC_USE_FACTCHECK=1`).
@@ -68,6 +113,23 @@ All major agents implement machine learning-based feedback loops for continual i
 ### API Endpoints
 
 Each agent exposes its tools as HTTP endpoints (see `main.py` in each agent folder). The MCP bus provides `/register`, `/call`, and `/agents` endpoints for agent discovery and tool invocation.
+
+### Docker GPU Troubleshooting
+
+**GPU Access Issues:**
+- Ensure NVIDIA Container Toolkit is installed and configured
+- Verify Docker can access GPU: `docker run --rm --gpus all nvidia/cuda:11.8-base-ubuntu20.04 nvidia-smi`
+- Check GPU resources in Docker Desktop settings (increase memory limits)
+
+**Model Loading Issues:**
+- Verify model files exist: `ls -la ~/mistral_models/7B-Instruct-v0.3/`
+- Check volume mounting in docker-compose logs
+- For Windows, copy `docker-compose.override.example.yml` to `docker-compose.override.yml` and adjust paths
+
+**Memory Issues:**
+- Analyst agent requires ~14.5GB VRAM for optimal performance
+- If OOM errors occur, check available GPU memory: `nvidia-smi`
+- Consider reducing batch size or using CPU fallback by removing GPU config
 
 ### Dual Functionality: Standalone Execution & MCP Bus Integration
 

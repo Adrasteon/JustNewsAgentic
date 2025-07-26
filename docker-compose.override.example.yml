@@ -1,0 +1,14 @@
+# Docker Compose Override for Windows
+# Use this file on Windows to override paths
+# Copy to docker-compose.override.yml and modify paths as needed
+
+version: '3.8'
+
+services:
+  analyst:
+    volumes:
+      # Windows path mapping - adjust to your actual path
+      - "C:/Users/marti/mistral_models:/app/models:ro"
+    environment:
+      # Ensure proper model path in container
+      - LOCAL_MODEL_PATH=/app/models/7B-Instruct-v0.3

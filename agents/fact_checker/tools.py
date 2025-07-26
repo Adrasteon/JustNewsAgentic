@@ -10,10 +10,11 @@ except ImportError:
     AutoTokenizer = None
     pipeline = None
 
-MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
-MODEL_PATH = os.environ.get("MISTRAL_7B_PATH", "./models/mistral-7b-instruct-v0.2")
+# Using the large model for the critical fact-checker that requires highest accuracy
+MODEL_NAME = "microsoft/DialoGPT-large"
+MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-large")
 
-def get_mistral_model():
+def get_dialog_model():
     if AutoModelForCausalLM is None or AutoTokenizer is None:
         raise ImportError("transformers library is not installed.")
     if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):
@@ -51,7 +52,7 @@ def verify_claims(claims: list[str], sources: list[str]) -> dict:
     """
     logger.info(f"Verifying claims: {claims} with sources: {sources}")
     try:
-        model, tokenizer = get_mistral_model()
+        model, tokenizer = get_dialog_model()
         if pipeline is None:
             raise ImportError("transformers pipeline is not available.")
         pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer)

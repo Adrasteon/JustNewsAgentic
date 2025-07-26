@@ -1,94 +1,118 @@
 """
 Main file for the Analyst Agent.
 """
-# main.py for Analyst Agent
+
 import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from datetime import datetime
-import os
 import requests
+
+from tools import (
+    identify_entities,
+    log_feedback,
+    score_bias,
+    score_sentiment,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Environment variables
+ANALYST_AGENT_PORT = int(os.environ.get("ANALYST_AGENT_PORT", 8004))
+MODEL_PATH = os.environ.get("MISTRAL_7B_PATH", "./models/mistral-7b-instruct-v0.2")
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
+# Pydantic models
 class ToolCall(BaseModel):
     args: list
     kwargs: dict
 
-@app.post("/score_bias")
-def score_bias(call: ToolCall):
+class MCPBusClient:
+    def __init__(self, base_url: str = MCP_BUS_URL):
+        self.base_url = base_url
+
+    def register_agent(self, agent_name: str, agent_address: str, tools: list):
+        registration_data = {
+            "agent_name": agent_name,
+            "agent_address": agent_address,
+            "tools": tools,
+        }
+        try:
+            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response.raise_for_status()
+            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
+            raise
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handles startup and shutdown events for the FastAPI application."""
+    logger.info("Analyst agent is starting up.")
+    # Note: Model will be loaded lazily when first needed
+    logger.info("Model loading deferred to first use.")
+
+    # Register agent with MCP Bus
+    mcp_bus_client = MCPBusClient()
     try:
-        from tools import score_bias
-        logger.info(f"Calling score_bias with args: {call.args} and kwargs: {call.kwargs}")
+        mcp_bus_client.register_agent(
+            agent_name="analyst",
+            agent_address=f"http://analyst:{ANALYST_AGENT_PORT}",
+            tools=["score_bias", "score_sentiment", "identify_entities"],
+        )
+        logger.info("Registered tools with MCP Bus.")
+    except Exception as e:
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+
+    yield
+
+    logger.info("Analyst agent is shutting down.")
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/health")
+def health():
+    """Health check endpoint."""
+    return {"status": "ok"}
+
+@app.post("/score_bias")
+def score_bias_endpoint(call: ToolCall):
+    """Scores the bias of a given text."""
+    try:
         return score_bias(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in score_bias: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/score_sentiment")
-def score_sentiment(call: ToolCall):
+def score_sentiment_endpoint(call: ToolCall):
+    """Scores the sentiment of a given text."""
     try:
-        from tools import score_sentiment
-        logger.info(f"Calling score_sentiment with args: {call.args} and kwargs: {call.kwargs}")
         return score_sentiment(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in score_sentiment: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/identify_entities")
-def identify_entities(call: ToolCall):
+def identify_entities_endpoint(call: ToolCall):
+    """Identifies entities in a given text."""
     try:
-        from tools import identify_entities
-        logger.info(f"Calling identify_entities with args: {call.args} and kwargs: {call.kwargs}")
         return identify_entities(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in identify_entities: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Add feedback logging for Analyst Agent
 @app.post("/log_feedback")
-def log_feedback(call: ToolCall):
+def log_feedback_endpoint(call: ToolCall):
+    """Logs feedback."""
     try:
-        feedback_data = {
-            "tool": call.kwargs.get("tool"),
-            "args": call.args,
-            "outcome": call.kwargs.get("outcome"),
-            "timestamp": datetime.now().isoformat()
-        }
-        with open(os.environ.get("ANALYST_FEEDBACK_LOG", "./feedback_analyst.log"), "a") as log_file:
-            log_file.write(f"{feedback_data}\n")
+        feedback = call.kwargs.get("feedback", {})
+        log_feedback("log_feedback", feedback)
         return {"status": "logged"}
     except Exception as e:
-        logger.error(f"An error occurred in log_feedback: {e}")
+        logger.error(f"An error occurred while logging feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-try:
-    # Attempt to register tools with MCP Bus
-    mcp_url = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
-    response = requests.post(f"{mcp_url}/register", json={"agent": "analyst", "tools": ["score_bias", "score_sentiment", "identify_entities"]})
-    response.raise_for_status()
-    logger.info("Registered tools with MCP Bus.")
-except Exception as e:
-    logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-
-def check_and_download_model(model_path, download_url):
-    if not os.path.exists(model_path):
-        print(f"Model not found at {model_path}. Downloading...")
-        response = requests.get(download_url, stream=True)
-        with open(model_path, 'wb') as model_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                model_file.write(chunk)
-        print(f"Model downloaded to {model_path}.")
-
-# Example usage
-MISTRAL_7B_PATH = './models/mistral-7b-instruct-v0.2'
-MISTRAL_7B_URL = 'https://example.com/path/to/mistral-7b-model'
-check_and_download_model(MISTRAL_7B_PATH, MISTRAL_7B_URL)

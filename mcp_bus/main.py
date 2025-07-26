@@ -1,4 +1,3 @@
-
 """
 Main file for the MCP Bus.
 """
@@ -6,8 +5,15 @@ Main file for the MCP Bus.
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import requests
+import atexit
+import logging
+from contextlib import asynccontextmanager
 
 app = FastAPI()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 agents = {}
 
@@ -23,7 +29,7 @@ class ToolCall(BaseModel):
 
 @app.post("/register")
 def register_agent(agent: Agent):
-    print(f"Registering agent: {agent.name} at {agent.address}")
+    logger.info(f"Registering agent: {agent.name} at {agent.address}")
     agents[agent.name] = agent.address
     return {"status": "ok"}
 
@@ -48,3 +54,17 @@ def get_agents():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@asynccontextmanager
+async def lifespan(app):
+    logger.info("MCP_Bus is starting up.")
+    try:
+        response = requests.get("http://localhost:8000/register")
+        response.raise_for_status()
+        logger.info("MCP Bus connected successfully.")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to connect to MCP Bus: {e}")
+    yield
+    logger.info("MCP_Bus is shutting down.")
+
+atexit.register(lambda: logger.info("MCP_Bus has exited."))

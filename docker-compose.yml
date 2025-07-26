@@ -1,8 +1,13 @@
 services:
   mcp_bus:
-    build: ./mcp_bus
+    container_name: mcp_bus
+    build:
+      context: .
+      dockerfile: mcp_bus/Dockerfile
     ports:
       - "8000:8000"
+    networks:
+      - justnews-network
     environment:
       - LLAMA_3_70B_PATH=./models/llama-3-70b-instruct
       - LLAMA_3_8B_PATH=./models/llama-3-8b-instruct
@@ -17,52 +22,110 @@ services:
       - CHIEF_EDITOR_FEEDBACK_LOG=./feedback_chief_editor.log
       - SERPAPI_KEY=dummy
   chief_editor:
-    build: ./agents/chief_editor
+    build:
+      context: .
+      dockerfile: agents/chief_editor/Dockerfile
     depends_on:
       - mcp_bus
     ports:
       - "8001:8001"
+    networks:
+      - justnews-network
     environment:
       - CHIEF_EDITOR_FEEDBACK_LOG=./feedback_chief_editor.log
+      - MCP_BUS_URL=http://mcp_bus:8000
   scout:
-    build: ./agents/scout
+    build:
+      context: .
+      dockerfile: agents/scout/Dockerfile
     depends_on:
       - mcp_bus
+    ports:
+      - "8002:8002"
+    networks:
+      - justnews-network
     environment:
       - LLAMA_3_8B_PATH=./models/llama-3-8b-instruct
       - SCOUT_FEEDBACK_LOG=./feedback_scout.log
       - SERPAPI_KEY=dummy
+      - MCP_BUS_URL=http://mcp_bus:8000
   fact_checker:
-    build: ./agents/fact_checker
+    build:
+      context: .
+      dockerfile: agents/fact_checker/Dockerfile
     depends_on:
       - mcp_bus
+    ports:
+      - "8003:8003"
+    networks:
+      - justnews-network
     environment:
       - FACT_CHECKER_FEEDBACK_LOG=./feedback_fact_checker.log
+      - MCP_BUS_URL=http://mcp_bus:8000
   analyst:
-    build: ./agents/analyst
+    build:
+      context: .
+      dockerfile: agents/analyst/Dockerfile
     depends_on:
       - mcp_bus
+    ports:
+      - "8004:8004"
+    networks:
+      - justnews-network
+    volumes:
+      - ${HOME}/mistral_models:/app/models:ro  # Mount local model cache
     environment:
-      - MISTRAL_7B_PATH=./models/mistral-7b-instruct-v0.2
+      - ANALYST_MODEL=mistralai/Mistral-7B-Instruct-v0.3
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}
+      - LOCAL_MODEL_PATH=/app/models/7B-Instruct-v0.3
       - ANALYST_FEEDBACK_LOG=./feedback_analyst.log
+      - MCP_BUS_URL=http://mcp_bus:8000
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
   synthesizer:
-    build: ./agents/synthesizer
+    build:
+      context: .
+      dockerfile: agents/synthesizer/Dockerfile
     depends_on:
       - mcp_bus
+    ports:
+      - "8005:8005"
+    networks:
+      - justnews-network
     environment:
       - LLAMA_3_70B_PATH=./models/llama-3-70b-instruct
       - SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
       - SYNTHESIZER_FEEDBACK_LOG=./feedback_synthesizer.log
+      - MCP_BUS_URL=http://mcp_bus:8000
   critic:
-    build: ./agents/critic
+    build:
+      context: .
+      dockerfile: agents/critic/Dockerfile
     depends_on:
       - mcp_bus
+    ports:
+      - "8006:8006"
+    networks:
+      - justnews-network
     environment:
       - CRITIC_FEEDBACK_LOG=./feedback_critic.log
+      - MCP_BUS_URL=http://mcp_bus:8000
   memory:
-    build: ./agents/memory
+    build:
+      context: .
+      dockerfile: agents/memory/Dockerfile
     depends_on:
       - db
+    ports:
+      - "8007:8007"
+    networks:
+      - justnews-network
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_DB=justnews
@@ -70,19 +133,21 @@ services:
       - POSTGRES_PASSWORD=password
       - MEMORY_FEEDBACK_LOG=./feedback_memory.log
       - SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
+      - MCP_BUS_URL=http://mcp_bus:8000
   crawl4ai-container:
     image: unclecode/crawl4ai:latest
     ports:
       - "5000:5000"
+    networks:
+      - justnews-network
     environment:
       - CRAWL4AI_CONFIG=/config/crawl4ai_config.yaml
     volumes:
       - ./config:/config
-    networks:
-      - justnews-network
-
   db:
     image: postgres:16
+    networks:
+      - justnews-network
     environment:
       - POSTGRES_DB=justnews
       - POSTGRES_USER=user
@@ -92,7 +157,7 @@ services:
 
 volumes:
   postgres_data:
-  
+
 networks:
   justnews-network:
     driver: bridge

@@ -10,8 +10,8 @@ except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
 
-MODEL_NAME = "meta-llama/Llama-3-70B-Instruct"
-MODEL_PATH = os.environ.get("LLAMA_3_70B_PATH", "./models/llama-3-70b-instruct")
+MODEL_NAME = "microsoft/DialoGPT-medium"
+MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
 
 def get_llama_model():
     if AutoModelForCausalLM is None or AutoTokenizer is None:

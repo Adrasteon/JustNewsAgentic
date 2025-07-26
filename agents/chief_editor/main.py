@@ -5,6 +5,7 @@ Main file for the Chief Editor Agent.
 import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 import os
 import requests
 from datetime import datetime
@@ -13,34 +14,83 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Environment variables
+CHIEF_EDITOR_AGENT_PORT = int(os.environ.get("CHIEF_EDITOR_AGENT_PORT", 8001))
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
 
+class MCPBusClient:
+    def __init__(self, base_url: str = MCP_BUS_URL):
+        self.base_url = base_url
+
+    def register_agent(self, agent_name: str, agent_address: str, tools: list):
+        registration_data = {
+            "agent_name": agent_name,
+            "agent_address": agent_address,
+            "tools": tools,
+        }
+        try:
+            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response.raise_for_status()
+            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
+            raise
+
+# Define the lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    logger.info("Chief Editor agent is starting up.")
+    mcp_bus_client = MCPBusClient()
+    try:
+        mcp_bus_client.register_agent(
+            agent_name="chief_editor",
+            agent_address=f"http://chief_editor:{CHIEF_EDITOR_AGENT_PORT}",
+            tools=["request_story_brief", "publish_story"],
+        )
+        logger.info("Registered tools with MCP Bus.")
+    except Exception as e:
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    yield
+    # Shutdown logic
+    logger.info("Chief Editor agent is shutting down.")
+
+# Initialize FastAPI with the lifespan context manager
+app = FastAPI(lifespan=lifespan)
+
+# Add health endpoint
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+# Define ToolCall model
 class ToolCall(BaseModel):
     args: list
     kwargs: dict
 
+# Import tools functions
+from tools import request_story_brief as request_story_brief_tool, publish_story as publish_story_tool
+
+# Adjust endpoints for tools
 @app.post("/request_story_brief")
-def request_story_brief(call: ToolCall):
+def request_story_brief(tool_call: ToolCall):
     try:
-        from tools import request_story_brief
-        logger.info(f"Calling request_story_brief with args: {call.args} and kwargs: {call.kwargs}")
-        return request_story_brief(*call.args, **call.kwargs)
+        topic = tool_call.kwargs.get("topic", tool_call.args[0] if tool_call.args else "")
+        scope = tool_call.kwargs.get("scope", tool_call.args[1] if len(tool_call.args) > 1 else "general")
+        brief = request_story_brief_tool(topic, scope)
+        return {"status": "success", "brief": brief}
     except Exception as e:
-        logger.error(f"An error occurred in request_story_brief: {e}")
+        logger.error(f"Error in request_story_brief: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/publish_story")
-def publish_story(call: ToolCall):
+def publish_story(tool_call: ToolCall):
     try:
-        from tools import publish_story
-        logger.info(f"Calling publish_story with args: {call.args} and kwargs: {call.kwargs}")
-        return publish_story(*call.args, **call.kwargs)
+        story_id = tool_call.kwargs.get("story_id", tool_call.args[0] if tool_call.args else "")
+        result = publish_story_tool(story_id)
+        return result
     except Exception as e:
-        logger.error(f"An error occurred in publish_story: {e}")
+        logger.error(f"Error in publish_story: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Add feedback logging for Chief Editor Agent
@@ -48,37 +98,11 @@ def publish_story(call: ToolCall):
 def log_feedback(call: ToolCall):
     try:
         feedback_data = {
-            "tool": call.kwargs.get("tool"),
-            "args": call.args,
-            "outcome": call.kwargs.get("outcome"),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "feedback": call.kwargs.get("feedback")
         }
-        with open(os.environ.get("CHIEF_EDITOR_FEEDBACK_LOG", "./feedback_chief_editor.log"), "a") as log_file:
-            log_file.write(f"{feedback_data}\n")
-        return {"status": "logged"}
+        logger.info(f"Logging feedback: {feedback_data}")
+        return feedback_data
     except Exception as e:
-        logger.error(f"An error occurred in log_feedback: {e}")
+        logger.error(f"An error occurred while logging feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-try:
-    # Attempt to register tools with MCP Bus
-    mcp_url = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
-    response = requests.post(f"{mcp_url}/register", json={"agent": "chief_editor", "tools": ["request_story_brief", "publish_story"]})
-    response.raise_for_status()
-    logger.info("Registered tools with MCP Bus.")
-except Exception as e:
-    logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-
-def check_and_download_model(model_path, download_url):
-    if not os.path.exists(model_path):
-        print(f"Model not found at {model_path}. Downloading...")
-        response = requests.get(download_url, stream=True)
-        with open(model_path, 'wb') as model_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                model_file.write(chunk)
-        print(f"Model downloaded to {model_path}.")
-
-# Example usage
-CHIEF_EDITOR_MODEL_PATH = './models/chief-editor-model'
-CHIEF_EDITOR_MODEL_URL = 'https://example.com/path/to/chief-editor-model'
-check_and_download_model(CHIEF_EDITOR_MODEL_PATH, CHIEF_EDITOR_MODEL_URL)

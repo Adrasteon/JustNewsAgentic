@@ -8,12 +8,51 @@ from pydantic import BaseModel
 from datetime import datetime
 import os
 import requests
+from contextlib import asynccontextmanager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Environment variables
+CRITIC_AGENT_PORT = int(os.environ.get("CRITIC_AGENT_PORT", 8002))
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+
+class MCPBusClient:
+    def __init__(self, base_url: str = MCP_BUS_URL):
+        self.base_url = base_url
+
+    def register_agent(self, agent_name: str, agent_address: str, tools: list):
+        registration_data = {
+            "agent_name": agent_name,
+            "agent_address": agent_address,
+            "tools": tools,
+        }
+        try:
+            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response.raise_for_status()
+            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
+            raise
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Critic agent is starting up.")
+    mcp_bus_client = MCPBusClient()
+    try:
+        mcp_bus_client.register_agent(
+            agent_name="critic",
+            agent_address=f"http://critic:{CRITIC_AGENT_PORT}",
+            tools=["critique_synthesis", "critique_neutrality"],
+        )
+        logger.info("Registered tools with MCP Bus.")
+    except Exception as e:
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    yield
+    logger.info("Critic agent is shutting down.")
+
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/health")
 def health():
@@ -48,37 +87,11 @@ def critique_neutrality(call: ToolCall):
 def log_feedback(call: ToolCall):
     try:
         feedback_data = {
-            "tool": call.kwargs.get("tool"),
-            "args": call.args,
-            "outcome": call.kwargs.get("outcome"),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "feedback": call.kwargs.get("feedback")
         }
-        with open(os.environ.get("CRITIC_FEEDBACK_LOG", "./feedback_critic.log"), "a") as log_file:
-            log_file.write(f"{feedback_data}\n")
-        return {"status": "logged"}
+        logger.info(f"Logging feedback: {feedback_data}")
+        return feedback_data
     except Exception as e:
-        logger.error(f"An error occurred in log_feedback: {e}")
+        logger.error(f"An error occurred while logging feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-def check_and_download_model(model_path, download_url):
-    if not os.path.exists(model_path):
-        print(f"Model not found at {model_path}. Downloading...")
-        response = requests.get(download_url, stream=True)
-        with open(model_path, 'wb') as model_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                model_file.write(chunk)
-        print(f"Model downloaded to {model_path}.")
-
-# Example usage
-CRITIC_MODEL_PATH = './models/critic-model'
-CRITIC_MODEL_URL = 'https://example.com/path/to/critic-model'
-check_and_download_model(CRITIC_MODEL_PATH, CRITIC_MODEL_URL)
-
-try:
-    # Attempt to register tools with MCP Bus
-    mcp_url = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
-    response = requests.post(f"{mcp_url}/register", json={"agent": "critic", "tools": ["critique_synthesis", "critique_neutrality"]})
-    response.raise_for_status()
-    logger.info("Registered tools with MCP Bus.")
-except Exception as e:
-    logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")

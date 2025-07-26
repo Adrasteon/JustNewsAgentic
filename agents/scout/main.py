@@ -8,12 +8,51 @@ from pydantic import BaseModel
 from datetime import datetime
 import os
 import requests
+from contextlib import asynccontextmanager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Environment variables
+SCOUT_AGENT_PORT = int(os.environ.get("SCOUT_AGENT_PORT", 8002))
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+
+class MCPBusClient:
+    def __init__(self, base_url: str = MCP_BUS_URL):
+        self.base_url = base_url
+
+    def register_agent(self, agent_name: str, agent_address: str, tools: list):
+        registration_data = {
+            "agent_name": agent_name,
+            "agent_address": agent_address,
+            "tools": tools,
+        }
+        try:
+            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response.raise_for_status()
+            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
+            raise
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Scout agent is starting up.")
+    mcp_bus_client = MCPBusClient()
+    try:
+        mcp_bus_client.register_agent(
+            agent_name="scout",
+            agent_address=f"http://scout:{SCOUT_AGENT_PORT}",
+            tools=["search_sources", "gather_data"],
+        )
+        logger.info("Registered tools with MCP Bus.")
+    except Exception as e:
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    yield
+    logger.info("Scout agent is shutting down.")
+
+app = FastAPI(lifespan=lifespan)
 
 class ToolCall(BaseModel):
     args: list
@@ -52,3 +91,16 @@ def deep_crawl_site(call: ToolCall):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.post("/log_feedback")
+def log_feedback(call: ToolCall):
+    try:
+        feedback_data = {
+            "timestamp": datetime.now().isoformat(),
+            "feedback": call.kwargs.get("feedback")
+        }
+        logger.info(f"Logging feedback: {feedback_data}")
+        return feedback_data
+    except Exception as e:
+        logger.error(f"An error occurred while logging feedback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

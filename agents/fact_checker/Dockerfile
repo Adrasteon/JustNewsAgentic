@@ -1,11 +1,15 @@
+
 # Dockerfile for Fact-Checker Agent
 FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY agents/fact_checker/requirements.txt .
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY agents/fact_checker/main.py .
+COPY agents/fact_checker/tools.py .
 
-CMD ["python", "main.py"]
+ENV PYTHONPATH="/app"
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8003"]
