@@ -1,7 +1,5 @@
 fastapi
 psycopg2-binary
-pgvector
-neo4j
-sentence-transformers
-numpy
 uvicorn
+requests
+sentence-transformers

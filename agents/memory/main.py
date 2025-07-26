@@ -1,173 +1,136 @@
 """
 Main file for the Memory Agent.
 """
-# main.py for Memory Agent
-
 import logging
 import os
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import requests
+from contextlib import asynccontextmanager
 from datetime import datetime
 
-# Optional import for embedding model
-try:
-    from sentence_transformers import SentenceTransformer
-except ImportError:
-    SentenceTransformer = None
+import psycopg2
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from psycopg2.extras import RealDictCursor
 
-EMBEDDING_MODEL_NAME = os.environ.get("MEMORY_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-FEEDBACK_LOG = os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log")
-
-app = FastAPI()
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+from tools import (get_embedding_model, log_feedback,
+                   log_training_example, save_article, vector_search_articles)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Environment variables
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
+POSTGRES_DB = os.environ.get("POSTGRES_DB")
+POSTGRES_USER = os.environ.get("POSTGRES_USER")
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
+MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+
+# Pydantic models
+class Article(BaseModel):
+    content: str
+    metadata: dict
+
+class TrainingExample(BaseModel):
+    task: str
+    input: dict
+    output: dict
+    critique: str
+
+class VectorSearch(BaseModel):
+    query: str
+    top_k: int = 5
+
+class MCPBusClient:
+    def __init__(self, base_url: str = MCP_BUS_URL):
+        self.base_url = base_url
+
+    def register_agent(self, agent_name: str, agent_address: str, tools: list):
+        registration_data = {
+            "agent_name": agent_name,
+            "agent_address": agent_address,
+            "tools": tools,
+        }
+        try:
+            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response.raise_for_status()
+            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
+            raise
 
 def get_db_connection():
+    """Establishes a connection to the PostgreSQL database."""
     try:
         conn = psycopg2.connect(
-            host=os.environ.get("POSTGRES_HOST"),
-            database=os.environ.get("POSTGRES_DB"),
-            user=os.environ.get("POSTGRES_USER"),
-            password=os.environ.get("POSTGRES_PASSWORD")
+            host=POSTGRES_HOST,
+            database=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD
         )
         return conn
     except psycopg2.OperationalError as e:
         logger.error(f"Could not connect to PostgreSQL database: {e}")
         raise HTTPException(status_code=500, detail="Database connection error")
 
-def get_embedding_model():
-    if SentenceTransformer is None:
-        raise ImportError("sentence-transformers is not installed.")
-    return SentenceTransformer(EMBEDDING_MODEL_NAME)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handles startup and shutdown events for the FastAPI application."""
+    logger.info("Memory agent is starting up.")
+    # Register agent with MCP Bus
+    mcp_bus_client = MCPBusClient()
+    try:
+        mcp_bus_client.register_agent(
+            agent_name="memory",
+            agent_address=f"http://memory:{MEMORY_AGENT_PORT}",
+            tools=[
+                "save_article",
+                "get_article",
+                "vector_search_articles",
+                "log_training_example",
+            ],
+        )
+        logger.info("Registered tools with MCP Bus.")
+    except Exception as e:
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    yield
+    logger.info("Memory agent is shutting down.")
 
-class Article(BaseModel):
-    content: str
-    metadata: dict
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/health")
+def health():
+    """Health check endpoint."""
+    return {"status": "ok"}
 
 @app.post("/save_article")
-def save_article(article: Article):
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("INSERT INTO articles (content, metadata) VALUES (%s, %s) RETURNING id", 
-                    (article.content, article.metadata))
-        result = cur.fetchone()
-        if result:
-            # If using default cursor, result is a tuple; if RealDictCursor, it's a dict
-            if isinstance(result, dict):
-                article_id = result.get('id')
-            else:
-                article_id = result[0]
-        else:
-            article_id = None
-        conn.commit()
-        cur.close()
-        conn.close()
-        logger.info(f"Saved article with id: {article_id}")
-        return {"id": article_id}
-    except Exception as e:
-        logger.error(f"An error occurred while saving the article: {e}")
-        raise HTTPException(status_code=500, detail="Error saving article")
+def save_article_endpoint(article: Article):
+    """Saves an article to the database."""
+    return save_article(article.content, article.metadata)
 
 @app.get("/get_article/{article_id}")
-def get_article(article_id: int):
+def get_article_endpoint(article_id: int):
+    """Retrieves an article from the database."""
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM articles WHERE id = %s", (article_id,))
-        article = cur.fetchone()
-        cur.close()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM articles WHERE id = %s", (article_id,))
+            article = cur.fetchone()
+            if not article:
+                raise HTTPException(status_code=404, detail="Article not found")
+            return article
+    finally:
         conn.close()
-        if not article:
-            raise HTTPException(status_code=404, detail="Article not found")
-        logger.info(f"Retrieved article with id: {article_id}")
-        return article
-    except Exception as e:
-        logger.error(f"An error occurred while retrieving the article: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving article")
-
-
-# --- MCP Tool: Vector Search Articles ---
 
 @app.post("/vector_search_articles")
-def vector_search_articles(query: str, top_k: int = 5):
-    """
-    Semantic search over articles using embeddings and pgvector.
-    """
-    logger.info(f"Vector searching articles for query: {query}, top_k: {top_k}")
-    try:
-        model = get_embedding_model()
-        query_emb = model.encode([query])[0].tolist()
-        conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        # pgvector: '<->' is the Euclidean distance operator
-        cur.execute(
-            """
-            SELECT id, content, metadata, embedding, (embedding <-> %s) AS distance
-            FROM articles
-            ORDER BY embedding <-> %s
-            LIMIT %s
-            """,
-            (query_emb, query_emb, top_k)
-        )
-        results = cur.fetchall()
-        cur.close()
-        conn.close()
-        # Log retrieval for feedback loop
-        log_feedback("vector_search", {"query": query, "top_k": top_k, "results": [r["id"] for r in results]})
-        return results
-    except Exception as e:
-        logger.error(f"Error in vector search: {e}")
-        raise HTTPException(status_code=500, detail="Error in vector search")
+def vector_search_articles_endpoint(search: VectorSearch):
+    """Performs a vector search for articles."""
+    return vector_search_articles(search.query, search.top_k)
 
-
-# --- MCP Tool: Log Training Example ---
 @app.post("/log_training_example")
-def log_training_example(task: str, input: dict, output: dict, critique: str):
-    """
-    Log a new training example for feedback and model improvement.
-    Stores in DB and logs to feedback file for continual learning.
-    """
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO training_examples (task, input, output, critique, created_at) VALUES (%s, %s, %s, %s, %s)",
-            (task, input, output, critique, datetime.utcnow())
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-        log_feedback("log_training_example", {"task": task, "input": input, "output": output, "critique": critique})
-        logger.info(f"Logged training example for task: {task}")
-        return {"status": "logged", "task": task}
-    except Exception as e:
-        logger.error(f"Error logging training example: {e}")
-        raise HTTPException(status_code=500, detail="Error logging training example")
-
-# Define ToolCall class
-class ToolCall:
-    def __init__(self, args, kwargs):
-        self.args = args
-        self.kwargs = kwargs
-
-# Update log_feedback function to accept correct arguments
-def log_feedback(tool_name, feedback_data):
-    try:
-        feedback_data.update({"tool": tool_name, "timestamp": datetime.now().isoformat()})
-        with open(os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log"), "a") as log_file:
-            log_file.write(f"{feedback_data}\n")
-        return {"status": "logged"}
-    except Exception as e:
-        logger.error(f"An error occurred in log_feedback: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+def log_training_example_endpoint(example: TrainingExample):
+    """Logs a training example to the database."""
+    return log_training_example(
+        example.task, example.input, example.output, example.critique
+    )

@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"command": "docker-compose up",
+			"label": "Build and Run Project",
+			"type": "shell",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": [
+				"$docker-compose"
+			]
+		}
+	]
+}

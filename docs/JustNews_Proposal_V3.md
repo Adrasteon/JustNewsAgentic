@@ -72,3 +72,23 @@ This V3 proposal represents a paradigm shift. It moves JustNews from a well-engi
 - **Memory Agent**: Now provides semantic retrieval with embeddings and vector search, logs all retrievals and downstream outcomes for future learning-to-rank and model improvement.
 
 All feedback is logged to agent-specific files and/or the database, supporting both online and scheduled retraining. See `CHANGELOG.md` and `JustNews_Plan_V3.md` for technical details.
+
+## Proposal Update: Standalone Functionality
+
+To enhance the flexibility and resilience of the JustNews V3 system, each agent now supports standalone execution. This update ensures:
+
+- **Independent Operation**: Agents can start and function independently without relying on other agents or services.
+- **MCP Bus Integration**: Agents register their tools with the MCP Bus upon startup, enabling inter-agent communication.
+- **Fallback Mechanisms**: Agents operate in standalone mode if the MCP Bus is unavailable, ensuring uninterrupted functionality.
+
+### Implementation Details
+
+- **Agent Code Updates**: Conditional logic added to `main.py` files for MCP Bus registration and standalone operation.
+- **Documentation Enhancements**: Standalone execution instructions included in the `README.md`.
+- **Error Handling**: Robust mechanisms to handle MCP Bus unavailability.
+
+### Advantages
+
+- Increased flexibility for development and deployment.
+- Improved system resilience and fault tolerance.
+- Simplified testing and debugging for individual agents.

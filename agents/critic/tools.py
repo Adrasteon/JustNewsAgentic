@@ -14,14 +14,14 @@ except ImportError:
     AutoTokenizer = None
     pipeline = None
 
-MODEL_NAME = "meta-llama/Llama-3-8B-Instruct"
-MODEL_PATH = os.environ.get("LLAMA_3_8B_PATH", "./models/llama-3-8b-instruct")
+MODEL_NAME = "microsoft/DialoGPT-medium"
+MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
 FEEDBACK_LOG = os.environ.get("CRITIC_FEEDBACK_LOG", "./feedback_critic.log")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("critic.tools")
 
-def get_llama_model():
+def get_dialog_model():
     if AutoModelForCausalLM is None or AutoTokenizer is None:
         raise ImportError("transformers library is not installed.")
     if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):
@@ -45,7 +45,7 @@ def critique_synthesis(summary: str, source_texts: list[str]) -> str:
     Optionally, cross-reference with source articles.
     """
     try:
-        model, tokenizer = get_llama_model()
+        model, tokenizer = get_dialog_model()
         if pipeline is None:
             raise ImportError("transformers pipeline is not available.")
         pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
@@ -73,7 +73,7 @@ def critique_neutrality(original_text: str, neutralized_text: str) -> str:
     Use the LLM to critique the neutrality of a text, flagging factual drift or loss of nuance.
     """
     try:
-        model, tokenizer = get_llama_model()
+        model, tokenizer = get_dialog_model()
         if pipeline is None:
             raise ImportError("transformers pipeline is not available.")
         pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer)

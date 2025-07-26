@@ -172,3 +172,23 @@ This section defines the core tools each agent will expose on the MCP bus.
 ```
 
 This structure organizes the system logically around its core intelligent components, making it easier to develop, test, and scale each agent independently.
+
+## Updated Functionality: Standalone Execution
+
+Each agent in the JustNews V3 system can now operate independently as a standalone unit while maintaining the ability to communicate via the MCP Bus. This enhancement ensures:
+
+- **Standalone Execution**: Agents can start and function without relying on other agents or services.
+- **MCP Bus Integration**: Agents register their tools with the MCP Bus if available, enabling dynamic collaboration.
+- **Error Handling**: Robust mechanisms ensure smooth operation in standalone mode if the MCP Bus is unavailable.
+
+### Key Adjustments
+
+- **Agent Independence**: Each agent's `main.py` includes conditional logic for MCP Bus registration and standalone operation.
+- **Dual Functionality**: Agents retain their original structure and functionality while supporting standalone execution.
+- **Documentation Updates**: Instructions for standalone execution and MCP Bus integration are provided in the `README.md`.
+
+### Benefits
+
+- Enhanced flexibility for development and testing.
+- Improved resilience in scenarios where the MCP Bus is temporarily unavailable.
+- Simplified deployment for individual agent services.

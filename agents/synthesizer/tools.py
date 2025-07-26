@@ -32,17 +32,17 @@ try:
 except ImportError:
     hdbscan = None
 
-MODEL_NAME = "meta-llama/Llama-3-70B-Instruct"
-MODEL_PATH = os.environ.get("LLAMA_3_70B_PATH", "./models/llama-3-70b-instruct")
+MODEL_NAME = "microsoft/DialoGPT-medium"
+MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
 EMBEDDING_MODEL = os.environ.get("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")
 FEEDBACK_LOG = os.environ.get("SYNTHESIZER_FEEDBACK_LOG", "./feedback_synthesizer.log")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("synthesizer.tools")
 
-def get_llama_model():
+def get_dialog_model():
     """
-    Load the Llama-3-70B-Instruct model and tokenizer for text generation tasks.
+    Load the DialoGPT-medium model and tokenizer for text generation tasks.
     Downloads from Hugging Face if not cached locally.
     Returns:
         model, tokenizer: Hugging Face model and tokenizer objects.
@@ -154,7 +154,7 @@ def neutralize_text(text: str) -> str:
     Raises:
         ImportError: If transformers pipeline is not available.
     """
-    model, tokenizer = get_llama_model()
+    model, tokenizer = get_dialog_model()
     if pipeline is None:
         raise ImportError("transformers pipeline is not available.")
     pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
@@ -175,7 +175,7 @@ def aggregate_cluster(article_texts: List[str]) -> str:
     Raises:
         ImportError: If transformers pipeline is not available.
     """
-    model, tokenizer = get_llama_model()
+    model, tokenizer = get_dialog_model()
     if pipeline is None:
         raise ImportError("transformers pipeline is not available.")
     pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer)

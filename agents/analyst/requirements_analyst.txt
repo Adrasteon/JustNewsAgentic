@@ -1,0 +1,11 @@
+fastapi
+transformers>=4.36.0
+uvicorn
+torch
+torchvision
+accelerate
+requests
+pydantic
+safetensors
+sentencepiece
+protobuf
