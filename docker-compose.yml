@@ -65,7 +65,7 @@ services:
   analyst:
     build:
       context: .
-      dockerfile: agents/analyst/Dockerfile
+      dockerfile: agents/analyst/Dockerfile.v4
     depends_on:
       - mcp_bus
     ports:
