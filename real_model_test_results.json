@@ -1,0 +1,122 @@
+{
+  "model_test": {
+    "model_loaded": true,
+    "load_time": 7.397159814834595,
+    "inference_time": 0.3585846424102783,
+    "gpu_used": true,
+    "model_name": "distilbert-base-uncased"
+  },
+  "tensorrt_test": {
+    "tensorrt_llm_available": false,
+    "error": "cannot import name 'LayerNorm' from 'tensorrt_llm.functional' (/home/nvidia/.venvs/rapids25.06_python3.12/lib/python3.12/site-packages/tensorrt_llm/functional.py)"
+  },
+  "pipeline_test": {
+    "pipeline_working": true,
+    "articles_processed": 5,
+    "total_time": 0.15975618362426758,
+    "avg_time": 0.03195123672485352,
+    "articles_per_second": 31.2976930630714,
+    "results": [
+      {
+        "text": "Breaking: New AI technology shows remarkable improvements in accuracy.",
+        "sentiment": [
+          [
+            {
+              "label": "negative",
+              "score": 0.002943947445601225
+            },
+            {
+              "label": "neutral",
+              "score": 0.04974184185266495
+            },
+            {
+              "label": "positive",
+              "score": 0.9473142623901367
+            }
+          ]
+        ],
+        "length": 70
+      },
+      {
+        "text": "Government announces concerning policy changes affecting citizens.",
+        "sentiment": [
+          [
+            {
+              "label": "negative",
+              "score": 0.04281216859817505
+            },
+            {
+              "label": "neutral",
+              "score": 0.9276038408279419
+            },
+            {
+              "label": "positive",
+              "score": 0.029583968222141266
+            }
+          ]
+        ],
+        "length": 66
+      },
+      {
+        "text": "Scientists discover potential breakthrough in medical research.",
+        "sentiment": [
+          [
+            {
+              "label": "negative",
+              "score": 0.0025536895263940096
+            },
+            {
+              "label": "neutral",
+              "score": 0.10611078143119812
+            },
+            {
+              "label": "positive",
+              "score": 0.8913354873657227
+            }
+          ]
+        ],
+        "length": 63
+      },
+      {
+        "text": "Market volatility continues as investors remain cautious.",
+        "sentiment": [
+          [
+            {
+              "label": "negative",
+              "score": 0.46252337098121643
+            },
+            {
+              "label": "neutral",
+              "score": 0.517021656036377
+            },
+            {
+              "label": "positive",
+              "score": 0.020454948768019676
+            }
+          ]
+        ],
+        "length": 57
+      },
+      {
+        "text": "Local community celebrates successful charity fundraising event.",
+        "sentiment": [
+          [
+            {
+              "label": "negative",
+              "score": 0.002024224493652582
+            },
+            {
+              "label": "neutral",
+              "score": 0.022111572325229645
+            },
+            {
+              "label": "positive",
+              "score": 0.9758642315864563
+            }
+          ]
+        ],
+        "length": 64
+      }
+    ]
+  }
+}
