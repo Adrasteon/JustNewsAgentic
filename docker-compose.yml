@@ -41,10 +41,11 @@ services:
     depends_on:
       - mcp_bus
     ports:
-      - "8002:8002"
+      - "8006:8006"
     networks:
       - justnews-network
     environment:
+      - SCOUT_AGENT_PORT=8006
       - LLAMA_3_8B_PATH=./models/llama-3-8b-instruct
       - SCOUT_FEEDBACK_LOG=./feedback_scout.log
       - SERPAPI_KEY=dummy
@@ -110,10 +111,11 @@ services:
     depends_on:
       - mcp_bus
     ports:
-      - "8006:8006"
+      - "8002:8002"
     networks:
       - justnews-network
     environment:
+      - CRITIC_AGENT_PORT=8002
       - CRITIC_FEEDBACK_LOG=./feedback_critic.log
       - MCP_BUS_URL=http://mcp_bus:8000
   memory:

@@ -44,7 +44,8 @@ async def lifespan(app: FastAPI):
         mcp_bus_client.register_agent(
             agent_name="critic",
             agent_address=f"http://critic:{CRITIC_AGENT_PORT}",
-            tools=["critique_synthesis", "critique_neutrality"],
+            tools=["critique_synthesis", "critique_neutrality", 
+                   "critique_content_gpu", "get_critic_performance"],
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
@@ -95,3 +96,65 @@ def log_feedback(call: ToolCall):
     except Exception as e:
         logger.error(f"An error occurred while logging feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# GPU-accelerated endpoints (V4 performance implementation)
+@app.post("/critique_content_gpu")
+def critique_content_gpu_endpoint(call: ToolCall):
+    """GPU-accelerated content critique endpoint"""
+    try:
+        from gpu_tools import critique_content_gpu
+        logger.info(f"Calling GPU critique with {len(call.args[0]) if call.args else 0} articles")
+        result = critique_content_gpu(*call.args, **call.kwargs)
+        
+        # Log performance for monitoring
+        if result.get('success') and 'performance' in result:
+            perf = result['performance']
+            logger.info(f"✅ GPU critique: {perf['articles_per_sec']:.1f} articles/sec")
+        
+        return result
+    except Exception as e:
+        logger.error(f"❌ GPU critique error: {e}")
+        # Graceful fallback to CPU implementation
+        try:
+            from tools import critique_synthesis, critique_neutrality
+            logger.info("🔄 Falling back to CPU critique")
+            # Simple fallback implementation
+            articles = call.args[0] if call.args else []
+            critiques = []
+            for article in articles:
+                synthesis_critique = critique_synthesis(article.get('content', ''))
+                neutrality_critique = critique_neutrality(article.get('content', ''))
+                critiques.append({
+                    'article_title': article.get('title', 'Unknown'),
+                    'critique': f"Synthesis: {synthesis_critique}\nNeutrality: {neutrality_critique}",
+                    'quality_score': 0.5,
+                    'bias_indicators': [],
+                    'accuracy_flags': []
+                })
+            return {
+                "success": True,
+                "critiques": critiques,
+                "performance": {"articles_per_sec": 1.0, "gpu_used": False}
+            }
+        except Exception as fallback_error:
+            logger.error(f"❌ CPU fallback failed: {fallback_error}")
+            raise HTTPException(status_code=500, detail=f"GPU critique failed: {e}, CPU fallback failed: {fallback_error}")
+
+@app.post("/get_critic_performance")
+def get_critic_performance_endpoint(call: ToolCall):
+    """Get critic performance statistics"""
+    try:
+        from gpu_tools import get_critic_performance
+        logger.info("Retrieving critic performance stats")
+        return get_critic_performance(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"❌ Performance stats error: {e}")
+        # Return basic stats if GPU tools unavailable
+        return {
+            "total_processed": 0,
+            "gpu_processed": 0,
+            "cpu_processed": 0,
+            "gpu_allocated": False,
+            "models_loaded": False,
+            "error": str(e)
+        }

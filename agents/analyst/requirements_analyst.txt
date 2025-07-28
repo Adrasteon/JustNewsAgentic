@@ -1,3 +1,5 @@
+setuptools>=65.0.0
+wheel
 fastapi
 transformers>=4.36.0
 uvicorn

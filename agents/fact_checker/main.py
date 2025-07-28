@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
         mcp_bus_client.register_agent(
             agent_name="fact_checker",
             agent_address=f"http://fact_checker:{FACT_CHECKER_AGENT_PORT}",
-            tools=["verify_facts", "validate_sources"],
+            tools=["verify_facts", "validate_sources", "validate_is_news_gpu", "verify_claims_gpu"],
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
@@ -83,6 +83,41 @@ def verify_claims(call: ToolCall):
     except Exception as e:
         logger.error(f"An error occurred in verify_claims: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# GPU-Enhanced Endpoints (New V4 Performance)
+@app.post("/validate_is_news_gpu")
+def validate_is_news_gpu(call: ToolCall):
+    try:
+        from gpu_tools import validate_is_news_detailed
+        logger.info(f"Calling GPU validate_is_news with args: {call.args} and kwargs: {call.kwargs}")
+        return validate_is_news_detailed(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in GPU validate_is_news: {e}")
+        # Fallback to original implementation
+        from tools import validate_is_news
+        return validate_is_news(*call.args, **call.kwargs)
+
+@app.post("/verify_claims_gpu")
+def verify_claims_gpu(call: ToolCall):
+    try:
+        from gpu_tools import verify_claims_detailed
+        logger.info(f"Calling GPU verify_claims with args: {call.args} and kwargs: {call.kwargs}")
+        return verify_claims_detailed(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in GPU verify_claims: {e}")
+        # Fallback to original implementation
+        from tools import verify_claims
+        return verify_claims(*call.args, **call.kwargs)
+
+@app.get("/performance/stats")
+def get_performance_stats():
+    """Get GPU acceleration performance statistics"""
+    try:
+        from gpu_tools import get_fact_checker_performance
+        return get_fact_checker_performance()
+    except Exception as e:
+        logger.error(f"Error getting performance stats: {e}")
+        return {"error": str(e), "gpu_available": False}
 
 @app.post("/log_feedback")
 def log_feedback(call: ToolCall):

@@ -62,7 +62,7 @@ PERFORMANCE_LOG = "performance_analyst.log"
 
 # Fallback to V3 imports for compatibility
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
     import torch
     HAS_TRANSFORMERS = True
 except ImportError as e:
@@ -71,6 +71,7 @@ except ImportError as e:
     AutoModelForCausalLM = None
     AutoTokenizer = None
     torch = None
+    pipeline = None
 
 # Global variables for model management
 _docker_model_available = None
@@ -107,32 +108,38 @@ class GPUAcceleratedAnalyst:
         self._initialize_gpu_models()
     
     def _initialize_gpu_models(self):
-        """Initialize proven GPU models from Quick Win implementation"""
+        """Initialize GPU-accelerated models with professional memory management"""
         try:
-            # Check if we can access GPU (works in both Docker and WSL)
-            import torch
-            from transformers import pipeline
-            
             if torch.cuda.is_available():
-                self.gpu_available = True
+                # Set CUDA device explicitly
+                torch.cuda.set_device(0)
                 gpu_name = torch.cuda.get_device_name(0)
                 gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
                 logger.info(f"✅ GPU Available: {gpu_name}")
                 logger.info(f"✅ GPU Memory: {gpu_memory:.1f} GB")
                 
-                # Load PROVEN models from Quick Win
+                # Clear GPU cache to prevent memory conflicts
+                torch.cuda.empty_cache()
+                
+                # Load PROVEN models from Quick Win with explicit device management
                 self.sentiment_analyzer = pipeline(
                     "sentiment-analysis",
                     model="cardiffnlp/twitter-roberta-base-sentiment-latest",
                     return_all_scores=True,
-                    device=0  # Use GPU
+                    device=0,  # Use GPU
+                    torch_dtype=torch.float16  # Use FP16 for memory efficiency
                 )
                 
                 self.bias_detector = pipeline(
                     "text-classification",
                     model="unitary/toxic-bert",
-                    device=0
+                    device=0,
+                    torch_dtype=torch.float16  # Use FP16 for memory efficiency
                 )
+                
+                # Verify models are on GPU
+                logger.info(f"Sentiment model device: {next(self.sentiment_analyzer.model.parameters()).device}")
+                logger.info(f"Bias model device: {next(self.bias_detector.model.parameters()).device}")
                 
                 self.models_loaded = True
                 logger.info("✅ OPERATIONAL GPU models loaded (validated 42.1 articles/sec)")
@@ -145,14 +152,19 @@ class GPUAcceleratedAnalyst:
             logger.info("📱 Will use hybrid fallback system")
     
     def score_sentiment_gpu(self, text: str) -> float:
-        """GPU-accelerated sentiment scoring with proven performance"""
-        if not self.models_loaded:
+        """GPU-accelerated sentiment scoring with proven performance and device management"""
+        if not self.models_loaded or not torch.cuda.is_available():
             return None
             
         start_time = time.time()
         
         try:
-            result = self.sentiment_analyzer(text)
+            # Ensure we're on the correct CUDA device
+            torch.cuda.set_device(0)
+            
+            # Clear any mixed device tensors
+            with torch.cuda.device(0):
+                result = self.sentiment_analyzer(text)
             
             # Convert to 0.0-1.0 scale (matching original format)
             if isinstance(result, list) and len(result) > 0:
@@ -176,17 +188,25 @@ class GPUAcceleratedAnalyst:
             
         except Exception as e:
             logger.error(f"❌ GPU sentiment failed: {e}")
+            # Clear CUDA cache on error
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             return None
     
     def score_bias_gpu(self, text: str) -> float:
-        """GPU-accelerated bias scoring with proven performance"""
-        if not self.models_loaded:
+        """GPU-accelerated bias scoring with proven performance and device management"""
+        if not self.models_loaded or not torch.cuda.is_available():
             return None
             
         start_time = time.time()
         
         try:
-            result = self.bias_detector(text)
+            # Ensure we're on the correct CUDA device
+            torch.cuda.set_device(0)
+            
+            # Clear any mixed device tensors
+            with torch.cuda.device(0):
+                result = self.bias_detector(text)
             
             # Convert toxicity result to bias scale
             if isinstance(result, list) and len(result) > 0:
@@ -206,18 +226,25 @@ class GPUAcceleratedAnalyst:
             
         except Exception as e:
             logger.error(f"❌ GPU bias failed: {e}")
+            # Clear CUDA cache on error  
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             return None
     
     def score_sentiment_batch_gpu(self, texts: List[str]) -> List[Optional[float]]:
-        """BATCH GPU-accelerated sentiment scoring - Up to 100x faster!"""
-        if not self.models_loaded or not texts:
+        """BATCH GPU-accelerated sentiment scoring with CUDA device management - Up to 100x faster!"""
+        if not self.models_loaded or not texts or not torch.cuda.is_available():
             return [None] * len(texts) if texts else []
             
         start_time = time.time()
         
         try:
-            # Use HuggingFace pipeline's native batch processing
-            results = self.sentiment_analyzer(texts)
+            # Ensure we're on the correct CUDA device
+            torch.cuda.set_device(0)
+            
+            # Use HuggingFace pipeline's native batch processing with explicit device context
+            with torch.cuda.device(0):
+                results = self.sentiment_analyzer(texts)
             
             sentiment_scores = []
             for result in results:
@@ -247,18 +274,25 @@ class GPUAcceleratedAnalyst:
             
         except Exception as e:
             logger.error(f"❌ GPU batch sentiment failed: {e}")
+            # Clear CUDA cache on error
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             return [None] * len(texts)
     
     def score_bias_batch_gpu(self, texts: List[str]) -> List[Optional[float]]:
-        """BATCH GPU-accelerated bias scoring - Up to 100x faster!"""
-        if not self.models_loaded or not texts:
+        """BATCH GPU-accelerated bias scoring with CUDA device management - Up to 100x faster!"""
+        if not self.models_loaded or not texts or not torch.cuda.is_available():
             return [None] * len(texts) if texts else []
             
         start_time = time.time()
         
         try:
-            # Use HuggingFace pipeline's native batch processing
-            results = self.bias_detector(texts)
+            # Ensure we're on the correct CUDA device
+            torch.cuda.set_device(0)
+            
+            # Use HuggingFace pipeline's native batch processing with explicit device context
+            with torch.cuda.device(0):
+                results = self.bias_detector(texts)
             
             bias_scores = []
             for result in results:
@@ -284,6 +318,9 @@ class GPUAcceleratedAnalyst:
             
         except Exception as e:
             logger.error(f"❌ GPU batch bias failed: {e}")
+            # Clear CUDA cache on error
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             return [None] * len(texts)
 
 # Global GPU analyst instance

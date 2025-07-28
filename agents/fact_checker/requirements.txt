@@ -1,4 +1,11 @@
+setuptools>=65.0.0
+wheel
 fastapi
 transformers
+torch
 requests
 uvicorn
+pydantic
+sentence-transformers
+scikit-learn
+numpy
