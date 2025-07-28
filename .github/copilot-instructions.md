@@ -51,18 +51,18 @@ requests.post(f"{MCP_BUS_URL}/call", json=payload)
 
 ## Development Workflows
 
+### Production Environment (VALIDATED)
+**Conda Environment**: `rapids-25.06` (Python 3.12)
+**Key Packages**: PyTorch 2.2.0+cu121, transformers 4.39.0, sentence-transformers 2.6.1
+**Compatibility Fix**: NumPy 1.26.4 (resolved torchvision::nms conflicts)
+**Hardware**: Water-cooled RTX 3090 (25.3GB memory available)
+
 ### Starting the System
 ```bash
 # Full system (Docker Compose)
 docker-compose up --build
 
-# Native GPU analyst (Ubuntu/WSL2)
-### Starting the System
-```bash
-# Full system (Docker Compose)
-docker-compose up --build
-
-# Native GPU analyst (Ubuntu/WSL2)
+# Native GPU analyst (Ubuntu native - PRODUCTION READY)
 source /home/adra/miniconda3/etc/profile.d/conda.sh
 conda activate rapids-25.06
 python start_native_gpu_analyst.py

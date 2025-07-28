@@ -72,7 +72,26 @@ The V4 system runs on a validated GPU-optimized environment:
    python -c "import transformers; print('✅ Transformers Ready!')"
    ```
 
-2. **GPU Service Deployment**:
+2. **Production Environment Specifications (VALIDATED)**:
+   ```yaml
+   Environment: rapids-25.06
+   Python: 3.12
+   CUDA Toolkit: 12.1
+   
+   Core GPU Stack:
+   - torch: 2.2.0+cu121
+   - torchvision: 0.17.0+cu121
+   - transformers: 4.39.0
+   - sentence-transformers: 2.6.1
+   - numpy: 1.26.4 (compatibility fix)
+   
+   System Requirements:
+   - NVIDIA Driver: 550+ (water-cooled RTX 3090)
+   - Memory: 32GB+ RAM, 24GB+ VRAM
+   - Storage: NVMe SSD for model caching
+   ```
+
+3. **GPU Service Deployment**:
    ```bash
    # Start production GPU analyst service
    python start_native_gpu_analyst.py
@@ -81,12 +100,13 @@ The V4 system runs on a validated GPU-optimized environment:
    curl -s http://localhost:8004/health | jq .
    ```
 
-3. **Quick Health Check**:
+4. **Production Validation**:
    ```bash
-   # Full system test
-   python test_tensorrt_llm.py
+   # Run production stress test
+   python production_stress_test.py
    
-   # GPU status
+   # Expected results: 151.4 art/sec sentiment, 146.8 art/sec bias
+   # GPU status monitoring
    nvidia-smi
    ```
 
