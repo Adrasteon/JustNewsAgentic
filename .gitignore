@@ -11,3 +11,15 @@ __pycache__/
 
 # Docker
 docker-compose.override.yml
+
+# TensorRT Engine Files (Binary artifacts - regenerate as needed)
+agents/analyst/tensorrt_engines/*.engine
+agents/analyst/tensorrt_engines/*.onnx
+
+# Server logs and temporary files
+agents/analyst/server.log
+agents/analyst/feedback_*.log
+
+# CUDA debug and reset tools
+debug_cuda_resources.py
+gpu_reset_tool.py
