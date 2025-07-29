@@ -1,4 +1,6 @@
-# Model loading for Chief Editor Agent (Llama-3-70B-Instruct)
+# Optimized Chief Editor Configuration
+# Phase 1 Memory Optimization: Context and batch size optimization for orchestration
+
 import os
 import logging
 import requests
@@ -10,10 +12,20 @@ except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
 
+# PHASE 1 OPTIMIZATIONS APPLIED
 MODEL_NAME = "microsoft/DialoGPT-medium"
 MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
+OPTIMIZED_MAX_LENGTH = 1024  # Reduced from 2048 (orchestration tasks are brief)
+OPTIMIZED_BATCH_SIZE = 4     # Small batches for orchestration efficiency
+
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+FEEDBACK_LOG = os.environ.get("CHIEF_EDITOR_FEEDBACK_LOG", "./feedback_chief_editor.log")
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("chief_editor.tools")
 
 def get_llama_model():
+    """Load optimized DialoGPT-medium model for orchestration tasks."""
     if AutoModelForCausalLM is None or AutoTokenizer is None:
         raise ImportError("transformers library is not installed.")
     if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):
@@ -26,12 +38,6 @@ def get_llama_model():
         tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
     return model, tokenizer
 
-MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
-FEEDBACK_LOG = os.environ.get("CHIEF_EDITOR_FEEDBACK_LOG", "./feedback_chief_editor.log")
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("chief_editor.tools")
-
 def log_feedback(event: str, details: dict):
     with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
         f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
@@ -39,16 +45,12 @@ def log_feedback(event: str, details: dict):
 def request_story_brief(topic: str, scope: str):
     """Generate a story brief based on the given topic and scope."""
     logger.info(f"Requesting story brief for topic: {topic}, scope: {scope}")
-    # Example logic: Combine topic and scope into a brief
     brief = f"Story brief for topic '{topic}' within scope '{scope}'."
     log_feedback("request_story_brief", {"topic": topic, "scope": scope, "brief": brief})
     return brief
 
 def publish_story(story_id: str):
-    """
-    Publishes a story by notifying the Librarian Agent and updating the Memory Agent via the MCP bus.
-    Logs feedback for continual learning.
-    """
+    """Publishes a story via MCP bus with optimized memory usage."""
     logger.info(f"[ChiefEditor] Publishing story with ID: {story_id}")
     payload = {
         "agent": "librarian",

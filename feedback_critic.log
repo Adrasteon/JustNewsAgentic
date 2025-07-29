@@ -1,2 +1,0 @@
-2025-07-25T14:49:52.177592	critique_synthesis	{'summary': 'summary', 'sources': ['a1', 'a2'], 'output': 'Critique output.', 'fact_check': None}
-2025-07-25T14:49:52.180618	critique_neutrality	{'original': 'original', 'neutralized': 'neutralized', 'output': 'Neutrality critique.'}

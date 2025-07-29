@@ -88,3 +88,6 @@ datasets/
 data/
 downloads/
 crawled_data/
+
+# Archive folder for obsolete files
+archive_obsolete_files/

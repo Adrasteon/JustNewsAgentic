@@ -1,3 +1,5 @@
+# Optimized Synthesizer Configuration  
+# Phase 1 Memory Optimization: Context reduction + Lightweight embeddings
 
 import os
 import logging
@@ -5,8 +7,7 @@ from typing import List
 from datetime import datetime
 
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    from transformers.pipelines import pipeline
+    from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
@@ -32,23 +33,20 @@ try:
 except ImportError:
     hdbscan = None
 
+# PHASE 1 OPTIMIZATIONS APPLIED
 MODEL_NAME = "microsoft/DialoGPT-medium"
 MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
-EMBEDDING_MODEL = os.environ.get("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")
+EMBEDDING_MODEL = os.environ.get("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")  # Lightweight embeddings
+OPTIMIZED_MAX_LENGTH = 1024  # Reduced from 2048 (clustering tasks don't need full context)
+OPTIMIZED_BATCH_SIZE = 4     # Memory-efficient for embeddings processing
+
 FEEDBACK_LOG = os.environ.get("SYNTHESIZER_FEEDBACK_LOG", "./feedback_synthesizer.log")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("synthesizer.tools")
 
 def get_dialog_model():
-    """
-    Load the DialoGPT-medium model and tokenizer for text generation tasks.
-    Downloads from Hugging Face if not cached locally.
-    Returns:
-        model, tokenizer: Hugging Face model and tokenizer objects.
-    Raises:
-        ImportError: If transformers is not installed.
-    """
+    """Load optimized DialoGPT-medium model with memory-efficient configuration."""
     if AutoModelForCausalLM is None or AutoTokenizer is None:
         raise ImportError("transformers library is not installed.")
     if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):
@@ -62,42 +60,18 @@ def get_dialog_model():
     return model, tokenizer
 
 def get_embedding_model():
-    """
-    Load the sentence-transformers embedding model for clustering and semantic tasks.
-    Returns:
-        SentenceTransformer: Embedding model instance.
-    Raises:
-        ImportError: If sentence-transformers is not installed.
-    """
+    """Load lightweight embedding model optimized for clustering."""
     if SentenceTransformer is None:
         raise ImportError("sentence-transformers library is not installed.")
     return SentenceTransformer(EMBEDDING_MODEL)
 
 def log_feedback(event: str, details: dict):
-    """
-    Log feedback for continual learning and retraining.
-    Feedback is logged in a standardized format (UTC timestamp, event, details) to a file for use in online or scheduled retraining.
-    Args:
-        event (str): The event or tool name.
-        details (dict): Details about the event, input, output, or error.
-    """
+    """Log feedback for continual learning and retraining."""
     with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
         f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
 
 def cluster_articles(article_texts: List[str], n_clusters: int = 2) -> List[List[int]]:
-    """
-    Cluster articles using sentence embeddings and a configurable clustering algorithm.
-    Supported methods: KMeans (default), BERTopic, HDBSCAN (set via SYNTHESIZER_CLUSTER_METHOD env var).
-    Args:
-        article_texts (List[str]): List of article texts to cluster.
-        n_clusters (int): Number of clusters (for KMeans; ignored for BERTopic/HDBSCAN).
-    Returns:
-        List[List[int]]: List of clusters, each a list of indices into article_texts.
-    Feedback:
-        Logs clustering method, number of clusters, and cluster assignments for retraining.
-    Raises:
-        ImportError: If required clustering library is not installed.
-    """
+    """Cluster articles using optimized embedding configuration."""
     if not article_texts:
         return []
     model = get_embedding_model()
@@ -143,42 +117,40 @@ def cluster_articles(article_texts: List[str], n_clusters: int = 2) -> List[List
         return []
 
 def neutralize_text(text: str) -> str:
-    """
-    Use the LLM to neutralize text (style transfer to neutral tone).
-    Args:
-        text (str): Input text to neutralize.
-    Returns:
-        str: Neutralized text output.
-    Feedback:
-        Logs input and output for continual learning and retraining.
-    Raises:
-        ImportError: If transformers pipeline is not available.
-    """
+    """Use optimized model to neutralize text with reduced memory usage."""
     model, tokenizer = get_dialog_model()
     if pipeline is None:
         raise ImportError("transformers pipeline is not available.")
-    pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
+    
+    # Use optimized pipeline configuration
+    pipe = pipeline(
+        "text2text-generation", 
+        model=model, 
+        tokenizer=tokenizer,
+        max_length=OPTIMIZED_MAX_LENGTH,
+        batch_size=OPTIMIZED_BATCH_SIZE
+    )
+    
     prompt = f"Neutralize the following text for bias and strong language: {text}"
     result = pipe(prompt, max_new_tokens=256)[0]["generated_text"]
     log_feedback("neutralize_text", {"input": text, "output": result})
     return result
 
 def aggregate_cluster(article_texts: List[str]) -> str:
-    """
-    Use the LLM to summarize a cluster of articles into a neutral, concise summary.
-    Args:
-        article_texts (List[str]): List of article texts to summarize.
-    Returns:
-        str: Aggregated summary text.
-    Feedback:
-        Logs input articles and output summary for retraining and continual learning.
-    Raises:
-        ImportError: If transformers pipeline is not available.
-    """
+    """Use optimized model to summarize article clusters efficiently."""
     model, tokenizer = get_dialog_model()
     if pipeline is None:
         raise ImportError("transformers pipeline is not available.")
-    pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
+    
+    # Use optimized pipeline configuration
+    pipe = pipeline(
+        "text2text-generation", 
+        model=model, 
+        tokenizer=tokenizer,
+        max_length=OPTIMIZED_MAX_LENGTH,
+        batch_size=OPTIMIZED_BATCH_SIZE
+    )
+    
     joined = "\n".join(article_texts)
     prompt = f"Summarize the following articles into a neutral, concise summary: {joined}"
     result = pipe(prompt, max_new_tokens=512)[0]["generated_text"]

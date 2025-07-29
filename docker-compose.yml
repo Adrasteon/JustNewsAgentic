@@ -41,15 +41,28 @@ services:
     depends_on:
       - mcp_bus
     ports:
-      - "8006:8006"
+      - "8002:8002"
     networks:
       - justnews-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     environment:
-      - SCOUT_AGENT_PORT=8006
+      - SCOUT_AGENT_PORT=8002
       - LLAMA_3_8B_PATH=./models/llama-3-8b-instruct
       - SCOUT_FEEDBACK_LOG=./feedback_scout.log
       - SERPAPI_KEY=dummy
       - MCP_BUS_URL=http://mcp_bus:8000
+      - CUDA_VISIBLE_DEVICES=0
+      - TRANSFORMERS_CACHE=/app/.cache/huggingface
+      - HF_HOME=/app/.cache/huggingface
+    volumes:
+      - huggingface_cache:/app/.cache/huggingface
+    runtime: nvidia
   fact_checker:
     build:
       context: .
