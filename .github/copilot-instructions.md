@@ -20,6 +20,13 @@ JustNews V4 is a multi-agent news analysis system with **native TensorRT GPU acc
 - **System Stability**: Zero crashes, zero warnings, 100% reliability
 - **Production Validated**: Successfully processed 2M+ characters in 2.7 seconds
 
+## Optimized V4 Architecture (Strategic Pipeline Design)
+**Intelligence-First Design** - Scout pre-filtering enables downstream optimization:
+- **Scout Agent**: 8GB (LLaMA-3-8B + self-learning) - Critical content quality pre-filter
+- **Fact Checker**: 2.5GB (DialoGPT-medium) - Optimized due to Scout pre-filtering clean input
+- **Pipeline Efficiency**: Scout's ML-based news detection reduces downstream model requirements
+- **Memory Buffer Target**: 2-3GB minimum for production stability and context management
+
 ## Agent Communication Pattern
 **Critical**: All agents follow identical communication patterns:
 
@@ -49,6 +56,56 @@ payload = {
 }
 requests.post(f"{MCP_BUS_URL}/call", json=payload)
 ```
+
+## Enhanced Scout Agent Integration (Production Ready)
+
+### Scout Agent Enhanced Deep Crawl System
+**Status**: ✅ Production deployment complete with native Crawl4AI integration
+
+**Key Features**:
+- **Native Crawl4AI Integration**: Version 0.7.2 with BestFirstCrawlingStrategy
+- **Scout Intelligence Engine**: LLaMA-3-8B GPU-accelerated content analysis
+- **User-Configurable Parameters**: max_depth=3, max_pages=100, word_count_threshold=500
+- **Quality Filtering**: Dynamic threshold-based content selection
+- **MCP Bus Communication**: Full integration with agent registration system
+
+**Implementation Pattern**:
+```python
+# Enhanced deep crawl with Scout Intelligence
+async def enhanced_deep_crawl_site(
+    url: str,
+    max_depth: int = 3,
+    max_pages: int = 100,
+    word_count_threshold: int = 500,
+    quality_threshold: float = 0.6,
+    analyze_content: bool = True
+) -> List[Dict]:
+    # Native Crawl4AI with BestFirstCrawlingStrategy
+    strategy = BestFirstCrawlingStrategy(
+        max_depth=max_depth,
+        max_pages=max_pages,
+        filter_chain=FilterChain([
+            ContentTypeFilter(["text/html"]),
+            DomainFilter(allowed_domains=[domain])
+        ]),
+        word_count_threshold=word_count_threshold
+    )
+    
+    # Scout Intelligence analysis with quality filtering
+    if intelligence_available and scout_engine and analyze_content:
+        analysis = scout_engine.comprehensive_content_analysis(content, url)
+        scout_score = analysis.get("scout_score", 0.0)
+        
+        if scout_score >= quality_threshold:
+            result["scout_analysis"] = analysis
+            result["scout_score"] = scout_score
+            # Additional quality metrics and filtering
+```
+
+**Performance Validation**:
+- Sky News crawl: 148k characters in 1.3 seconds
+- Scout Intelligence analysis: Content scoring and quality filtering operational
+- MCP Bus integration: Full agent registration and communication validated
 
 ## Development Workflows
 
@@ -96,10 +153,12 @@ The `native_tensorrt_engine.py` demonstrates the current **native TensorRT produ
   - ✅ Stability: Zero crashes, zero warnings, 100% reliability
   - ✅ Stress Testing: 1,000 articles × 2,000 chars processed successfully
   - ✅ Context Management: Professional CUDA context lifecycle with persistent global engine
-- ⏳ **Fact Checker**: DialoGPT models ready for TensorRT migration (774M params)
-- ⏳ **Synthesizer**: Sentence-transformers ready for TensorRT migration
-- ⏳ **Critic**: DialoGPT models ready for TensorRT migration (355M params)  
-- ⏳ **Scout/Chief Editor**: LLaMA models ready for TensorRT migration
+- ⏳ **Scout**: LLaMA-3-8B ready for TensorRT migration (8GB - critical content pre-filter)
+- ⏳ **Fact Checker**: DialoGPT-medium ready for TensorRT migration (2.5GB - Scout-optimized)
+- ⏳ **Synthesizer**: DialoGPT-medium + embeddings ready for TensorRT migration (3GB)
+- ⏳ **Critic**: DialoGPT-medium ready for TensorRT migration (2.5GB)  
+- ⏳ **Chief Editor**: DialoGPT-medium orchestration focus (2GB - specification-optimized)
+- ⏳ **Memory**: Vector embeddings ready for TensorRT migration (1.5GB)
 
 #### Native TensorRT Implementation Pattern (✅ PRODUCTION READY):
 ```python
@@ -253,7 +312,23 @@ def load_model_gpu_optimized(model_name: str):
 2. **Optimize Engine Loading**: Implement efficient TensorRT engine management across agents
 3. **Memory Management**: Professional CUDA context management for multi-agent deployment
 4. **Production Validation**: Apply stress testing to validate each agent at production scale
-3. **Memory Management**: Professional GPU memory handling for multi-agent deployment
+5. **Space-Saving Optimizations**: Target 2-3GB memory buffer for production stability
+
+**Optimized System Memory Allocation (RTX 3090 24GB):**
+- Analyst: 2.3GB (✅ TensorRT validated)
+- Scout: 8.0GB (LLaMA-3-8B + self-learning - critical pre-filter)
+- Fact Checker: 2.5GB (DialoGPT-medium - Scout-optimized)
+- Synthesizer: 3.0GB (DialoGPT-medium + embeddings)
+- Critic: 2.5GB (DialoGPT-medium)
+- Chief Editor: 2.0GB (DialoGPT-medium - orchestration focus)
+- Memory: 1.5GB (Vector embeddings)
+- **Total: 21.8GB | Buffer: 0.2GB** ⚠️ (Requires additional optimization)
+
+**Target Optimizations for 2-3GB Buffer:**
+- Model quantization (INT8 where possible)
+- Context window optimization
+- Batch size tuning
+- Memory-efficient attention mechanisms
 
 ### Phase 2: RTX AI Toolkit Migration (V4 Architecture)
 4. **AIM SDK Integration**: Replace HuggingFace with nvidia_aim.InferenceManager

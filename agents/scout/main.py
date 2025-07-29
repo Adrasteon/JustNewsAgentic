@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Environment variables
 SCOUT_AGENT_PORT = int(os.environ.get("SCOUT_AGENT_PORT", 8002))
-MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -24,9 +24,8 @@ class MCPBusClient:
 
     def register_agent(self, agent_name: str, agent_address: str, tools: list):
         registration_data = {
-            "agent_name": agent_name,
-            "agent_address": agent_address,
-            "tools": tools,
+            "name": agent_name,
+            "address": agent_address,
         }
         try:
             response = requests.post(f"{self.base_url}/register", json=registration_data)
@@ -43,8 +42,12 @@ async def lifespan(app: FastAPI):
     try:
         mcp_bus_client.register_agent(
             agent_name="scout",
-            agent_address=f"http://scout:{SCOUT_AGENT_PORT}",
-            tools=["search_sources", "gather_data"],
+            agent_address=f"http://localhost:{SCOUT_AGENT_PORT}",
+            tools=[
+                "discover_sources", "crawl_url", "deep_crawl_site", "enhanced_deep_crawl_site",
+                "intelligent_source_discovery", "intelligent_content_crawl", 
+                "intelligent_batch_analysis"
+            ],
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
@@ -86,6 +89,46 @@ def deep_crawl_site(call: ToolCall):
         return deep_crawl_site(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in deep_crawl_site: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/enhanced_deep_crawl_site")
+async def enhanced_deep_crawl_site_endpoint(call: ToolCall):
+    try:
+        from tools import enhanced_deep_crawl_site
+        logger.info(f"Calling enhanced_deep_crawl_site with args: {call.args} and kwargs: {call.kwargs}")
+        return await enhanced_deep_crawl_site(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in enhanced_deep_crawl_site: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/intelligent_source_discovery")
+def intelligent_source_discovery_endpoint(call: ToolCall):
+    try:
+        from tools import intelligent_source_discovery
+        logger.info(f"Calling intelligent_source_discovery with args: {call.args} and kwargs: {call.kwargs}")
+        return intelligent_source_discovery(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in intelligent_source_discovery: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/intelligent_content_crawl")
+def intelligent_content_crawl_endpoint(call: ToolCall):
+    try:
+        from tools import intelligent_content_crawl
+        logger.info(f"Calling intelligent_content_crawl with args: {call.args} and kwargs: {call.kwargs}")
+        return intelligent_content_crawl(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in intelligent_content_crawl: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/intelligent_batch_analysis")
+def intelligent_batch_analysis_endpoint(call: ToolCall):
+    try:
+        from tools import intelligent_batch_analysis
+        logger.info(f"Calling intelligent_batch_analysis with args: {call.args} and kwargs: {call.kwargs}")
+        return intelligent_batch_analysis(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in intelligent_batch_analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

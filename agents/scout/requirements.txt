@@ -4,3 +4,17 @@ fastapi
 requests
 uvicorn
 pydantic
+
+# Advanced Deep Crawling with Crawl4AI
+crawl4ai>=0.7.0
+
+# GPU-Accelerated Scout Intelligence Dependencies
+torch>=2.0.0
+transformers>=4.35.0
+accelerate>=0.21.0
+bitsandbytes>=0.41.0
+sentencepiece>=0.1.97
+protobuf>=3.20.0
+
+# Optional: Flash Attention for performance (requires compatible GPU)
+# flash-attn>=2.0.0

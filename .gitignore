@@ -4,22 +4,87 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
 
 # Environments
 .env
 .venv
+venv/
+ENV/
+env/
 
 # Docker
 docker-compose.override.yml
 
+# Model Files (Large binary files - regenerate or download as needed)
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.engine
+*.trt
+*.plan
+models/
+model_cache/
+transformers_cache/
+huggingface_cache/
+~/.cache/huggingface/
+
 # TensorRT Engine Files (Binary artifacts - regenerate as needed)
 agents/analyst/tensorrt_engines/*.engine
 agents/analyst/tensorrt_engines/*.onnx
+agents/analyst/tensorrt_engines/*.trt
+agents/analyst/tensorrt_engines/*.plan
+**/tensorrt_engines/*.engine
+**/tensorrt_engines/*.onnx
+**/tensorrt_engines/*.trt
+**/tensorrt_engines/*.plan
 
-# Server logs and temporary files
-agents/analyst/server.log
-agents/analyst/feedback_*.log
+# Log Files and Temporary Data
+*.log
+logs/
+feedback_*.log
+**/feedback_*.log
+**/*.log
+server.log
+performance_*.log
+mcp_bus.log
+gpu_analyst.log
+scout.log
+
+# Test Results and Temporary Files
+*_test_results.json
+test_results/
+temp/
+tmp/
+.tmp/
 
 # CUDA debug and reset tools
 debug_cuda_resources.py
 gpu_reset_tool.py
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Large datasets and downloaded content
+datasets/
+data/
+downloads/
+crawled_data/
