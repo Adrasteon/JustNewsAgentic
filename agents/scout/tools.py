@@ -26,6 +26,9 @@ except ImportError as e:
     CRAWL4AI_NATIVE_AVAILABLE = False
     logger.warning(f"⚠️ Native Crawl4AI not available: {e}. Using Docker fallback.")
 
+# Import for HTML text extraction
+import re
+
 # Global Scout Intelligence Engine
 scout_engine = None
 
@@ -44,6 +47,69 @@ def initialize_scout_intelligence():
 
 # Initialize on module load
 intelligence_available = initialize_scout_intelligence()
+
+def extract_article_content(html_content: str) -> str:
+    """
+    Extract clean article content from Crawl4AI cleaned_html
+    Based on analysis showing cleaned_html provides better article content than markdown
+    """
+    if not html_content:
+        return ""
+    
+    # Remove HTML tags to get clean text
+    clean_text = re.sub(r'<[^>]+>', ' ', html_content)
+    
+    # Clean up whitespace
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+    
+    # Split into sentences for better content filtering
+    sentences = [s.strip() for s in clean_text.split('.') if len(s.strip()) > 20]
+    
+    # Filter out navigation/menu content from the beginning
+    article_sentences = []
+    content_started = False
+    
+    for sentence in sentences:
+        sentence_lower = sentence.lower()
+        
+        # Skip common navigation elements
+        if not content_started:
+            skip_indicators = [
+                'bbc homepage', 'skip to content', 'accessibility help',
+                'your account', 'notifications', 'menu', 'search bbc',
+                'cbbc', 'cbeebies', 'food', 'close menu', 'bbc news home',
+                'home indepth', 'israel-gaza war', 'war in ukraine',
+                'climate uk world business politics', 'newsbeat',
+                'bbc verify', 'disability world africa', 'subscribe',
+                'sign up', 'cookie', 'privacy policy', 'terms of use'
+            ]
+            
+            if any(indicator in sentence_lower for indicator in skip_indicators):
+                continue
+            
+            # Look for actual article content start
+            article_indicators = [
+                'employees', 'workers', 'commuters', 'people', 'residents',
+                'officials', 'police', 'witnesses', 'sources', 'according to',
+                'reported', 'announced', 'said', 'told'
+            ]
+            
+            if any(indicator in sentence_lower for indicator in article_indicators) and len(sentence) > 50:
+                content_started = True
+        
+        if content_started:
+            article_sentences.append(sentence)
+    
+    # Join the filtered sentences back
+    if article_sentences:
+        clean_article = '. '.join(article_sentences)
+        # Ensure it ends with proper punctuation
+        if not clean_article.endswith('.'):
+            clean_article += '.'
+        return clean_article
+    
+    # Fallback: return cleaned text if no article pattern found
+    return clean_text[:2000] if len(clean_text) > 2000 else clean_text
 
 def log_feedback(event: str, details: dict):
     with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
@@ -412,39 +478,45 @@ async def enhanced_deep_crawl_site(*args, **kwargs):
             if result.success:
                 total_content = 0
                 
-                # Process main page
+                # Process main page using cleaned_html with article extraction
                 if result.cleaned_html:
-                    word_count = len(result.cleaned_html.split())
+                    clean_content = extract_article_content(result.cleaned_html)
+                    word_count = len(clean_content.split())
+                    
                     if word_count >= word_count_threshold:
                         page_data = {
                             'url': url,
                             'title': result.metadata.get('title', 'Homepage'),
-                            'content': result.cleaned_html,
+                            'content': clean_content,
                             'word_count': word_count,
-                            'content_length': len(result.cleaned_html),
+                            'content_length': len(clean_content),
                             'depth': 0,
-                            'source_method': 'enhanced_deepcrawl_main'
+                            'source_method': 'enhanced_deepcrawl_main_cleaned_html',
+                            'original_html_length': len(result.cleaned_html)
                         }
                         crawl_results.append(page_data)
-                        total_content += len(result.cleaned_html)
+                        total_content += len(clean_content)
                 
                 # Process additional crawled pages
                 if hasattr(result, 'crawled_pages') and result.crawled_pages:
                     for i, page in enumerate(result.crawled_pages):
                         if hasattr(page, 'cleaned_html') and page.cleaned_html:
-                            word_count = len(page.cleaned_html.split())
+                            clean_content = extract_article_content(page.cleaned_html)
+                            word_count = len(clean_content.split())
                             if word_count >= word_count_threshold:
                                 page_data = {
                                     'url': page.url if hasattr(page, 'url') else f"page_{i}",
                                     'title': page.metadata.get('title', f'Page {i+1}') if hasattr(page, 'metadata') else f'Page {i+1}',
-                                    'content': page.cleaned_html,
+                                    'content': clean_content,
                                     'word_count': word_count,
-                                    'content_length': len(page.cleaned_html),
+                                    'content_length': len(clean_content),
                                     'depth': getattr(page, 'depth', i+1),
-                                    'source_method': 'enhanced_deepcrawl_sub'
+                                    'source_method': 'enhanced_deepcrawl_sub_cleaned_html',
+                                    'original_html_length': len(page.cleaned_html)
                                 }
                                 crawl_results.append(page_data)
-                                total_content += len(page.cleaned_html)
+                                total_content += len(clean_content)
+                                total_content += len(page.markdown)
                 
                 logger.info(f"✅ Enhanced deep crawl completed: {len(crawl_results)} pages, {total_content:,} chars in {duration:.2f}s")
                 

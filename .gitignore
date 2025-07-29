@@ -67,6 +67,26 @@ tmp/
 debug_cuda_resources.py
 gpu_reset_tool.py
 
+# Process Management
+*.pid
+nohup.out
+
+# Native Service Background Processes  
+start_services_daemon.sh.log
+stop_services.sh.log
+
+# Pipeline Test Files (Generated)
+test_full_pipeline*.py
+test_scout_memory*.py
+test_*_pipeline*.py
+
+# Performance and Optimization Reports (Generated)
+*optimization*.json
+*performance*.json
+*benchmark*.json
+*memory*.json
+*stress_test*.json
+
 # IDE and Editor Files
 .vscode/
 .idea/

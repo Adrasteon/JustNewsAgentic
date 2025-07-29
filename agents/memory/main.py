@@ -48,9 +48,8 @@ class MCPBusClient:
 
     def register_agent(self, agent_name: str, agent_address: str, tools: list):
         registration_data = {
-            "agent_name": agent_name,
-            "agent_address": agent_address,
-            "tools": tools,
+            "name": agent_name,
+            "address": agent_address,
         }
         try:
             response = requests.post(f"{self.base_url}/register", json=registration_data)
@@ -83,7 +82,7 @@ async def lifespan(app: FastAPI):
     try:
         mcp_bus_client.register_agent(
             agent_name="memory",
-            agent_address=f"http://memory:{MEMORY_AGENT_PORT}",
+            agent_address=f"http://localhost:{MEMORY_AGENT_PORT}",
             tools=[
                 "save_article",
                 "get_article",
@@ -105,9 +104,24 @@ def health():
     return {"status": "ok"}
 
 @app.post("/save_article")
-def save_article_endpoint(article: Article):
-    """Saves an article to the database."""
-    return save_article(article.content, article.metadata)
+def save_article_endpoint(request: dict):
+    """Saves an article to the database. Handles both direct calls and MCP Bus format."""
+    try:
+        # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
+        if "args" in request and "kwargs" in request:
+            if len(request["args"]) > 0:
+                article_data = request["args"][0]
+            else:
+                article_data = request["kwargs"]
+        else:  
+            # Direct call format
+            article_data = request
+        
+        # Create Article object from the data
+        article = Article(**article_data)
+        return save_article(article.content, article.metadata)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error saving article: {str(e)}")
 
 @app.get("/get_article/{article_id}")
 def get_article_endpoint(article_id: int):
@@ -124,9 +138,24 @@ def get_article_endpoint(article_id: int):
         conn.close()
 
 @app.post("/vector_search_articles")
-def vector_search_articles_endpoint(search: VectorSearch):
-    """Performs a vector search for articles."""
-    return vector_search_articles(search.query, search.top_k)
+def vector_search_articles_endpoint(request: dict):
+    """Performs a vector search for articles. Handles both direct calls and MCP Bus format."""
+    try:
+        # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
+        if "args" in request and "kwargs" in request:
+            if len(request["args"]) > 0:
+                search_data = request["args"][0]
+            else:
+                search_data = request["kwargs"]
+        else:
+            # Direct call format  
+            search_data = request
+        
+        # Create VectorSearch object from the data
+        search = VectorSearch(**search_data)
+        return vector_search_articles(search.query, search.top_k)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error searching articles: {str(e)}")
 
 @app.post("/log_training_example")
 def log_training_example_endpoint(example: TrainingExample):
