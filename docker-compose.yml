@@ -149,6 +149,19 @@ services:
       - MEMORY_FEEDBACK_LOG=./feedback_memory.log
       - SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
       - MCP_BUS_URL=http://mcp_bus:8000
+  reasoning:
+    build:
+      context: .
+      dockerfile: agents/reasoning/Dockerfile
+    depends_on:
+      - mcp_bus
+    ports:
+      - "8008:8008"
+    networks:
+      - justnews-network
+    environment:
+      - REASONING_FEEDBACK_LOG=./feedback_reasoning.log
+      - MCP_BUS_URL=http://mcp_bus:8000
   crawl4ai-container:
     image: unclecode/crawl4ai:latest
     ports:

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [V4.10.0] - 2025-07-31 - Reasoning Agent Integration
+
+### 🧠 Reasoning Agent (Nucleoid) Added
+- **Production-Ready Symbolic Reasoning**: Nucleoid-based agent for fact validation, contradiction detection, and explainability
+- **API Endpoints**: `/add_fact`, `/add_facts`, `/add_rule`, `/query`, `/evaluate`, `/health`
+- **MCP Bus Integration**: Full registration and tool routing via `/register` and `/call`
+- **Native & Docker Support**: Included in `start_services_daemon.sh`, `stop_services.sh`, and `docker-compose.yml`
+- **Port 8008**: Reasoning Agent runs on port 8008 by default
+- **Documentation Updated**: All relevant docs and service management instructions updated
+
 ## [V4.9.0] - 2025-01-29 - **MAJOR MILESTONE: Scout → Memory Pipeline Operational**
 
 ### 🚀 **Scout Agent Content Extraction - PRODUCTION READY**

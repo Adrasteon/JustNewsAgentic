@@ -105,6 +105,26 @@ for i in {1..10}; do
     sleep 1
 done
 
+# Start Reasoning Agent (Nucleoid)
+echo "🧠 Starting Reasoning Agent..."
+cd /home/adra/JustNewsAgentic/agents/reasoning
+nohup python -m uvicorn main:app --host 0.0.0.0 --port 8008 > reasoning_agent.log 2>&1 &
+REASONING_PID=$!
+echo "✅ Reasoning Agent started (PID: $REASONING_PID) - Log: agents/reasoning/reasoning_agent.log"
+
+# Wait for Reasoning Agent to start with timeout
+echo "   Waiting for Reasoning Agent to respond..."
+for i in {1..10}; do
+    if curl -s http://localhost:8008/health > /dev/null 2>&1; then
+        echo "   ✅ Reasoning Agent responding after ${i} seconds"
+        break
+    fi
+    if [ $i -eq 10 ]; then
+        echo "   ⚠️ Reasoning Agent not responding after 10 seconds, check logs"
+    fi
+    sleep 1
+done
+
 # Check status
 echo ""
 echo "🔍 Service Status Check:"
@@ -128,18 +148,27 @@ else
     echo "❌ Memory Agent: Not responding"
 fi
 
+if curl -s http://localhost:8008/health > /dev/null; then
+    echo "✅ Reasoning Agent: Running (http://localhost:8008)"
+else
+    echo "❌ Reasoning Agent: Not responding"
+fi
+
 echo ""
 echo "📋 Process Information:"
 echo "MCP Bus PID: $MCP_BUS_PID"
 echo "Scout Agent PID: $SCOUT_PID"
 echo "Memory Agent PID: $MEMORY_PID"
+echo "Reasoning Agent PID: $REASONING_PID"
 echo ""
 echo "📁 Log Files:"
 echo "  MCP Bus: /home/adra/JustNewsAgentic/mcp_bus/mcp_bus.log"
 echo "  Scout Agent: /home/adra/JustNewsAgentic/agents/scout/scout_agent.log"
 echo "  Memory Agent: /home/adra/JustNewsAgentic/agents/memory/memory_agent.log"
+echo "  Reasoning Agent: /home/adra/JustNewsAgentic/agents/reasoning/reasoning_agent.log"
 echo ""
 echo "🎯 Next Steps:"
 echo "  1. ✅ Scout Agent is working! Use: python test_proper_news_urls.py"
 echo "  2. Test Scout → Memory storage pipeline"
 echo "  3. Build complete news processing workflow"
+echo "  4. Reasoning Agent available at http://localhost:8008/health"

@@ -1,5 +1,35 @@
 # JustNews V4: RTX-Enhanced Migration and Implementation Plan
 
+## Reasoning Agent (Nucleoid) Integration
+
+### Purpose and Role
+The Reasoning Agent provides symbolic logic, fact validation, contradiction detection, and explainability for news analysis. It is built on the Nucleoid neuro-symbolic AI framework and is fully integrated into the MCP bus architecture. The agent enables:
+- Fact ingestion and rule definition for news claims
+- Symbolic querying and contradiction detection
+- Explainable reasoning for editorial and fact-checking workflows
+- Integration with other agents for hybrid neuro-symbolic + neural workflows
+
+### Use Cases
+- **Fact Validation**: Ingests facts from Scout, Analyst, or Fact Checker agents and applies logical rules to validate claims.
+- **Contradiction Detection**: Detects logical inconsistencies in news articles or between multiple sources.
+- **Explainability**: Provides human-readable explanations for why a claim is accepted, rejected, or flagged as contradictory.
+- **Editorial Support**: Assists Chief Editor and Critic agents with logic-based recommendations and transparency.
+
+### Technical Details
+- **API Endpoints**: `/add_fact`, `/add_facts`, `/add_rule`, `/query`, `/evaluate`, `/health`
+- **MCP Bus Integration**: Registers tools and responds to `/call` requests for symbolic reasoning tasks.
+- **Port**: 8008 (default)
+- **Resource Usage**: <1GB RAM, CPU only (no GPU required)
+
+### Example Workflow
+1. Scout Agent extracts a claim from a news article.
+2. Fact Checker agent verifies the claim using neural models.
+3. Reasoning Agent ingests the claim as a fact and applies logical rules.
+4. Contradictions or logical gaps are detected and reported to the Chief Editor.
+5. Editorial workflow uses Reasoning Agent's explanations for transparency and auditability.
+
+---
+
 ## Overview
 
 This document provides the detailed engineering plan for migrating JustNewsAgentic from V3 to the **NVIDIA RTX AI Toolkit-enhanced V4 Hybrid Architecture**. The migration leverages RTX 3090 optimization for 4x performance improvements while maintaining zero-downtime deployment.
@@ -1814,275 +1844,4 @@ class IndependenceAssessment:
                 "accuracy": accuracy,
                 "inference_time": inference_time
             }
-        
-        return performance_status
-    
-    def _calculate_independence_score(self, deployment_status: Dict, 
-                                    external_deps: Dict, 
-                                    performance_status: Dict) -> float:
-        """Calculate overall independence score (0-100)."""
-        
-        # Deployment score (40% of total)
-        avg_deployment = sum(deployment_status.values()) / len(deployment_status) if deployment_status else 0
-        deployment_score = avg_deployment * 0.4
-        
-        # External dependency score (40% of total)
-        docker_penalty = external_deps.get("docker_usage_percentage", 0) * 0.3
-        api_penalty = external_deps.get("external_api_percentage", 0) * 0.1
-        dependency_score = max(0, 40 - docker_penalty - api_penalty)
-        
-        # Performance score (20% of total)
-        performance_score = 0
-        if performance_status:
-            for task, models in performance_status.items():
-                if "custom" in models and "docker" in models:
-                    custom_perf = models["custom"]["accuracy"]
-                    docker_perf = models["docker"]["accuracy"] 
-                    if custom_perf >= docker_perf:
-                        performance_score += 20 / len(performance_status)
-        
-        total_score = deployment_score + dependency_score + performance_score
-        return min(100, max(0, total_score))
-    
-    def generate_independence_report(self) -> str:
-        """Generate a comprehensive independence assessment report."""
-        
-        assessment = self.assess_current_state()
-        
-        report = f"""
-# JustNews V4 AI Independence Assessment Report
-Generated: {assessment['timestamp']}
-
-## Overall Independence Score: {assessment['independence_score']:.1f}/100
-
-### Deployment Status
-"""
-        
-        for task, percentage in assessment['deployment_status'].items():
-            status = "✅" if percentage == 100 else "🔄" if percentage > 0 else "❌"
-            report += f"- {task}: {percentage}% custom deployment {status}\n"
-        
-        report += f"""
-### External Dependencies
-- Docker Model Runner Usage: {'❌' if assessment['external_dependencies']['docker_model_runner_active'] else '✅'}
-- External API Calls: {'❌' if assessment['external_dependencies']['external_api_calls'] else '✅'}
-
-### Performance Status
-"""
-        
-        for task, models in assessment['performance_status'].items():
-            if 'custom' in models and 'docker' in models:
-                custom_acc = models['custom']['accuracy']
-                docker_acc = models['docker']['accuracy']
-                comparison = "✅" if custom_acc >= docker_acc else "❌"
-                report += f"- {task}: Custom {custom_acc:.3f} vs Docker {docker_acc:.3f} {comparison}\n"
-        
-        report += f"""
-### Recommendations
-"""
-        for rec in assessment['recommendations']:
-            report += f"- {rec}\n"
-        
-        return report
-
-# Usage example
-if __name__ == "__main__":
-    assessor = IndependenceAssessment("postgresql://user:password@localhost:5432/justnews")
-    report = assessor.generate_independence_report()
-    print(report)
-    
-    # Save report
-    with open(f"independence_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md", "w") as f:
-        f.write(report)
-```
-
-### Phase 3 Success Criteria
-
-- ✅ Custom models achieve >90% deployment for all core tasks
-- ✅ Performance metrics show custom models outperform Docker models by >10%
-- ✅ Zero external API dependencies
-- ✅ Complete AI independence score >95/100
-- ✅ News-specific optimizations demonstrate clear competitive advantages
-- ✅ System handles 10x current load with custom models
-
----
-
-## 5. Migration Timeline and Milestones
-
-### Detailed Timeline
-
-```
-Phase 1: Foundation Migration (Weeks 1-2)
-├─ Week 1
-│  ├─ Day 1-2: Docker Model Runner setup and configuration
-│  ├─ Day 3-4: Agent tools integration with hybrid inference
-│  ├─ Day 5-7: Enhanced feedback collection implementation
-└─ Week 2
-   ├─ Day 8-10: Testing and validation
-   ├─ Day 11-12: Performance benchmarking
-   ├─ Day 13-14: Production deployment and monitoring
-
-Phase 2: Training Pipeline (Weeks 3-6)
-├─ Week 3
-│  ├─ Training infrastructure setup
-│  ├─ Data processing pipeline implementation
-│  ├─ Model registry and version control
-└─ Week 4-6
-   ├─ A/B testing framework development
-   ├─ First custom model training
-   ├─ Performance validation and iteration
-
-Phase 3: Progressive Replacement (Months 2-6)
-├─ Month 2
-│  ├─ 10% custom model deployment
-│  ├─ Performance monitoring setup
-│  ├─ Automated scaling implementation
-├─ Month 3-4
-│  ├─ 50% custom model deployment
-│  ├─ News-specific optimizations
-│  ├─ Advanced feature development
-└─ Month 5-6
-   ├─ 90-100% custom model deployment
-   ├─ Complete independence validation
-   ├─ Performance optimization and specialization
-```
-
-### Risk Mitigation Checkpoints
-
-#### Week 1 Checkpoint
-- ✅ Docker Model Runner responding to all test queries
-- ✅ All existing functionality preserved
-- ✅ No performance degradation observed
-- **Go/No-Go Decision**: Proceed to Week 2 or rollback
-
-#### Week 2 Checkpoint
-- ✅ Enhanced feedback collection operational
-- ✅ Performance meets baseline requirements
-- ✅ System stability maintained for 48+ hours
-- **Go/No-Go Decision**: Proceed to Phase 2 or stabilize Phase 1
-
-#### Month 1 Checkpoint
-- ✅ Training pipeline producing quality models
-- ✅ A/B testing showing positive results
-- ✅ Infrastructure scaling as expected
-- **Go/No-Go Decision**: Proceed to deployment or iterate on training
-
-#### Month 3 Checkpoint
-- ✅ Custom models showing performance parity
-- ✅ 50% deployment achieved without issues
-- ✅ Cost reduction targets being met
-- **Go/No-Go Decision**: Proceed to full deployment or optimize further
-
-### Rollback Procedures
-
-Each phase includes specific rollback procedures:
-
-#### Phase 1 Rollback
-```bash
-# Revert to V3 configuration
-git checkout v3-stable
-docker-compose down
-docker-compose -f docker-compose.v3.yml up -d
-```
-
-#### Phase 2 Rollback
-```bash
-# Disable training pipeline, keep Docker Model Runner
-export TRAINING_MODE=disabled
-docker-compose restart analyst critic synthesizer
-```
-
-#### Phase 3 Rollback
-```python
-# Reduce custom model deployment to 0%
-deployment_manager.set_deployment_percentage("all_tasks", 0)
-# System automatically falls back to Docker Model Runner
-```
-
----
-
-## 6. Success Metrics and KPIs
-
-### Phase 1 KPIs
-- **Reliability**: 99.9%+ uptime, zero model corruption incidents
-- **Performance**: <3 second average inference time
-- **Functionality**: 100% feature parity with V3
-- **Data Collection**: 100% feedback capture rate
-
-### Phase 2 KPIs
-- **Training Efficiency**: <24 hour model iteration cycles
-- **Model Quality**: Custom models achieve 95%+ parity with Docker models
-- **Automation**: 90%+ automated training pipeline processes
-- **A/B Testing**: Statistical significance achieved in <1 week tests
-
-### Phase 3 KPIs
-- **Independence**: 95%+ independence score
-- **Performance**: Custom models outperform Docker models by 10%+
-- **Cost**: 80%+ reduction in AI infrastructure costs
-- **Specialization**: News-specific features not available in general models
-
-### Business Impact Metrics
-- **Cost Savings**: Target $120k+/year in eliminated API costs
-- **Performance Improvement**: 20%+ improvement in news analysis accuracy
-- **Competitive Advantage**: Proprietary AI capabilities
-- **Operational Efficiency**: 50%+ reduction in model-related debugging time
-
----
-
-## 7. Resource Requirements
-
-### Infrastructure Requirements
-
-#### Phase 1
-- **Compute**: Existing GPU resources + Docker Model Runner
-- **Storage**: +50GB for Docker model cache
-- **Network**: Enhanced logging infrastructure
-- **Personnel**: 1 senior engineer, 0.5 DevOps engineer
-
-#### Phase 2
-- **Compute**: Additional GPU for training (recommend RTX 4090 or A6000)
-- **Storage**: +500GB for training data and model versions
-- **Network**: Model registry and training data pipelines
-- **Personnel**: +1 ML engineer, +0.5 data engineer
-
-#### Phase 3
-- **Compute**: Production-grade inference infrastructure
-- **Storage**: +1TB for complete model independence
-- **Network**: High-throughput model serving
-- **Personnel**: +0.5 ML engineer for optimization
-
-### Budget Estimates
-
-#### One-time Costs
-- **Phase 1**: $5,000 (infrastructure scaling)
-- **Phase 2**: $15,000 (training hardware + cloud resources)
-- **Phase 3**: $10,000 (production optimization)
-- **Total**: $30,000 one-time investment
-
-#### Ongoing Savings
-- **Year 1**: $60,000 saved (50% reduction in AI costs)
-- **Year 2+**: $120,000+ saved annually (complete independence)
-- **ROI**: 4x return on investment within 12 months
-
----
-
-## 8. Conclusion
-
-The JustNews V4 migration plan provides a comprehensive roadmap from the current state to complete AI independence while maintaining operational excellence throughout the transition.
-
-### Key Success Factors
-1. **Phased Approach**: Risk-mitigated progression with clear rollback options
-2. **Zero Downtime**: Continuous operation throughout migration
-3. **Performance Focus**: Maintaining and improving system performance
-4. **Data-Driven Decisions**: Metrics-based progression through phases
-
-### Expected Outcomes
-- **Immediate**: Elimination of model corruption issues
-- **Short-term**: 50% cost reduction, improved reliability
-- **Long-term**: Complete AI independence, superior performance, competitive advantage
-
-This plan transforms JustNewsAgentic from a consumer of AI services to a producer of specialized AI capabilities, ensuring long-term sustainability and competitive differentiation in the news analysis market.
-
----
-
-*This document serves as the definitive implementation guide for JustNews V4 migration. All phases should be executed with careful attention to success criteria and rollback procedures.*
+       

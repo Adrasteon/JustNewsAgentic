@@ -78,6 +78,36 @@ JustNews V4 introduces a revolutionary **Hybrid AI Architecture** that combines 
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Reasoning Agent (Nucleoid) in V4 Architecture
+
+### Purpose
+The Reasoning Agent is a dedicated neuro-symbolic component for fact validation, contradiction detection, and explainability. It leverages the Nucleoid framework to:
+- Ingest facts and rules from other agents
+- Perform symbolic logic queries and contradiction checks
+- Provide explainable outputs for editorial and fact-checking workflows
+- Integrate with the MCP bus for seamless orchestration
+
+### Use Cases
+- **Fact Validation**: Logical validation of claims extracted by Scout, Analyst, or Fact Checker
+- **Contradiction Detection**: Identifies logical inconsistencies within or across articles
+- **Explainability**: Supplies human-readable logic chains for editorial review
+- **Editorial Support**: Assists Chief Editor and Critic with logic-based recommendations
+
+### Technical Details
+- **API Endpoints**: `/add_fact`, `/add_facts`, `/add_rule`, `/query`, `/evaluate`, `/health`
+- **MCP Bus Integration**: Registers tools and responds to `/call` requests
+- **Port**: 8008 (default)
+- **Resource Usage**: <1GB RAM, CPU only
+
+### Example Workflow
+1. Scout or Analyst extracts a claim
+2. Fact Checker verifies with neural models
+3. Reasoning Agent ingests as fact, applies rules
+4. Contradictions flagged and reported to editorial agents
+5. Editorial workflow uses Reasoning Agent's explanations for transparency
+
+---
+
 ## 3. Key Benefits
 
 ### NVIDIA RTX AI Toolkit Advantages

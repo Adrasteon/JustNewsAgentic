@@ -108,6 +108,8 @@ datasets/
 data/
 downloads/
 crawled_data/
+crawl4ai_docs/
 
 # Archive folder for obsolete files
 archive_obsolete_files/
+

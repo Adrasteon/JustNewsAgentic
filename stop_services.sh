@@ -4,9 +4,9 @@
 echo "🛑 Stopping JustNews V4 Services"
 echo "================================="
 
-# Kill processes by port
+# Kill processes by port (including Reasoning Agent on 8008)
 echo "Stopping services by port..."
-for port in 8000 8002 8007; do
+for port in 8000 8002 8007 8008; do
     PID=$(lsof -t -i:$port 2>/dev/null)
     if [ ! -z "$PID" ]; then
         echo "  Killing process on port $port (PID: $PID)"
@@ -22,19 +22,20 @@ for port in 8000 8002 8007; do
     fi
 done
 
-# Kill any remaining service processes
+# Kill any remaining service processes (including Reasoning Agent)
 echo "Cleaning up remaining processes..."
-pkill -f "uvicorn.*main:app.*--port.*800[027]" 2>/dev/null || true
+pkill -f "uvicorn.*main:app.*--port.*800[0278]" 2>/dev/null || true
+pkill -f "reasoning.*agent" 2>/dev/null || true
 pkill -f "mcp_bus" 2>/dev/null || true
 pkill -f "scout.*agent" 2>/dev/null || true
 pkill -f "memory.*agent" 2>/dev/null || true
 
 sleep 1
 
-# Verify cleanup
+# Verify cleanup (including Reasoning Agent port 8008)
 echo ""
 echo "🔍 Verification:"
-for port in 8000 8002 8007; do
+for port in 8000 8002 8007 8008; do
     PID=$(lsof -t -i:$port 2>/dev/null)
     if [ -z "$PID" ]; then
         echo "  ✅ Port $port is free"

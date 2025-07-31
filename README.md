@@ -173,7 +173,8 @@ JustNews V4 features a **multi-agent news analysis system** with **native Tensor
 | **Critic** | DialoGPT-medium | 2.5GB | ⏳ TensorRT Ready | Quality Assessment |
 | **Chief Editor** | DialoGPT-medium | 2.0GB | ⏳ TensorRT Ready | Orchestration |
 | **Memory** | Vector Embeddings | 1.5GB | ⏳ TensorRT Ready | Semantic Search |
-| **Total System** | **Multi-Model Pipeline** | **21.8GB** | **RTX 3090 Optimized** | **0.2GB Buffer** |
+| **Reasoning** | Nucleoid (symbolic logic) | <1GB | ✅ Production | Fact validation, contradiction detection |
+| **Total System** | **Multi-Model Pipeline** | **22.8GB** | **RTX 3090 Optimized** | **0.2GB Buffer** |
 
 ### Strategic Architecture Design
 
@@ -185,8 +186,9 @@ JustNews V4 features a **multi-agent news analysis system** with **native Tensor
 
 ### Core Components
 - **MCP Bus** (Port 8000): Central communication hub using FastAPI with `/register`, `/call`, `/agents` endpoints
-- **Agents** (Ports 8001-8007): Independent FastAPI services with native TensorRT acceleration
+- **Agents** (Ports 8001-8008): Independent FastAPI services (GPU/CPU)
 - **Enhanced Scout Agent**: Native Crawl4AI integration with BestFirstCrawlingStrategy and Scout Intelligence analysis
+- **Reasoning Agent**: Nucleoid-based symbolic reasoning, fact validation, contradiction detection, explainability (Port 8008)
 - **Database**: PostgreSQL + vector search for semantic article storage
 - **GPU Stack**: Water-cooled RTX 3090 with native TensorRT 10.10.0.31, PyCUDA, professional CUDA management
 
@@ -210,6 +212,7 @@ For full architectural details, see:
 # 1. MCP Bus (port 8000) - Central coordination hub
 # 2. Scout Agent (port 8002) - Content extraction with Crawl4AI
 # 3. Memory Agent (port 8007) - PostgreSQL database storage
+# 4. Reasoning Agent (port 8008) - Symbolic reasoning, fact validation
 ```
 
 ### Stop System  
@@ -223,12 +226,13 @@ For full architectural details, see:
 ### Service Status
 ```bash
 # Check all services
-ps aux | grep -E "(mcp_bus|scout|memory)" | grep -v grep
+ps aux | grep -E "(mcp_bus|scout|memory|reasoning)" | grep -v grep
 
 # Current active services:
 # ✅ MCP Bus: PID 20977 on port 8000 (Request routing)
 # ✅ Scout Agent: PID 20989 on port 8002 (Content extraction)  
 # ✅ Memory Agent: PID 20994 on port 8007 (Database storage)
+# ✅ Reasoning Agent: PID XXXXX on port 8008 (Symbolic reasoning)
 ```
 
 ### Health Check
@@ -496,49 +500,6 @@ Each agent can be started independently without relying on other agents or servi
     uvicorn main:app --reload --port 8003
     ```
 
-## 📁 Key Files for Migration
-
-### Critical Development Context
-- **DEVELOPMENT_CONTEXT.md**: Complete project history and technical decisions
-- **V4_INTEGRATION_COMPLETE.md**: Integration completion documentation
-- **QUICK_WIN_SUCCESS.md**: Performance validation results
-- **real_model_test_results.json**: Honest performance metrics with real articles
-
-### GPU Integration Files
-- **agents/analyst/hybrid_tools_v4.py**: GPU-accelerated analyst with batch processing
-- **wsl_deployment/**: Native WSL deployment with performance validation
-- **quick_win_tensorrt.py**: Performance testing and validation scripts
-
-### Migration Assets
-- **UBUNTU_MIGRATION_GUIDE.md**: Complete dual-boot setup guide
-- **prepare-ubuntu-migration.ps1**: Automated backup and preparation
-- **verify-ubuntu-migration.sh**: Post-migration verification
-
-### System Configuration
-- **docker-compose.yml**: Multi-agent orchestration
-- **config.json**: System-wide configuration
-- **requirements.txt**: Python dependencies
-
----
-
-## 🎯 Development Status Summary
-
-**V4 Achievement**: V3.5 architecture successfully achieving V4 performance targets with realistic validation
-- ✅ GPU-accelerated Analyst: HuggingFace transformers delivering 41.4-168.1 articles/sec
-- ✅ Performance Exceeds V4 Targets: 173-700x faster than CPU (vs 4x requirement)
-- ✅ Professional GPU Memory Management: Crash-free operation with proven patterns
-- ✅ Ubuntu Migration Ready: Complete automation and verification scripts
-- ⏳ V4 Architecture Migration: RTX AI Toolkit integration preserving current performance
-
-**Next Phase**: Full V4 RTX AI Toolkit integration while maintaining proven performance levels
-    ```bash
-    pip install -r requirements.txt
-    ```
-3. Start the agent:
-    ```bash
-    uvicorn main:app --reload --port 8004
-    ```
-
 #### Synthesizer Agent
 1. Navigate to the `agents/synthesizer` directory.
 2. Install dependencies:
@@ -570,4 +531,15 @@ Each agent can be started independently without relying on other agents or servi
 3. Start the agent:
     ```bash
     uvicorn main:app --reload --port 8007
+    ```
+
+#### Reasoning Agent
+1. Navigate to the `agents/reasoning` directory.
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Start the agent:
+    ```bash
+    uvicorn main:app --reload --port 8008
     ```

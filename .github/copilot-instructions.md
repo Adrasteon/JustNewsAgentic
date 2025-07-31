@@ -7,7 +7,8 @@ JustNews V4 is a multi-agent news analysis system with **native TensorRT GPU acc
 
 ### Core Components
 - **MCP Bus** (Port 8000): Central communication hub using FastAPI with `/register`, `/call`, `/agents` endpoints
-- **Agents** (Ports 8001-8007): Independent FastAPI services with native TensorRT acceleration
+- **Agents** (Ports 8001-8008): Independent FastAPI services (GPU/CPU)
+- **Reasoning Agent** (Port 8008): Nucleoid-based symbolic reasoning, fact validation, contradiction detection, explainability
 - **Database**: PostgreSQL + vector search for semantic article storage
 - **GPU Stack**: Water-cooled RTX 3090 with native TensorRT 10.10.0.31, PyCUDA, professional CUDA management
 
@@ -106,6 +107,23 @@ async def enhanced_deep_crawl_site(
 - Sky News crawl: 148k characters in 1.3 seconds
 - Scout Intelligence analysis: Content scoring and quality filtering operational
 - MCP Bus integration: Full agent registration and communication validated
+
+## Reasoning Agent Integration (Production Ready)
+
+### Reasoning Agent (Nucleoid)
+- **Purpose**: Symbolic logic, fact validation, contradiction detection, and explainability for news analysis
+- **Status**: ✅ Production deployment complete, fully MCP-integrated
+- **Endpoints**: `/add_fact`, `/add_facts`, `/add_rule`, `/query`, `/evaluate`, `/health`
+- **Port**: 8008 (default)
+- **Resource Usage**: <1GB RAM, CPU only
+- **Integration**: Registers tools and responds to `/call` requests for symbolic reasoning tasks
+
+**Example Workflow:**
+1. Scout/Analyst extracts a claim
+2. Fact Checker verifies with neural models
+3. Reasoning Agent ingests as fact, applies rules
+4. Contradictions flagged and reported to editorial agents
+5. Editorial workflow uses Reasoning Agent's explanations for transparency
 
 ## Development Workflows
 
