@@ -570,3 +570,29 @@ Each agent can be started independently without relying on other agents or servi
     ```bash
     uvicorn main:app --reload --port 8008
     ```
+
+## 📚 Documentation
+
+### Organized Documentation Structure
+All detailed project documentation has been organized into the `markdown_docs/` directory for better navigation:
+
+- **📁 `/markdown_docs/production_status/`** - Production deployment status and achievement reports
+- **📁 `/markdown_docs/agent_documentation/`** - Agent-specific implementation guides  
+- **📁 `/markdown_docs/development_reports/`** - Technical analysis and validation reports
+- **📄 `/markdown_docs/DEVELOPMENT_CONTEXT.md`** - Complete development history and context
+
+### Key Documentation Files
+- **Production Status**: See `markdown_docs/production_status/PRODUCTION_DEPLOYMENT_STATUS.md`
+- **Development History**: See `markdown_docs/DEVELOPMENT_CONTEXT.md`
+- **Agent Guides**: See `markdown_docs/agent_documentation/` for agent-specific documentation
+- **Technical Reports**: See `markdown_docs/development_reports/` for detailed analysis
+
+### Quick Access
+- **📖 Full Documentation Index**: [`markdown_docs/README.md`](markdown_docs/README.md)
+- **📊 Latest Production Status**: [`markdown_docs/production_status/PRODUCTION_SUCCESS_SUMMARY.md`](markdown_docs/production_status/PRODUCTION_SUCCESS_SUMMARY.md)
+- **🔧 Development Context**: [`markdown_docs/DEVELOPMENT_CONTEXT.md`](markdown_docs/DEVELOPMENT_CONTEXT.md)
+
+---
+
+*For the most current development status and detailed technical documentation, see the organized documentation in the `markdown_docs/` directory.*
+    ```
