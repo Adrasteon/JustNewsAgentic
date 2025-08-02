@@ -352,6 +352,6 @@ if __name__ == "__main__":
         # Run test
         asyncio.run(test_practical_approach())
     else:
-        # Run FastAPI server
+        # Run FastAPI server (NewsReader agent port)
         import uvicorn
-        uvicorn.run(app, host="0.0.0.0", port=8005)
+        uvicorn.run(app, host="0.0.0.0", port=8009)

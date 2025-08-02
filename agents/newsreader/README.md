@@ -14,6 +14,7 @@ Contains variant newsreader implementations for different use cases:
 - `llava_newsreader_agent.py` - Standard LLaVA implementation
 - `quantized_llava_newsreader_agent.py` - INT8 quantized version
 - `optimized_llava_test.py` - Performance testing implementation
+- **`practical_newsreader_solution.py`** - **NEW: Practical INT8 approach with dual model fallback**
 
 ### **📂 `/documentation/`** - Technical Documentation
 - `IMPLEMENTATION_SUMMARY.md` - Implementation overview and decisions
@@ -44,6 +45,16 @@ Contains variant newsreader implementations for different use cases:
 2. Test thoroughly with validation scripts
 3. When ready for production, copy to `newsreader_agent.py`
 4. Archive previous version to `/main_options/`
+
+### **NEW: Practical Solution Implementation** 
+**File**: `main_options/practical_newsreader_solution.py`
+
+The practical approach implements user insight on INT8 quantization:
+- ✅ **Dual Model Fallback**: LLaVA-1.5-7B → BLIP-2 if needed
+- ✅ **Smart Memory Management**: Proper model sizing instead of forcing large models to fit
+- ✅ **Production Ready**: FastAPI endpoints, health checks, memory monitoring
+- ✅ **Quantization First**: INT8 optimization as primary approach, not afterthought
+- ✅ **Zero Warnings**: Clean model loading with BitsAndBytesConfig
 
 ### Documentation Updates
 - Technical documentation → `/documentation/`

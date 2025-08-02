@@ -162,6 +162,18 @@ services:
     environment:
       - REASONING_FEEDBACK_LOG=./feedback_reasoning.log
       - MCP_BUS_URL=http://mcp_bus:8000
+      - REASONING_AGENT_PORT=8008
+      - REASONING_AGENT_PRELOAD=/app/preload_rules.txt
+      - PYTHONPATH=/app
+    volumes:
+      - ./agents/reasoning/logs:/app/logs
+      - ./agents/reasoning/state:/app/state
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8008/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
   crawl4ai-container:
     image: unclecode/crawl4ai:latest
     ports:

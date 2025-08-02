@@ -23,6 +23,13 @@ from typing import List, Dict, Optional
 import logging
 
 # Import our practical NewsReader for analysis
+import sys
+import os
+
+# Add the newsreader agent path for imports
+newsreader_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'newsreader', 'main_options')
+sys.path.insert(0, newsreader_path)
+
 from practical_newsreader_solution import PracticalNewsReader
 
 logging.basicConfig(level=logging.INFO)

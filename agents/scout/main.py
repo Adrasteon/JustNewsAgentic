@@ -46,7 +46,8 @@ async def lifespan(app: FastAPI):
             tools=[
                 "discover_sources", "crawl_url", "deep_crawl_site", "enhanced_deep_crawl_site",
                 "intelligent_source_discovery", "intelligent_content_crawl", 
-                "intelligent_batch_analysis"
+                "intelligent_batch_analysis",
+                "production_crawl_ultra_fast", "get_production_crawler_info"
             ],
         )
         logger.info("Registered tools with MCP Bus.")
@@ -146,4 +147,28 @@ def log_feedback(call: ToolCall):
         return feedback_data
     except Exception as e:
         logger.error(f"An error occurred while logging feedback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# PRODUCTION CRAWLER ENDPOINTS
+# =============================================================================
+
+@app.post("/production_crawl_ultra_fast")
+async def production_crawl_ultra_fast_endpoint(call: ToolCall):
+    try:
+        from tools import production_crawl_ultra_fast
+        logger.info(f"Calling production_crawl_ultra_fast with args: {call.args} and kwargs: {call.kwargs}")
+        return await production_crawl_ultra_fast(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in production_crawl_ultra_fast: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/get_production_crawler_info")
+def get_production_crawler_info_endpoint(call: ToolCall):
+    try:
+        from tools import get_production_crawler_info
+        logger.info(f"Calling get_production_crawler_info with args: {call.args} and kwargs: {call.kwargs}")
+        return get_production_crawler_info(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in get_production_crawler_info: {e}")
         raise HTTPException(status_code=500, detail=str(e))

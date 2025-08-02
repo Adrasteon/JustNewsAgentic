@@ -648,3 +648,89 @@ def deep_crawl_site(*args, **kwargs):
         logger.error(f"An error occurred during deep crawl: {e}")
         log_feedback("deep_crawl_site_error", {"args": args, "error": str(e)})
         return []
+
+# =============================================================================
+# PRODUCTION CRAWLERS - High-Speed News Gathering
+# =============================================================================
+
+# Initialize production crawlers
+try:
+    from .production_crawlers import ProductionCrawlerOrchestrator
+    production_crawler = ProductionCrawlerOrchestrator()
+    PRODUCTION_CRAWLERS_AVAILABLE = True
+    logger.info("✅ Production crawlers initialized successfully")
+except ImportError as e:
+    logger.warning(f"⚠️ Production crawlers not available: {e}")
+    production_crawler = None
+    PRODUCTION_CRAWLERS_AVAILABLE = False
+
+async def production_crawl_ultra_fast(site: str, target_articles: int = 100):
+    """
+    Ultra-fast production crawling for maximum throughput (8+ articles/second)
+    
+    Args:
+        site: News site identifier ('bbc', 'cnn', 'reuters', etc.)
+        target_articles: Number of articles to crawl
+        
+    Returns:
+        Dict with crawl results and performance metrics
+    """
+    logger.info(f"[ScoutAgent] Ultra-fast production crawl: {site} ({target_articles} articles)")
+    
+    if not PRODUCTION_CRAWLERS_AVAILABLE:
+        error_msg = "Production crawlers not available"
+        logger.error(error_msg)
+        log_feedback("production_crawl_ultra_fast_error", {"site": site, "error": error_msg})
+        return {"error": error_msg, "articles": []}
+    
+    try:
+        results = await production_crawler.crawl_site_ultra_fast(site, target_articles)
+        log_feedback("production_crawl_ultra_fast", {
+            "site": site, 
+            "target": target_articles,
+            "actual": results.get("count", 0),
+            "rate": results.get("articles_per_second", 0)
+        })
+        return results
+    except Exception as e:
+        logger.error(f"Ultra-fast production crawl failed for {site}: {e}")
+        log_feedback("production_crawl_ultra_fast_error", {"site": site, "error": str(e)})
+        return {"error": str(e), "articles": []}
+
+def get_production_crawler_info():
+    """
+    Get information about available production crawlers and supported sites
+    
+    Returns:
+        Dict with crawler capabilities and supported sites
+    """
+    logger.info("[ScoutAgent] Getting production crawler info")
+    
+    if not PRODUCTION_CRAWLERS_AVAILABLE:
+        return {
+            "available": False,
+            "error": "Production crawlers not initialized",
+            "supported_sites": []
+        }
+    
+    try:
+        supported_sites = production_crawler.get_supported_sites()
+        site_info = {site: production_crawler.get_site_info(site) for site in supported_sites}
+        
+        result = {
+            "available": True,
+            "supported_sites": supported_sites,
+            "site_details": site_info,
+            "capabilities": ["ultra_fast", "ai_enhanced", "multi_site"],
+            "performance_targets": {
+                "ultra_fast": "8+ articles/second",
+                "ai_enhanced": "0.8+ articles/second"
+            }
+        }
+        
+        log_feedback("get_production_crawler_info", {"sites_count": len(supported_sites)})
+        return result
+    except Exception as e:
+        logger.error(f"Failed to get production crawler info: {e}")
+        log_feedback("get_production_crawler_info_error", {"error": str(e)})
+        return {"available": False, "error": str(e), "supported_sites": []}

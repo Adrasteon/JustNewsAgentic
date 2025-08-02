@@ -1,0 +1,31 @@
+{
+  "facts": {
+    "fact_0": {
+      "statement": "test_value = 42"
+    },
+    "fact_1": {
+      "statement": "article_source = 'Reuters'",
+      "type": "news"
+    },
+    "fact_2": {
+      "statement": "source_type = 'news_agency'",
+      "type": "metadata"
+    },
+    "fact_3": {
+      "statement": "publication_date = '2025-08-02'",
+      "type": "temporal"
+    }
+  },
+  "rules": [
+    "if source_type == 'government' then credibility = 0.9",
+    "if source_type == 'academic' then credibility = 0.8",
+    "if source_type == 'news_agency' then credibility = 0.7",
+    "if source_type == 'blog' then credibility = 0.3",
+    "if event_date > current_date then validity = false",
+    "if publication_date < event_date then temporal_flag = true",
+    "if claim_type == 'statistical' and source_provided == false then verify_needed = true",
+    "if claim_type == 'quote' and source_provided == false then verify_needed = true",
+    "test_rule = test_value * 2"
+  ],
+  "timestamp": "2025-08-02T18:36:26.157471"
+}
