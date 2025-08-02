@@ -1,0 +1,32 @@
+{
+  "progress": "3/19",
+  "completed_articles": 3,
+  "successful_articles": 3,
+  "results": [
+    {
+      "url": "https://www.bbc.co.uk/news/articles/czr6l6l1xrzo",
+      "analysis": "The news headline reads \"Sign in or Register to watch the news.\" This suggests that the user needs to sign in or register to access the news content on the website. The main details of the news article are not available, and the story content is not provided.",
+      "timestamp": "2025-08-02T16:08:55.511188",
+      "model_type": "crash_safe_llava",
+      "article_number": 1,
+      "status": "success"
+    },
+    {
+      "url": "https://www.bbc.co.uk/news/articles/cpqvlepg2rdo",
+      "analysis": "The headline of the article reads \"Man's 600km walk in wife's clothes\". The story features a man who is walking 600 kilometers in his wife's clothes as a fun and unconventional way to raise awareness for charity. The man is wearing an orange shirt and has a sense of humor in his endeavor.",
+      "timestamp": "2025-08-02T16:09:29.850573",
+      "model_type": "crash_safe_llava",
+      "article_number": 2,
+      "status": "success"
+    },
+    {
+      "url": "https://www.bbc.co.uk/news/articles/c890l82xq4po",
+      "analysis": "The headline reads \"British first captain of the Titanic.\" The article discusses the captain's role and contributions to the Titanic's maiden voyage. The story highlights Captain Edward Smith's experience and leadership skills, as well as the challenges he faced during the journey. The article also covers the sinking of the Titanic and its impact on maritime history.",
+      "timestamp": "2025-08-02T16:10:03.706035",
+      "model_type": "crash_safe_llava",
+      "article_number": 3,
+      "status": "success"
+    }
+  ],
+  "timestamp": "2025-08-02T16:10:05.904176"
+}
