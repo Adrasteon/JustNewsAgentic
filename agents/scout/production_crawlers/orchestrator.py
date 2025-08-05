@@ -41,13 +41,13 @@ def _load_site_crawlers():
             
             # Import the crawler classes
             try:
-                from bbc_crawler import UltraFastBBCCrawler as _UltraFastBBCCrawler
+                from .sites.bbc_crawler import UltraFastBBCCrawler as _UltraFastBBCCrawler
                 UltraFastBBCCrawler = _UltraFastBBCCrawler
             except ImportError:
                 logger.warning("⚠️ Could not import UltraFastBBCCrawler")
                 
             try:
-                from bbc_ai_crawler import ProductionBBCCrawler as _ProductionBBCCrawler  
+                from .sites.bbc_ai_crawler import ProductionBBCCrawler as _ProductionBBCCrawler  
                 ProductionBBCCrawler = _ProductionBBCCrawler
             except ImportError:
                 logger.warning("⚠️ Could not import ProductionBBCCrawler")
