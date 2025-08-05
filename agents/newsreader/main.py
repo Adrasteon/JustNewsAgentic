@@ -6,16 +6,43 @@ Integrates with JustNews V4 MCP Bus system
 from fastapi import FastAPI
 import asyncio
 import uvicorn
+import requests
+import logging
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import Dict, Any, List
 import sys
 import os
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Environment variables
+NEWSREADER_AGENT_PORT = int(os.environ.get("NEWSREADER_AGENT_PORT", 8009))
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
+
+class MCPBusClient:
+    def __init__(self, base_url: str = MCP_BUS_URL):
+        self.base_url = base_url
+
+    def register_agent(self, agent_name: str, agent_address: str, tools: list):
+        registration_data = {
+            "name": agent_name,
+            "address": agent_address,
+        }
+        try:
+            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response.raise_for_status()
+            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
+            raise
+
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from llava_newsreader_agent import LlavaNewsReaderAgent, NewsExtractionRequest
+from newsreader_agent import PracticalNewsReader, ToolCall as NewsExtractionRequest
 
 # Global agent instance
 agent = None
@@ -25,16 +52,28 @@ async def lifespan(app: FastAPI):
     """Lifespan event handler for startup and shutdown"""
     # Startup
     global agent
-    print("🚀 Initializing NewsReader Agent for MCP Bus")
-    agent = LlavaNewsReaderAgent()
-    print("✅ NewsReader Agent initialized")
+    logger.info("NewsReader agent is starting up.")
+    agent = PracticalNewsReader()
+    logger.info("NewsReader Agent initialized")
+    
+    # Register with MCP Bus
+    mcp_bus_client = MCPBusClient()
+    try:
+        mcp_bus_client.register_agent(
+            agent_name="newsreader",
+            agent_address=f"http://localhost:{NEWSREADER_AGENT_PORT}",
+            tools=["extract_news_content", "capture_screenshot", "analyze_image"]
+        )
+        logger.info("Registered tools with MCP Bus.")
+    except Exception as e:
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
     
     yield
     
     # Shutdown
-    print("🔄 Shutting down NewsReader Agent")
+    logger.info("NewsReader Agent shutdown")
     # Cleanup if needed
-    print("✅ NewsReader Agent shutdown complete")
+    logger.info("NewsReader Agent shutdown complete")
 
 app = FastAPI(
     title="NewsReader Agent", 
@@ -49,8 +88,7 @@ class ToolCall(BaseModel):
 @app.post("/extract_news_content")
 async def extract_news_content_endpoint(call: ToolCall):
     """Extract news content from URL - MCP Bus compatible"""
-    from llava_newsreader_agent import extract_news_content
-    return extract_news_content(*call.args, **call.kwargs)
+    return await extract_news_content(*call.args, **call.kwargs)
 
 @app.post("/capture_screenshot")
 async def capture_screenshot(call: ToolCall):
@@ -97,7 +135,7 @@ async def extract_news_content(url: str, screenshot_path: str = None) -> Dict[st
     """Extract news content from URL"""
     global agent
     if not agent:
-        agent = LlavaNewsReaderAgent()
+        agent = PracticalNewsReader()
     
     result = await agent.process_news_url(url, screenshot_path)
     return result.dict()
@@ -106,7 +144,7 @@ async def capture_webpage_screenshot(url: str, output_path: str = "page_llava.pn
     """Capture webpage screenshot"""
     global agent
     if not agent:
-        agent = LlavaNewsReaderAgent()
+        agent = PracticalNewsReader()
     
     return await agent.capture_screenshot(url, output_path)
 
@@ -114,7 +152,7 @@ def analyze_image_content(image_path: str) -> Dict[str, str]:
     """Analyze image content with LLaVA"""
     global agent
     if not agent:
-        agent = LlavaNewsReaderAgent()
+        agent = PracticalNewsReader()
     
     return agent.extract_content_with_llava(image_path)
 

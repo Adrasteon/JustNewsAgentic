@@ -10,6 +10,7 @@ Dependencies: git, networkx, fastapi, pydantic, uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Union
+from contextlib import asynccontextmanager
 import os
 import sys
 import subprocess
@@ -17,6 +18,7 @@ import tempfile
 import json
 import logging
 import importlib.util
+import requests
 from datetime import datetime
 from pathlib import Path
 import shutil
@@ -24,6 +26,27 @@ import shutil
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Environment variables
+REASONING_AGENT_PORT = int(os.environ.get("REASONING_AGENT_PORT", 8008))
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
+
+class MCPBusClient:
+    def __init__(self, base_url: str = MCP_BUS_URL):
+        self.base_url = base_url
+
+    def register_agent(self, agent_name: str, agent_address: str, tools: list):
+        registration_data = {
+            "name": agent_name,
+            "address": agent_address,
+        }
+        try:
+            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response.raise_for_status()
+            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
+            raise
 
 class SimpleNucleoidImplementation:
     """Simple fallback implementation of Nucleoid for basic reasoning."""
@@ -129,7 +152,29 @@ class SimpleNucleoidImplementation:
         self.rules = []
         return {"success": True, "message": "Knowledge base cleared"}
 
-app = FastAPI(title="JustNews V4 Reasoning Agent (Nucleoid)")
+# Define the lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    logger.info("Reasoning agent is starting up.")
+    mcp_bus_client = MCPBusClient()
+    try:
+        # Register with the MCP Bus
+        mcp_bus_client.register_agent(
+            agent_name="reasoning",
+            agent_address=f"http://localhost:{REASONING_AGENT_PORT}",
+            tools=["validate_fact", "detect_contradiction", "symbolic_reasoning"]
+        )
+        logger.info("Registered tools with MCP Bus.")
+    except Exception as e:
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    
+    yield
+    
+    # Shutdown logic
+    logger.info("Reasoning agent is shutting down.")
+
+app = FastAPI(title="JustNews V4 Reasoning Agent (Nucleoid)", lifespan=lifespan)
 
 # --- Nucleoid GitHub Integration ---
 class NucleoidEngine:
