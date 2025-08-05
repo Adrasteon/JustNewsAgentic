@@ -25,11 +25,13 @@ This project implements the JustNews V4 system, an agentic, MCP-first news analy
 - **Performance**: Bypassed BBC cookie walls to extract real article content
 - **Scalability**: Multi-browser concurrent processing for maximum throughput
 
-### 🤖 **NewsReader Integration - ✅ PRODUCTION STABLE**
+### 🤖 **NewsReader Integration - ✅ PRODUCTION STABLE + SCOUT INTEGRATION**
 - **Model**: LLaVA-1.5-7B with INT8 quantization (6.8GB GPU memory)
 - **Processing**: Screenshot analysis and DOM extraction hybrid approach
 - **Stability**: Zero crashes with proper memory management and modal handling
 - **Output**: Real news analysis with article titles, content, and metadata
+- **Scout Enhancement**: Enhanced crawling with visual + text content analysis
+- **MCP Integration**: Full agent communication via port 8009 with comprehensive API
 
 ## 🎯 Previous Achievements - Scout → Memory Pipeline
 
@@ -185,23 +187,24 @@ results = await enhanced_deep_crawl_site(
 
 ## Architecture
 
-JustNews V4 features a **multi-agent news analysis system** with **native TensorRT GPU acceleration** and **MCP (Model Context Protocol) bus communication**. The architecture consists of 7 specialized agents communicating through a central message bus.
+JustNews V4 features a **multi-agent news analysis system** with **native TensorRT GPU acceleration** and **MCP (Model Context Protocol) bus communication**. The architecture consists of 10 specialized agents communicating through a central message bus.
 
-**Current Status**: Native TensorRT Production Deployment - validated with ultra-safe testing achieving **2.69x-4.8x performance improvement** over baseline with zero crashes and completely clean operation.
+**Current Status**: Native TensorRT Production Deployment with Enhanced NewsReader Integration - validated with full pipeline testing achieving **complete visual + text content analysis** with zero crashes and completely clean operation.
 
 ### Agent Specifications (Optimized for RTX 3090)
 
 | Agent | Model | Memory | Status | Performance |
 |-------|-------|---------|--------|-------------|
 | **Analyst** | RoBERTa + BERT (TensorRT) | 2.3GB | ✅ Production | 730+ articles/sec |
-| **Scout** | LLaMA-3-8B + Crawl4AI | 8.0GB | ✅ Enhanced Deep Crawl | Native BestFirstCrawlingStrategy |
+| **Scout** | LLaMA-3-8B + Crawl4AI | 8.0GB | ✅ Enhanced Deep Crawl + NewsReader | Native BestFirstCrawlingStrategy |
+| **NewsReader** | LLaVA-1.5-7B (INT8) | 6.8GB | ✅ Production | Screenshot + Visual Analysis |
 | **Fact Checker** | DialoGPT-medium | 2.5GB | ⏳ TensorRT Ready | Scout-Optimized |
 | **Synthesizer** | DialoGPT-medium + Embeddings | 3.0GB | ⏳ TensorRT Ready | Content Synthesis |
 | **Critic** | DialoGPT-medium | 2.5GB | ⏳ TensorRT Ready | Quality Assessment |
 | **Chief Editor** | DialoGPT-medium | 2.0GB | ⏳ TensorRT Ready | Orchestration |
 | **Memory** | Vector Embeddings | 1.5GB | ⏳ TensorRT Ready | Semantic Search |
 | **Reasoning** | Nucleoid (symbolic logic) | <1GB | ✅ Production | Fact validation, contradiction detection |
-| **Total System** | **Multi-Model Pipeline** | **22.8GB** | **RTX 3090 Optimized** | **0.2GB Buffer** |
+| **Total System** | **Multi-Model Pipeline** | **29.6GB** | **RTX 3090 Optimized** | **Requires Optimization** |
 
 ### Strategic Architecture Design
 

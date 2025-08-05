@@ -61,14 +61,19 @@ def save_article(content: str, metadata: dict) -> dict:
         with conn.cursor() as cur:
             embedding_model = get_embedding_model()
             embedding = embedding_model.encode(content)
+            
+            # Get the next available ID (simple approach without sequence)
+            cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM articles")
+            next_id = cur.fetchone()[0]
+            
+            # Insert with explicit ID
             cur.execute(
-                "INSERT INTO articles (content, metadata, embedding) VALUES (%s, %s, %s) RETURNING id",
-                (content, metadata, embedding.tolist()),
+                "INSERT INTO articles (id, content, metadata, embedding) VALUES (%s, %s, %s, %s)",
+                (next_id, content, metadata, list(map(float, embedding))),
             )
-            article_id = cur.fetchone()[0]
             conn.commit()
-            log_feedback("save_article", {"article_id": article_id})
-            return {"id": article_id}
+            log_feedback("save_article", {"status": "success", "article_id": next_id})
+            return {"status": "success", "article_id": next_id}
     except Exception as e:
         logger.error(f"Error saving article: {e}")
         conn.rollback()

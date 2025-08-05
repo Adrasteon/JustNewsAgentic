@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
             tools=[
                 "discover_sources", "crawl_url", "deep_crawl_site", "enhanced_deep_crawl_site",
                 "intelligent_source_discovery", "intelligent_content_crawl", 
-                "intelligent_batch_analysis",
+                "intelligent_batch_analysis", "enhanced_newsreader_crawl",
                 "production_crawl_ultra_fast", "get_production_crawler_info"
             ],
         )
@@ -130,6 +130,16 @@ def intelligent_batch_analysis_endpoint(call: ToolCall):
         return intelligent_batch_analysis(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in intelligent_batch_analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/enhanced_newsreader_crawl")
+def enhanced_newsreader_crawl_endpoint(call: ToolCall):
+    try:
+        from tools import enhanced_newsreader_crawl
+        logger.info(f"Calling enhanced_newsreader_crawl with args: {call.args} and kwargs: {call.kwargs}")
+        return enhanced_newsreader_crawl(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in enhanced_newsreader_crawl: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

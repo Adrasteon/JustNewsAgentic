@@ -83,6 +83,11 @@ crash_safe_*.py
 single_article_*.py
 deploy_*.py
 start_*.py
+diagnose_*.py
+improved_*.py
+isolated_*.py
+balanced_*.py
+ultra_safe_*.py
 
 # CUDA debug and reset tools
 debug_cuda_resources.py

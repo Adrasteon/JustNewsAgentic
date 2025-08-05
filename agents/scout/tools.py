@@ -13,6 +13,9 @@ FEEDBACK_LOG = os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("scout.tools")
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("scout.tools")
+
 # Import Crawl4AI components for advanced deep crawling
 try:
     from crawl4ai import (
@@ -229,12 +232,11 @@ def intelligent_content_crawl(*args, **kwargs):
         if not content_text and url:
             logger.info(f"🕷️ No content provided, attempting to crawl {url}")
             try:
-                crawl_response = requests.post(
-                    "http://localhost:32768/crawl_url",
-                    json={"args": [url], "kwargs": {"extract_text": True, "extract_metadata": True}}
-                )
-                crawl_response.raise_for_status()
-                content_data = crawl_response.json()
+                # Use native crawl_url function instead of external service
+                content_data = crawl_url(url)
+                if "error" in content_data:
+                    logger.error(f"❌ Intelligent content crawl failed for {url}: {content_data['error']}")
+                    return {"url": url, "error": f"Crawl failed: {content_data['error']}"}
                 content_text = content_data.get("content", "")
             except Exception as crawl_error:
                 logger.error(f"❌ Intelligent content crawl failed for {url}: {crawl_error}")
@@ -621,18 +623,233 @@ def discover_sources(*args, **kwargs):
 
 def crawl_url(*args, **kwargs):
     """
-    Crawl a given URL and extract content. Interacts with crawl4ai Docker container.
+    Enhanced URL crawling with NewsReader screenshot and image interpretation.
+    This combines Crawl4AI text extraction with LLaVA visual analysis for comprehensive content understanding.
     """
-    logger.info(f"[ScoutAgent] Crawling URL with args: {args}, kwargs: {kwargs}")
+    logger.info(f"[ScoutAgent] Enhanced crawling URL with args: {args}, kwargs: {kwargs}")
+    
+    url = kwargs.get("url", args[0] if args else "")
+    use_newsreader = kwargs.get("use_newsreader", True)  # Default to using NewsReader
+    
+    if not url:
+        logger.error("No URL provided for crawling")
+        return {"error": "No URL provided"}
+    
     try:
-        # Call the running crawl4ai container
-        response = requests.post("http://localhost:32768/crawl_url", json={"args": args, "kwargs": kwargs})
-        response.raise_for_status()
-        return response.json()
+        # Step 1: Get standard text content using native Crawl4AI
+        text_content = None
+        if CRAWL4AI_NATIVE_AVAILABLE:
+            import asyncio
+            
+            async def native_crawl():
+                async with AsyncWebCrawler(verbose=False) as crawler:
+                    result = await crawler.arun(
+                        url=url,
+                        extraction_strategy="LLMExtractionStrategy",
+                        css_selector="main, article, .content, .story-body, [role='main']",
+                        user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
+                    )
+                    
+                    return {
+                        "content": result.cleaned_html or result.markdown or result.extracted_content or "",
+                        "extracted_content": result.extracted_content or "",
+                        "markdown": result.markdown or "",
+                        "title": getattr(result, 'title', ''),
+                        "description": getattr(result, 'description', ''),
+                        "method": "native_crawl4ai"
+                    }
+            
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            text_content = loop.run_until_complete(native_crawl())
+            logger.info(f"✅ Text extraction successful for {url}")
+        
+        # Step 2: Enhanced analysis with NewsReader if enabled
+        enhanced_analysis = None
+        if use_newsreader and text_content:
+            try:
+                # Call NewsReader agent via MCP Bus for screenshot and visual analysis
+                import requests
+                
+                newsreader_payload = {
+                    "args": [url],
+                    "kwargs": {"text_content": text_content.get("content", "")}
+                }
+                
+                response = requests.post(
+                    "http://localhost:8009/extract_news_from_url", 
+                    json=newsreader_payload, 
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    newsreader_result = response.json()
+                    enhanced_analysis = newsreader_result
+                    logger.info(f"✅ NewsReader visual analysis successful for {url}")
+                else:
+                    logger.warning(f"⚠️ NewsReader analysis failed with status {response.status_code}")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ NewsReader integration failed: {e}. Continuing with text-only analysis.")
+        
+        # Step 3: Combined result with both text and visual analysis
+        combined_result = {
+            "url": url,
+            "content": text_content.get("content", "") if text_content else "",
+            "extracted_content": text_content.get("extracted_content", "") if text_content else "",
+            "markdown": text_content.get("markdown", "") if text_content else "",
+            "metadata": {
+                "title": text_content.get("title", "") if text_content else "",
+                "description": text_content.get("description", "") if text_content else "",
+                "status": "success",
+                "method": "enhanced_crawl4ai_newsreader" if enhanced_analysis else text_content.get("method", "text_only")
+            }
+        }
+        
+        # Add NewsReader analysis if available
+        if enhanced_analysis:
+            combined_result["visual_analysis"] = enhanced_analysis
+            combined_result["headline"] = enhanced_analysis.get("headline", "")
+            combined_result["article"] = enhanced_analysis.get("article", "")
+            combined_result["processing_method"] = enhanced_analysis.get("method", "unknown")
+            
+            # Enhance content with visual insights
+            if enhanced_analysis.get("article") and len(enhanced_analysis["article"]) > len(combined_result["content"]):
+                combined_result["content"] = enhanced_analysis["article"]
+                combined_result["metadata"]["enhanced_by_vision"] = True
+        
+        return combined_result
+        
     except Exception as e:
-        logger.error(f"An error occurred during crawling: {e}")
-        log_feedback("crawl_url_error", {"args": args, "error": str(e)})
-        return []
+        logger.error(f"An error occurred during enhanced crawling: {e}")
+        log_feedback("enhanced_crawl_url_error", {"args": args, "error": str(e)})
+        return {"url": url, "error": str(e), "metadata": {"status": "error"}}
+
+def enhanced_newsreader_crawl(*args, **kwargs):
+    """
+    Premium URL crawling with integrated NewsReader screenshot and LLaVA visual analysis.
+    Combines Crawl4AI text extraction with visual interpretation for comprehensive content understanding.
+    """
+    logger.info(f"[ScoutAgent] Enhanced NewsReader crawling with args: {args}, kwargs: {kwargs}")
+    
+    url = kwargs.get("url", args[0] if args else "")
+    force_visual = kwargs.get("force_visual", False)  # Force visual analysis even for text-rich content
+    
+    if not url:
+        logger.error("No URL provided for enhanced crawling")
+        return {"error": "No URL provided"}
+    
+    try:
+        # Step 1: Standard text extraction using Crawl4AI  
+        logger.info(f"📝 Starting text extraction for {url}")
+        text_result = {}
+        
+        if CRAWL4AI_NATIVE_AVAILABLE:
+            import asyncio
+            
+            async def native_crawl():
+                async with AsyncWebCrawler(verbose=False) as crawler:
+                    result = await crawler.arun(
+                        url=url,
+                        extraction_strategy="LLMExtractionStrategy",
+                        css_selector="main, article, .content, .story-body, [role='main']",
+                        user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
+                    )
+                    
+                    return {
+                        "content": result.cleaned_html or result.markdown or result.extracted_content or "",
+                        "extracted_content": result.extracted_content or "",
+                        "markdown": result.markdown or "",
+                        "title": getattr(result, 'title', ''),
+                        "description": getattr(result, 'description', ''),
+                        "method": "native_crawl4ai"
+                    }
+            
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            text_result = loop.run_until_complete(native_crawl())
+            logger.info(f"✅ Text extraction successful for {url}")
+        
+        # Step 2: NewsReader visual analysis via MCP Bus
+        visual_analysis = None
+        try:
+            import requests
+            
+            newsreader_payload = {
+                "args": [url],
+                "kwargs": {
+                    "text_fallback": text_result.get("content", ""),
+                    "force_screenshot": True
+                }
+            }
+            
+            logger.info(f"🔍 Requesting NewsReader visual analysis for {url}")
+            response = requests.post(
+                "http://localhost:8009/extract_news_from_url", 
+                json=newsreader_payload, 
+                timeout=45  # Allow more time for screenshot + LLaVA analysis
+            )
+            
+            if response.status_code == 200:
+                visual_analysis = response.json()
+                logger.info(f"✅ NewsReader visual analysis completed for {url}")
+            else:
+                logger.warning(f"⚠️ NewsReader returned status {response.status_code}")
+                
+        except Exception as e:
+            logger.warning(f"⚠️ NewsReader visual analysis failed: {e}")
+        
+        # Step 3: Intelligent content fusion
+        enhanced_result = {
+            "url": url,
+            "method": "enhanced_newsreader_crawl",
+            "text_extraction": text_result,
+            "visual_analysis": visual_analysis,
+            "status": "success"
+        }
+        
+        # Determine best content source
+        text_content = text_result.get("content", "")
+        visual_content = visual_analysis.get("article", "") if visual_analysis else ""
+        visual_headline = visual_analysis.get("headline", "") if visual_analysis else ""
+        
+        # Use visual content if it's substantially better or if text failed
+        if visual_content and (len(visual_content) > len(text_content) * 1.2 or len(text_content) < 100):
+            enhanced_result["content"] = visual_content
+            enhanced_result["primary_source"] = "visual_analysis"
+            enhanced_result["headline"] = visual_headline
+            logger.info(f"📸 Using visual analysis as primary content source for {url}")
+        else:
+            enhanced_result["content"] = text_content
+            enhanced_result["primary_source"] = "text_extraction" 
+            enhanced_result["headline"] = text_result.get("title", "")
+            logger.info(f"📝 Using text extraction as primary content source for {url}")
+        
+        # Add combined metadata
+        enhanced_result["metadata"] = {
+            "title": enhanced_result.get("headline", ""),
+            "description": text_result.get("description", ""),
+            "text_method": text_result.get("method", "unknown"),
+            "visual_method": visual_analysis.get("method", "none") if visual_analysis else "none",
+            "visual_success": visual_analysis.get("success", False) if visual_analysis else False,
+            "processing_time": visual_analysis.get("processing_time", 0) if visual_analysis else 0,
+            "content_source": enhanced_result.get("primary_source", "unknown")
+        }
+        
+        return enhanced_result
+        
+    except Exception as e:
+        logger.error(f"Enhanced NewsReader crawling failed: {e}")
+        log_feedback("enhanced_newsreader_crawl_error", {"args": args, "error": str(e)})
+        return {"url": url, "error": str(e), "metadata": {"status": "error"}}
 
 def deep_crawl_site(*args, **kwargs):
     """
