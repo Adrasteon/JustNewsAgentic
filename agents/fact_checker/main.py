@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Environment variables
 FACT_CHECKER_AGENT_PORT = int(os.environ.get("FACT_CHECKER_AGENT_PORT", 8003))
-MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -24,9 +24,8 @@ class MCPBusClient:
 
     def register_agent(self, agent_name: str, agent_address: str, tools: list):
         registration_data = {
-            "agent_name": agent_name,
-            "agent_address": agent_address,
-            "tools": tools,
+            "name": agent_name,
+            "address": agent_address,
         }
         try:
             response = requests.post(f"{self.base_url}/register", json=registration_data)
@@ -44,7 +43,7 @@ async def lifespan(app: FastAPI):
     try:
         mcp_bus_client.register_agent(
             agent_name="fact_checker",
-            agent_address=f"http://fact_checker:{FACT_CHECKER_AGENT_PORT}",
+            agent_address=f"http://localhost:{FACT_CHECKER_AGENT_PORT}",
             tools=["verify_facts", "validate_sources", "validate_is_news_gpu", "verify_claims_gpu"],
         )
         logger.info("Registered tools with MCP Bus.")
@@ -83,6 +82,28 @@ def verify_claims(call: ToolCall):
     except Exception as e:
         logger.error(f"An error occurred in verify_claims: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/validate_claims")
+def validate_claims_endpoint(request: dict):
+    """Validates claims in the provided content."""
+    try:
+        # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
+        if "args" in request and len(request["args"]) > 0:
+            content = request["args"][0]
+        elif "kwargs" in request and "content" in request["kwargs"]:
+            content = request["kwargs"]["content"]
+        else:
+            raise ValueError("Missing 'content' in request")
+
+        # Perform validation logic (mocked for now)
+        validation_score = 0.85  # Example score
+        return {"validation_score": validation_score}
+    except ValueError as ve:
+        logger.warning(f"Validation error in validate_claims: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"An error occurred in validate_claims: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # GPU-Enhanced Endpoints (New V4 Performance)
 @app.post("/validate_is_news_gpu")

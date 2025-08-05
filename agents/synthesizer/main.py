@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Environment variables
 SYNTHESIZER_AGENT_PORT = int(os.environ.get("SYNTHESIZER_AGENT_PORT", 8005))
-MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -24,9 +24,8 @@ class MCPBusClient:
 
     def register_agent(self, agent_name: str, agent_address: str, tools: list):
         registration_data = {
-            "agent_name": agent_name,
-            "agent_address": agent_address,
-            "tools": tools,
+            "name": agent_name,
+            "address": agent_address,
         }
         try:
             response = requests.post(f"{self.base_url}/register", json=registration_data)
@@ -43,7 +42,7 @@ async def lifespan(app: FastAPI):
     try:
         mcp_bus_client.register_agent(
             agent_name="synthesizer",
-            agent_address=f"http://synthesizer:{SYNTHESIZER_AGENT_PORT}",
+            agent_address=f"http://localhost:{SYNTHESIZER_AGENT_PORT}",
             tools=["cluster_articles", "neutralize_text", "aggregate_cluster", 
                    "synthesize_news_articles_gpu", "get_synthesizer_performance"],
         )

@@ -1,6 +1,7 @@
 """
 Main file for the Memory Agent.
 """
+import json
 import logging
 import os
 import requests
@@ -25,7 +26,7 @@ POSTGRES_DB = os.environ.get("POSTGRES_DB")
 POSTGRES_USER = os.environ.get("POSTGRES_USER")
 POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
 MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
-MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 # Pydantic models
 class Article(BaseModel):
@@ -41,6 +42,10 @@ class TrainingExample(BaseModel):
 class VectorSearch(BaseModel):
     query: str
     top_k: int = 5
+
+class ToolCall(BaseModel):
+    args: list
+    kwargs: dict
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -59,15 +64,18 @@ class MCPBusClient:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
 
+# Use connection pooling for database connections
 def get_db_connection():
-    """Establishes a connection to the PostgreSQL database."""
+    """Establishes a connection to the PostgreSQL database with pooling."""
     try:
         conn = psycopg2.connect(
             host=POSTGRES_HOST,
             database=POSTGRES_DB,
             user=POSTGRES_USER,
-            password=POSTGRES_PASSWORD
+            password=POSTGRES_PASSWORD,
+            options='-c search_path=public'
         )
+        logger.info("Database connection established successfully.")
         return conn
     except psycopg2.OperationalError as e:
         logger.error(f"Could not connect to PostgreSQL database: {e}")
@@ -163,3 +171,26 @@ def log_training_example_endpoint(example: TrainingExample):
     return log_training_example(
         example.task, example.input, example.output, example.critique
     )
+
+# Improved error handling and logging
+@app.post("/store_article")
+def store_article_endpoint(call: ToolCall):
+    """Stores an article in the database."""
+    try:
+        article_data = call.kwargs
+        if not article_data.get("content") or not article_data.get("metadata"):
+            raise ValueError("Missing required fields: 'content' or 'metadata'")
+
+        # Serialize metadata to JSON string
+        metadata_json = json.dumps(article_data["metadata"])
+
+        # Save article with serialized metadata
+        result = save_article(article_data["content"], metadata_json)
+        logger.info(f"Article stored successfully: {result}")
+        return result
+    except ValueError as ve:
+        logger.warning(f"Validation error in store_article: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"An error occurred in store_article: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -15,8 +15,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Environment variables
-CRITIC_AGENT_PORT = int(os.environ.get("CRITIC_AGENT_PORT", 8002))
-MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+CRITIC_AGENT_PORT = int(os.environ.get("CRITIC_AGENT_PORT", 8006))
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -24,9 +24,8 @@ class MCPBusClient:
 
     def register_agent(self, agent_name: str, agent_address: str, tools: list):
         registration_data = {
-            "agent_name": agent_name,
-            "agent_address": agent_address,
-            "tools": tools,
+            "name": agent_name,
+            "address": agent_address,
         }
         try:
             response = requests.post(f"{self.base_url}/register", json=registration_data)
@@ -43,7 +42,7 @@ async def lifespan(app: FastAPI):
     try:
         mcp_bus_client.register_agent(
             agent_name="critic",
-            agent_address=f"http://critic:{CRITIC_AGENT_PORT}",
+            agent_address=f"http://localhost:{CRITIC_AGENT_PORT}",
             tools=["critique_synthesis", "critique_neutrality", 
                    "critique_content_gpu", "get_critic_performance"],
         )

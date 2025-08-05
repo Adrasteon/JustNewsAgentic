@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Environment variables
 ANALYST_AGENT_PORT = int(os.environ.get("ANALYST_AGENT_PORT", 8004))
 MODEL_PATH = os.environ.get("MISTRAL_7B_PATH", "./models/mistral-7b-instruct-v0.2")
-MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://mcp_bus:8000")
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 # Pydantic models
 class ToolCall(BaseModel):
@@ -43,9 +43,8 @@ class MCPBusClient:
 
     def register_agent(self, agent_name: str, agent_address: str, tools: list):
         registration_data = {
-            "agent_name": agent_name,
-            "agent_address": agent_address,
-            "tools": tools,
+            "name": agent_name,
+            "address": agent_address,
         }
         try:
             response = requests.post(f"{self.base_url}/register", json=registration_data)
@@ -71,7 +70,7 @@ async def lifespan(app: FastAPI):
     try:
         mcp_bus_client.register_agent(
             agent_name="analyst",
-            agent_address=f"http://analyst:{ANALYST_AGENT_PORT}",
+            agent_address=f"http://localhost:{ANALYST_AGENT_PORT}",
             tools=[
                 "score_bias", "score_sentiment", "identify_entities",
                 "score_bias_batch", "score_sentiment_batch", 
@@ -182,4 +181,18 @@ def engine_info_endpoint():
         return get_engine_info()
     except Exception as e:
         logger.error(f"An error occurred getting engine info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze_sentiment_and_bias")
+def analyze_sentiment_and_bias_endpoint(call: ToolCall):
+    """Analyzes both sentiment and bias for a given text."""
+    try:
+        sentiment_result = score_sentiment(*call.args, **call.kwargs)
+        bias_result = score_bias(*call.args, **call.kwargs)
+        return {
+            "sentiment_score": sentiment_result,
+            "bias_score": bias_result
+        }
+    except Exception as e:
+        logger.error(f"An error occurred in analyze_sentiment_and_bias: {e}")
         raise HTTPException(status_code=500, detail=str(e))
