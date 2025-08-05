@@ -34,21 +34,34 @@ def _load_site_crawlers():
     global UltraFastBBCCrawler, ProductionBBCCrawler
     
     try:
-        # Add the sites directory to the path for imports
+        # Try to import from the sites directory
         sites_dir = Path(__file__).parent / "sites"
-        sys.path.insert(0, str(sites_dir))
+        if sites_dir.exists():
+            sys.path.insert(0, str(sites_dir))
+            
+            # Import the crawler classes
+            try:
+                from bbc_crawler import UltraFastBBCCrawler as _UltraFastBBCCrawler
+                UltraFastBBCCrawler = _UltraFastBBCCrawler
+            except ImportError:
+                logger.warning("⚠️ Could not import UltraFastBBCCrawler")
+                
+            try:
+                from bbc_ai_crawler import ProductionBBCCrawler as _ProductionBBCCrawler  
+                ProductionBBCCrawler = _ProductionBBCCrawler
+            except ImportError:
+                logger.warning("⚠️ Could not import ProductionBBCCrawler")
         
-        from bbc_crawler import UltraFastBBCCrawler as _UltraFastBBCCrawler
-        from bbc_ai_crawler import ProductionBBCCrawler as _ProductionBBCCrawler
+        # Check if we have at least one crawler loaded
+        if UltraFastBBCCrawler or ProductionBBCCrawler:
+            logger.info("✅ Site crawlers loaded successfully")
+            return True
+        else:
+            logger.warning("⚠️ No site crawlers could be loaded")
+            return False
         
-        UltraFastBBCCrawler = _UltraFastBBCCrawler
-        ProductionBBCCrawler = _ProductionBBCCrawler
-        
-        logger.info("✅ Site crawlers loaded successfully")
-        return True
-        
-    except ImportError as e:
-        logger.warning(f"⚠️ Could not import site crawlers: {e}")
+    except Exception as e:
+        logger.warning(f"⚠️ Error loading site crawlers: {e}")
         return False
 
 class ProductionCrawlerOrchestrator:
@@ -89,76 +102,6 @@ class ProductionCrawlerOrchestrator:
             return []
         return list(self.sites.keys())
     
-    def crawl_site_ultra_fast(self, site: str, max_articles: int = 50) -> Dict:
-        """
-        Perform ultra-fast crawling for a specific site
-        
-        Args:
-            site: Site identifier (e.g., 'bbc')
-            max_articles: Maximum articles to crawl
-            
-        Returns:
-            Dict with crawled articles and metadata
-        """
-        if not self._ensure_crawlers_loaded():
-            return {"error": "Site crawlers not available", "articles": []}
-            
-        if site not in self.sites:
-            return {"error": f"Site '{site}' not configured", "articles": []}
-        
-        try:
-            crawler = self.sites[site]['ultra_fast']
-            if hasattr(crawler, 'crawl_articles'):
-                result = crawler.crawl_articles(max_articles=max_articles)
-                return {
-                    "success": True,
-                    "site": site,
-                    "method": "ultra_fast",
-                    "articles": result.get('articles', []),
-                    "statistics": result.get('statistics', {}),
-                    "processing_speed": result.get('processing_speed', 'N/A')
-                }
-            else:
-                return {"error": f"Crawler for {site} doesn't support crawl_articles", "articles": []}
-        except Exception as e:
-            logger.error(f"Error in ultra-fast crawling for {site}: {e}")
-            return {"error": str(e), "articles": []}
-    
-    def crawl_site_ai_enhanced(self, site: str, max_articles: int = 20) -> Dict:
-        """
-        Perform AI-enhanced crawling for a specific site
-        
-        Args:
-            site: Site identifier (e.g., 'bbc')
-            max_articles: Maximum articles to crawl
-            
-        Returns:
-            Dict with crawled articles and AI analysis
-        """
-        if not self._ensure_crawlers_loaded():
-            return {"error": "Site crawlers not available", "articles": []}
-            
-        if site not in self.sites:
-            return {"error": f"Site '{site}' not configured", "articles": []}
-        
-        try:
-            crawler = self.sites[site]['ai_enhanced']
-            if hasattr(crawler, 'crawl_and_analyze'):
-                result = crawler.crawl_and_analyze(max_articles=max_articles)
-                return {
-                    "success": True,
-                    "site": site,
-                    "method": "ai_enhanced",
-                    "articles": result.get('articles', []),
-                    "analysis": result.get('analysis', {}),
-                    "processing_speed": result.get('processing_speed', 'N/A')
-                }
-            else:
-                return {"error": f"AI crawler for {site} doesn't support crawl_and_analyze", "articles": []}
-        except Exception as e:
-            logger.error(f"Error in AI-enhanced crawling for {site}: {e}")
-            return {"error": str(e), "articles": []}
-        
     async def crawl_site_ultra_fast(self, site: str, target_articles: int = 100) -> Dict[str, Any]:
         """
         High-speed crawling for maximum throughput (8.14+ articles/second)
