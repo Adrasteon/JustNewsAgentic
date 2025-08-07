@@ -65,7 +65,7 @@ class ToolCall(BaseModel):
 @app.post("/discover_sources")
 def discover_sources(call: ToolCall):
     try:
-        from tools import discover_sources
+        from agents.scout.tools import discover_sources
         logger.info(f"Calling discover_sources with args: {call.args} and kwargs: {call.kwargs}")
         return discover_sources(*call.args, **call.kwargs)
     except Exception as e:
@@ -75,7 +75,7 @@ def discover_sources(call: ToolCall):
 @app.post("/crawl_url")
 def crawl_url(call: ToolCall):
     try:
-        from tools import crawl_url
+        from agents.scout.tools import crawl_url
         logger.info(f"Calling crawl_url with args: {call.args} and kwargs: {call.kwargs}")
         return crawl_url(*call.args, **call.kwargs)
     except Exception as e:
@@ -85,7 +85,7 @@ def crawl_url(call: ToolCall):
 @app.post("/deep_crawl_site")
 def deep_crawl_site(call: ToolCall):
     try:
-        from tools import deep_crawl_site
+        from agents.scout.tools import deep_crawl_site
         logger.info(f"Calling deep_crawl_site with args: {call.args} and kwargs: {call.kwargs}")
         return deep_crawl_site(*call.args, **call.kwargs)
     except Exception as e:
@@ -95,7 +95,7 @@ def deep_crawl_site(call: ToolCall):
 @app.post("/enhanced_deep_crawl_site")
 async def enhanced_deep_crawl_site_endpoint(call: ToolCall):
     try:
-        from tools import enhanced_deep_crawl_site
+        from agents.scout.tools import enhanced_deep_crawl_site
         logger.info(f"Calling enhanced_deep_crawl_site with args: {call.args} and kwargs: {call.kwargs}")
         return await enhanced_deep_crawl_site(*call.args, **call.kwargs)
     except Exception as e:
@@ -105,7 +105,7 @@ async def enhanced_deep_crawl_site_endpoint(call: ToolCall):
 @app.post("/intelligent_source_discovery")
 def intelligent_source_discovery_endpoint(call: ToolCall):
     try:
-        from tools import intelligent_source_discovery
+        from agents.scout.tools import intelligent_source_discovery
         logger.info(f"Calling intelligent_source_discovery with args: {call.args} and kwargs: {call.kwargs}")
         return intelligent_source_discovery(*call.args, **call.kwargs)
     except Exception as e:
@@ -115,7 +115,7 @@ def intelligent_source_discovery_endpoint(call: ToolCall):
 @app.post("/intelligent_content_crawl")
 def intelligent_content_crawl_endpoint(call: ToolCall):
     try:
-        from tools import intelligent_content_crawl
+        from agents.scout.tools import intelligent_content_crawl
         logger.info(f"Calling intelligent_content_crawl with args: {call.args} and kwargs: {call.kwargs}")
         return intelligent_content_crawl(*call.args, **call.kwargs)
     except Exception as e:
@@ -125,7 +125,7 @@ def intelligent_content_crawl_endpoint(call: ToolCall):
 @app.post("/intelligent_batch_analysis")
 def intelligent_batch_analysis_endpoint(call: ToolCall):
     try:
-        from tools import intelligent_batch_analysis
+        from agents.scout.tools import intelligent_batch_analysis
         logger.info(f"Calling intelligent_batch_analysis with args: {call.args} and kwargs: {call.kwargs}")
         return intelligent_batch_analysis(*call.args, **call.kwargs)
     except Exception as e:
@@ -135,7 +135,7 @@ def intelligent_batch_analysis_endpoint(call: ToolCall):
 @app.post("/enhanced_newsreader_crawl")
 def enhanced_newsreader_crawl_endpoint(call: ToolCall):
     try:
-        from tools import enhanced_newsreader_crawl
+        from agents.scout.tools import enhanced_newsreader_crawl
         logger.info(f"Calling enhanced_newsreader_crawl with args: {call.args} and kwargs: {call.kwargs}")
         return enhanced_newsreader_crawl(*call.args, **call.kwargs)
     except Exception as e:
@@ -163,10 +163,21 @@ def log_feedback(call: ToolCall):
 # PRODUCTION CRAWLER ENDPOINTS
 # =============================================================================
 
+
+@app.post("/production_crawl_ai_enhanced")
+async def production_crawl_ai_enhanced_endpoint(call: ToolCall):
+    try:
+        from agents.scout.tools import production_crawl_ai_enhanced
+        logger.info(f"Calling production_crawl_ai_enhanced with args: {call.args} and kwargs: {call.kwargs}")
+        return await production_crawl_ai_enhanced(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in production_crawl_ai_enhanced: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/production_crawl_ultra_fast")
 async def production_crawl_ultra_fast_endpoint(call: ToolCall):
     try:
-        from tools import production_crawl_ultra_fast
+        from agents.scout.tools import production_crawl_ultra_fast
         logger.info(f"Calling production_crawl_ultra_fast with args: {call.args} and kwargs: {call.kwargs}")
         return await production_crawl_ultra_fast(*call.args, **call.kwargs)
     except Exception as e:
@@ -176,7 +187,7 @@ async def production_crawl_ultra_fast_endpoint(call: ToolCall):
 @app.post("/get_production_crawler_info")
 def get_production_crawler_info_endpoint(call: ToolCall):
     try:
-        from tools import get_production_crawler_info
+        from agents.scout.tools import get_production_crawler_info
         logger.info(f"Calling get_production_crawler_info with args: {call.args} and kwargs: {call.kwargs}")
         return get_production_crawler_info(*call.args, **call.kwargs)
     except Exception as e:

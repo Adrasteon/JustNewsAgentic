@@ -870,14 +870,40 @@ def deep_crawl_site(*args, **kwargs):
 # PRODUCTION CRAWLERS - High-Speed News Gathering
 # =============================================================================
 
-# Initialize production crawlers
+
+# Initialize production crawlers with robust error handling
+import traceback
+production_crawler = None
+PRODUCTION_CRAWLERS_AVAILABLE = False
 try:
-    from .production_crawlers import ProductionCrawlerOrchestrator
-    production_crawler = ProductionCrawlerOrchestrator()
-    PRODUCTION_CRAWLERS_AVAILABLE = True
-    logger.info("✅ Production crawlers initialized successfully")
-except ImportError as e:
-    logger.warning(f"⚠️ Production crawlers not available: {e}")
+    from agents.scout.production_crawlers import ProductionCrawlerOrchestrator
+    try:
+        production_crawler = ProductionCrawlerOrchestrator()
+        supported_sites = []
+        try:
+            supported_sites = production_crawler.get_supported_sites()
+        except Exception as site_e:
+            logger.error(f"❌ Exception calling get_supported_sites: {site_e}")
+            logger.error(traceback.format_exc())
+            log_feedback("production_crawler_supported_sites_error", {"error": str(site_e), "traceback": traceback.format_exc()})
+        logger.info(f"[DIAG] ProductionCrawlerOrchestrator supported_sites at startup: {supported_sites}")
+        log_feedback("production_crawler_supported_sites", {"supported_sites": supported_sites})
+        if production_crawler and supported_sites:
+            PRODUCTION_CRAWLERS_AVAILABLE = True
+            logger.info("✅ Production crawlers initialized successfully")
+        else:
+            logger.warning("⚠️ Production crawlers loaded but no supported sites detected.")
+            PRODUCTION_CRAWLERS_AVAILABLE = False
+    except Exception as inst_e:
+        logger.error(f"❌ Error initializing ProductionCrawlerOrchestrator: {inst_e}")
+        logger.error(traceback.format_exc())
+        log_feedback("production_crawler_init_error", {"error": str(inst_e), "traceback": traceback.format_exc()})
+        production_crawler = None
+        PRODUCTION_CRAWLERS_AVAILABLE = False
+except ImportError as import_e:
+    logger.error(f"❌ ImportError loading ProductionCrawlerOrchestrator: {import_e}")
+    logger.error(traceback.format_exc())
+    log_feedback("production_crawler_import_error", {"error": str(import_e), "traceback": traceback.format_exc()})
     production_crawler = None
     PRODUCTION_CRAWLERS_AVAILABLE = False
 
@@ -912,6 +938,36 @@ async def production_crawl_ultra_fast(site: str, target_articles: int = 100):
     except Exception as e:
         logger.error(f"Ultra-fast production crawl failed for {site}: {e}")
         log_feedback("production_crawl_ultra_fast_error", {"site": site, "error": str(e)})
+        return {"error": str(e), "articles": []}
+
+# === AI-ENHANCED PRODUCTION CRAWL ===
+async def production_crawl_ai_enhanced(site: str, target_articles: int = 100):
+    """
+    AI-enhanced production crawling for full article extraction and NewsReader analysis.
+    Args:
+        site: News site identifier (e.g., 'bbc')
+        target_articles: Number of articles to crawl
+    Returns:
+        Dict with crawl results and performance metrics
+    """
+    logger.info(f"[ScoutAgent] AI-enhanced production crawl: {site} ({target_articles} articles)")
+    if not PRODUCTION_CRAWLERS_AVAILABLE:
+        error_msg = "Production crawlers not available"
+        logger.error(error_msg)
+        log_feedback("production_crawl_ai_enhanced_error", {"site": site, "error": error_msg})
+        return {"error": error_msg, "articles": []}
+    try:
+        results = await production_crawler.crawl_site_ai_enhanced(site, target_articles)
+        log_feedback("production_crawl_ai_enhanced", {
+            "site": site,
+            "target": target_articles,
+            "actual": results.get("count", 0),
+            "rate": results.get("articles_per_second", 0)
+        })
+        return results
+    except Exception as e:
+        logger.error(f"AI-enhanced production crawl failed for {site}: {e}")
+        log_feedback("production_crawl_ai_enhanced_error", {"site": site, "error": str(e)})
         return {"error": str(e), "articles": []}
 
 def get_production_crawler_info():

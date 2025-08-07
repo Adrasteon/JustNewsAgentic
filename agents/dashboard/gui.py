@@ -13,6 +13,18 @@ class DashboardGUI(QMainWindow):
         self.setWindowTitle("Dashboard Agent GUI")
         self.setGeometry(100, 100, 800, 600)
 
+        # Robust error logging setup
+        import logging
+        self.logger = logging.getLogger("DashboardGUI")
+        handler = logging.FileHandler("dashboard_gui_error.log", encoding="utf-8")
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+
+        # Monitor thread control flag
+        self.monitor_thread_running = True
+
         # Apply dark theme stylesheet
         dark_grey = "#232323"
         white = "#ffffff"
@@ -27,7 +39,7 @@ class DashboardGUI(QMainWindow):
             QPushButton:disabled {{ background: #222; color: #888; }}
         """)
 
-    # Create the tab widget and add all tabs
+        # Create the tab widget and add all tabs
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
         self.tabs.addTab(self.create_monitoring_tab(), "Monitoring")
@@ -35,6 +47,36 @@ class DashboardGUI(QMainWindow):
         self.tabs.addTab(self.create_services_tab(), "Services")
         self.tabs.addTab(self.create_web_crawl_tab(), "Web Crawl")
         self.tabs.addTab(self.create_settings_tab(), "Settings")
+        self.tabs.currentChanged.connect(self.on_tab_changed)
+
+    def on_tab_changed(self, index):
+        # If Monitoring tab is selected, print a status update for all agents
+        if self.tabs.tabText(index) == "Monitoring":
+            self.print_monitor_status_update()
+
+    def print_monitor_status_update(self):
+        import time
+        agent_ports = [8000, 8001, 8002, 8003, 8004, 8005, 8006, 8007, 8008, 8009]
+        agent_names = [
+            "MCP Bus", "Chief Editor Agent", "Scout Agent", "Fact Checker Agent", "Analyst Agent",
+            "Synthesizer Agent", "Critic Agent", "Memory Agent", "Reasoning Agent", "NewsReader Agent"
+        ]
+        lines = []
+        for name, port in zip(agent_names, agent_ports):
+            try:
+                if port == 8000:
+                    resp = requests.get(f"http://localhost:{port}/agents", timeout=1)
+                else:
+                    resp = requests.get(f"http://localhost:{port}/health", timeout=1)
+                if resp.status_code == 200:
+                    status = "Running"
+                else:
+                    status = "Stopped"
+            except Exception:
+                status = "Stopped"
+            ts = time.strftime("%Y-%m-%d %H:%M:%S")
+            lines.append(f"[{ts}] {name} (port {port}): {status}")
+        self.append_monitor_output("\n".join(lines))
     def create_web_crawl_tab(self):
         from PyQt5.QtWidgets import QCheckBox
         tab = QWidget()
@@ -112,15 +154,103 @@ class DashboardGUI(QMainWindow):
             self.crawl_urls.append(url)
 
     def toggle_crawl(self):
+        import threading
         self.crawl_active = not self.crawl_active
         if self.crawl_active:
             self.crawl_toggle_btn.setText("Stop Crawl")
             self.crawl_toggle_btn.setStyleSheet("background: #c62828; color: #fff; font-weight: bold; padding: 8px 24px; border-radius: 6px;")
             self.crawl_status_label.setText("Crawling started for selected targets.")
+            # Get selected URLs
+            selected_urls = [cb.text() for cb in self.crawl_url_checkboxes if cb.isChecked()]
+            if not selected_urls:
+                self.crawl_status_label.setText("No URLs selected.")
+                self.crawl_active = False
+                self.crawl_toggle_btn.setText("Start Crawl")
+                self.crawl_toggle_btn.setStyleSheet("background: #1976d2; color: #fff; font-weight: bold; padding: 8px 24px; border-radius: 6px;")
+                return
+            # Log crawl start in monitor
+            self.append_monitor_output(f"[Crawl] Starting crawl for: {', '.join(selected_urls)}")
+            # Start crawl in background thread
+            self.crawl_threads = []
+            self.crawl_stats = {url: {"crawled": 0, "articles": 0, "last": None} for url in selected_urls}
+            for url in selected_urls:
+                t = threading.Thread(target=self.start_scout_crawl, args=(url,), daemon=True)
+                t.start()
+                self.crawl_threads.append(t)
+            # Start polling for crawl stats
+            self.crawl_polling = True
+            self.poll_crawl_stats()
         else:
             self.crawl_toggle_btn.setText("Start Crawl")
             self.crawl_toggle_btn.setStyleSheet("background: #1976d2; color: #fff; font-weight: bold; padding: 8px 24px; border-radius: 6px;")
             self.crawl_status_label.setText("Crawling stopped.")
+            self.append_monitor_output("[Crawl] Crawl stopped.")
+            self.crawl_polling = False
+
+    def start_scout_crawl(self, url):
+        import requests
+        import time
+        try:
+            # Call Scout Agent's enhanced_deep_crawl_site endpoint
+            payload = {
+                "args": [],
+                "kwargs": {
+                    "url": url,
+                    "max_depth": 3,
+                    "max_pages": 100,
+                    "word_count_threshold": 500,
+                    "quality_threshold": 0.6,
+                    "analyze_content": True
+                }
+            }
+            resp = requests.post("http://localhost:8002/enhanced_deep_crawl_site", json=payload, timeout=60)
+            if resp.status_code == 200:
+                result = resp.json()
+                articles_found = len(result) if isinstance(result, list) else 0
+                self.crawl_stats[url]["crawled"] = self.crawl_stats[url].get("crawled", 0) + 1
+                self.crawl_stats[url]["articles"] = articles_found
+                self.crawl_stats[url]["last"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                self.append_monitor_output(f"[Crawl] Finished crawl for {url}: {articles_found} articles found.")
+            else:
+                self.append_monitor_output(f"[Crawl] Error crawling {url}: {resp.status_code}")
+        except Exception as e:
+            self.append_monitor_output(f"[Crawl] Exception crawling {url}: {e}")
+
+    def poll_crawl_stats(self):
+        import threading
+        import requests
+        import time
+        if not getattr(self, "crawl_polling", False):
+            return
+        try:
+            # For each URL, poll Scout Agent for crawl stats (simulate with get_production_crawler_info)
+            resp = requests.post("http://localhost:8002/get_production_crawler_info", json={"args": [], "kwargs": {}})
+            if resp.status_code == 200:
+                info = resp.json()
+                # Try to extract stats for each site
+                for url in self.crawl_stats:
+                    # Try to match by domain or site name
+                    site_name = None
+                    for site in info.get("supported_sites", []):
+                        if site in url:
+                            site_name = site
+                            break
+                    if site_name:
+                        site_info = info.get("site_details", {}).get(site_name, {})
+                        crawled = site_info.get("pages_crawled", 0)
+                        articles = site_info.get("articles_found", 0)
+                        self.crawl_stats[url]["crawled"] = crawled
+                        self.crawl_stats[url]["articles"] = articles
+                        self.crawl_stats[url]["last"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                        self.append_monitor_output(f"[Crawl] Progress for {url}: {crawled} pages crawled, {articles} articles found.")
+            else:
+                self.append_monitor_output(f"[Crawl] Error polling crawl stats: {resp.status_code}")
+        except Exception as e:
+            self.append_monitor_output(f"[Crawl] Exception polling crawl stats: {e}")
+        # Schedule next poll in 2 seconds
+        from PyQt5.QtCore import QTimer
+        if getattr(self, "crawl_polling", False):
+            QTimer.singleShot(2000, self.poll_crawl_stats)
 
 
     def create_services_tab(self):
@@ -183,6 +313,32 @@ class DashboardGUI(QMainWindow):
             layout.addLayout(row)
             self.agent_buttons[name] = (status_label, start_btn, stop_btn, port)
 
+            from PyQt5.QtWidgets import QProgressBar
+            self.agent_activity = {}  # name: (activity_label, last_activity_label)
+
+            for name, port in self.agent_info:
+                row = QHBoxLayout()
+                label = QLabel(f"{name} (port {port})")
+                status_label = QLabel("Checking...")
+                activity_label = QLabel("●")
+                activity_label.setStyleSheet("color: #888; font-size: 18px; margin-left: 8px;")
+                last_activity_label = QLabel("")
+                last_activity_label.setStyleSheet("color: #aaa; font-size: 11px; margin-left: 8px;")
+                start_btn = QPushButton("Start")
+                stop_btn = QPushButton("Stop")
+                start_btn.setFixedWidth(60)
+                stop_btn.setFixedWidth(60)
+                start_btn.clicked.connect(lambda _, n=name: self.start_agent(n))
+                stop_btn.clicked.connect(lambda _, n=name: self.stop_agent(n))
+                row.addWidget(label)
+                row.addWidget(status_label)
+                row.addWidget(activity_label)
+                row.addWidget(last_activity_label)
+                row.addWidget(start_btn)
+                row.addWidget(stop_btn)
+                layout.addLayout(row)
+                self.agent_buttons[name] = (status_label, start_btn, stop_btn, port)
+                self.agent_activity[name] = (activity_label, last_activity_label)
         # Initial status check
         threading.Thread(target=self.update_all_status, daemon=True).start()
 
@@ -226,28 +382,38 @@ class DashboardGUI(QMainWindow):
             self.update_agent_status(name, port)
 
     def update_agent_status(self, name, port):
+        import time
         status_label, start_btn, stop_btn, _ = self.agent_buttons[name]
-        try:
-            if port == 8000:
-                # MCP Bus
-                resp = requests.get(f"http://localhost:{port}/agents", timeout=1)
-            else:
-                resp = requests.get(f"http://localhost:{port}/health", timeout=1)
-            if resp.status_code == 200:
-                status_label.setText("Running")
-                status_label.setStyleSheet("color: green;")
-                start_btn.setEnabled(False)
-                stop_btn.setEnabled(True)
-            else:
-                status_label.setText("Stopped")
-                status_label.setStyleSheet("color: red;")
-                start_btn.setEnabled(True)
-                stop_btn.setEnabled(False)
-        except Exception:
+        status_label.setText("Checking")
+        status_label.setStyleSheet("color: orange;")
+        start_btn.setEnabled(False)
+        stop_btn.setEnabled(False)
+        success = False
+        for attempt in range(3):
+            try:
+                if port == 8000:
+                    resp = requests.get(f"http://localhost:{port}/agents", timeout=1)
+                else:
+                    resp = requests.get(f"http://localhost:{port}/health", timeout=1)
+                if resp.status_code == 200:
+                    status_label.setText("Running")
+                    status_label.setStyleSheet("color: green;")
+                    start_btn.setEnabled(False)
+                    stop_btn.setEnabled(True)
+                    success = True
+                    break
+            except Exception:
+                pass
+            time.sleep(1)
+        if not success:
             status_label.setText("Stopped")
             status_label.setStyleSheet("color: red;")
             start_btn.setEnabled(True)
             stop_btn.setEnabled(False)
+        activity_label, last_activity_label = self.agent_activity[name]
+        activity_label.setStyleSheet("color: #888; font-size: 18px; margin-left: 8px;")
+        activity_label.setText("●")
+        last_activity_label.setText("")
 
     def start_agent(self, name):
         # Start the agent using the start_services_daemon.sh script
@@ -255,7 +421,7 @@ class DashboardGUI(QMainWindow):
         msg.setWindowTitle("Start Agent")
         msg.setText(f"Starting {name}... (this may take a few seconds)")
         msg.setStandardButtons(QMessageBox.Ok)
-        msg.show()
+        msg.exec_()
         threading.Thread(target=self._start_agent_thread, args=(name,), daemon=True).start()
 
     def _start_agent_thread(self, name):
@@ -284,7 +450,7 @@ class DashboardGUI(QMainWindow):
         msg.setWindowTitle("Stop Agent")
         msg.setText(f"Stopping {name}... (this may take a few seconds)")
         msg.setStandardButtons(QMessageBox.Ok)
-        msg.show()
+        msg.exec_()
         threading.Thread(target=self._stop_agent_thread, args=(name,), daemon=True).start()
 
     def _stop_agent_thread(self, name):
@@ -308,14 +474,110 @@ class DashboardGUI(QMainWindow):
         self.update_agent_status(name, self.agent_buttons[name][3])
 
     def create_monitoring_tab(self):
+        from PyQt5.QtWidgets import QTextEdit, QScrollArea
         tab = QWidget()
         layout = QVBoxLayout()
 
-        # Example content for Monitoring tab
-        layout.addWidget(QLabel("Real-time system and agent activity will be displayed here."))
+        # Title
+        title = QLabel("Real-time Agent Activity Monitor")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(title)
+
+        # Scrollable output pane
+        self.monitor_output = QTextEdit()
+        self.monitor_output.setReadOnly(True)
+        self.monitor_output.setStyleSheet("background: #181818; color: #fff; font-family: monospace; font-size: 13px;")
+        self.monitor_output.setMinimumHeight(300)
+        layout.addWidget(self.monitor_output)
 
         tab.setLayout(layout)
+
+        # Start real-time monitoring thread with robust error handling
+        self.monitor_thread = threading.Thread(target=self.update_monitor_output, daemon=True)
+        self.monitor_thread.start()
+
         return tab
+
+    def update_monitor_output(self):
+        import time
+        agent_ports = [8000, 8001, 8002, 8003, 8004, 8005, 8006, 8007, 8008, 8009]
+        agent_names = [
+            "MCP Bus", "Chief Editor Agent", "Scout Agent", "Fact Checker Agent", "Analyst Agent",
+            "Synthesizer Agent", "Critic Agent", "Memory Agent", "Reasoning Agent", "NewsReader Agent"
+        ]
+        last_status = {}
+        try:
+            # Print initial status for all agents
+            initial_lines = []
+            for name, port in zip(agent_names, agent_ports):
+                try:
+                    if port == 8000:
+                        resp = requests.get(f"http://localhost:{port}/agents", timeout=1)
+                    else:
+                        resp = requests.get(f"http://localhost:{port}/health", timeout=1)
+                    if resp.status_code == 200:
+                        status = "Running"
+                    else:
+                        status = "Stopped"
+                except Exception as e:
+                    status = "Stopped"
+                    self.logger.warning(f"Initial status check failed for {name} (port {port}): {e}")
+                ts = time.strftime("%Y-%m-%d %H:%M:%S")
+                initial_lines.append(f"[{ts}] {name} (port {port}): Initial status: {status}")
+                last_status[name] = status
+            self.append_monitor_output("\n".join(initial_lines))
+            # Now only log status changes
+            while self.monitor_thread_running:
+                output_lines = []
+                for name, port in zip(agent_names, agent_ports):
+                    try:
+                        if port == 8000:
+                            resp = requests.get(f"http://localhost:{port}/agents", timeout=1)
+                        else:
+                            resp = requests.get(f"http://localhost:{port}/health", timeout=1)
+                        if resp.status_code == 200:
+                            status = "Running"
+                        else:
+                            status = "Stopped"
+                    except Exception as e:
+                        status = "Stopped"
+                        self.logger.warning(f"Status check failed for {name} (port {port}): {e}")
+                    prev = last_status.get(name)
+                    if prev != status:
+                        ts = time.strftime("%Y-%m-%d %H:%M:%S")
+                        output_lines.append(f"[{ts}] {name} (port {port}): {status}")
+                        last_status[name] = status
+                if output_lines:
+                    try:
+                        self.append_monitor_output("\n".join(output_lines))
+                    except Exception as e:
+                        self.logger.error(f"Error updating monitor output: {e}")
+                time.sleep(2)
+        except Exception as e:
+            self.logger.error(f"Monitor thread crashed: {e}")
+
+    def append_monitor_output(self, text):
+        # Append text to the monitor output pane in a thread-safe and robust way
+        from PyQt5.QtCore import QTimer
+        def append():
+            try:
+                if hasattr(self, 'monitor_output') and self.monitor_output is not None:
+                    self.monitor_output.append(text)
+                    self.monitor_output.moveCursor(self.monitor_output.textCursor().End)
+            except Exception as e:
+                if hasattr(self, 'logger'):
+                    self.logger.error(f"Error in append_monitor_output: {e}")
+        try:
+            QTimer.singleShot(0, append)
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.error(f"QTimer.singleShot failed in append_monitor_output: {e}")
+    def closeEvent(self, event):
+        # Gracefully stop monitor thread on close
+        self.monitor_thread_running = False
+        if hasattr(self, 'logger'):
+            self.logger.info("Dashboard GUI closed. Monitor thread stopped.")
+        super().closeEvent(event)
 
     def create_analysis_tab(self):
         tab = QWidget()
