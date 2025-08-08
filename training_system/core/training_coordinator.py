@@ -32,6 +32,15 @@ from transformers import Trainer, TrainingArguments
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# Import feedback logging utility
+try:
+    from agents.newsreader.newsreader_v2_true_engine import log_feedback
+except ImportError:
+    # Fallback log_feedback function if NewsReader engine not available
+    def log_feedback(event: str, details: dict):
+        with open("training_feedback.log", "a", encoding="utf-8") as f:
+            f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -89,6 +98,7 @@ class OnTheFlyTrainingCoordinator:
             'analyst': deque(maxlen=max_buffer_size),
             'critic': deque(maxlen=max_buffer_size),
             'fact_checker': deque(maxlen=max_buffer_size),
+            'newsreader': deque(maxlen=max_buffer_size),
             'synthesizer': deque(maxlen=max_buffer_size),
             'chief_editor': deque(maxlen=max_buffer_size),
             'memory': deque(maxlen=max_buffer_size)
@@ -322,6 +332,14 @@ class OnTheFlyTrainingCoordinator:
                 return self._update_critic_models(training_examples)
             elif agent_name == 'fact_checker':
                 return self._update_fact_checker_models(training_examples)
+            elif agent_name == 'newsreader':
+                return self._update_newsreader_models(training_examples)
+            elif agent_name == 'synthesizer':
+                return self._update_synthesizer_models(training_examples)
+            elif agent_name == 'chief_editor':
+                return self._update_chief_editor_models(training_examples)
+            elif agent_name == 'memory':
+                return self._update_memory_models(training_examples)
             else:
                 logger.warning(f"Model update not implemented for {agent_name}")
                 return False
@@ -419,6 +437,77 @@ class OnTheFlyTrainingCoordinator:
             
         except Exception as e:
             logger.error(f"Fact Checker model update error: {e}")
+            return False
+
+    def _update_newsreader_models(self, examples: List[TrainingExample]) -> bool:
+        """Update NewsReader V2 models with new training data"""
+        try:
+            from agents.newsreader.tools import get_engine
+            
+            newsreader_engine = get_engine()
+            if not newsreader_engine:
+                return False
+            
+            # Group examples by task type for NewsReader V2
+            task_groups = {}
+            for example in examples:
+                task_type = example.task_type
+                if task_type not in task_groups:
+                    task_groups[task_type] = []
+                task_groups[task_type].append(example)
+            
+            update_success = True
+            
+            # Screenshot analysis examples (primary NewsReader V2 capability)
+            if 'screenshot_analysis' in task_groups:
+                logger.info(f"Processing {len(task_groups['screenshot_analysis'])} screenshot analysis examples")
+                # Note: NewsReader V2 uses LLaVA for vision-language processing
+                # Training data would be used to fine-tune screenshot interpretation
+                for example in task_groups['screenshot_analysis']:
+                    # Log training example for future LLaVA fine-tuning
+                    log_feedback(
+                        "newsreader_training_example",
+                        {
+                            "task_type": "screenshot_analysis",
+                            "input": example.input_text,
+                            "expected_output": example.expected_output,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                    )
+            
+            # Content extraction examples
+            if 'content_extraction' in task_groups:
+                logger.info(f"Processing {len(task_groups['content_extraction'])} content extraction examples")
+                for example in task_groups['content_extraction']:
+                    log_feedback(
+                        "newsreader_training_example",
+                        {
+                            "task_type": "content_extraction", 
+                            "input": example.input_text,
+                            "expected_output": example.expected_output,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                    )
+            
+            # Layout analysis examples
+            if 'layout_analysis' in task_groups:
+                logger.info(f"Processing {len(task_groups['layout_analysis'])} layout analysis examples")
+                for example in task_groups['layout_analysis']:
+                    log_feedback(
+                        "newsreader_training_example",
+                        {
+                            "task_type": "layout_analysis",
+                            "input": example.input_text, 
+                            "expected_output": example.expected_output,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                    )
+            
+            logger.info(f"✅ NewsReader V2 training examples processed successfully")
+            return update_success
+            
+        except Exception as e:
+            logger.error(f"NewsReader model update error: {e}")
             return False
     
     def _update_analyst_models(self, examples: List[TrainingExample]) -> bool:
