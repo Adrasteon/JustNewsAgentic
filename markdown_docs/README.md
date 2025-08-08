@@ -17,7 +17,8 @@ This directory contains organized documentation for the JustNews V4 project. Fil
 
 ### `/agent_documentation/`
 **Agent-specific implementation documentation:**
-- `SCOUT_AGENT_DOCUMENTATION.md` - Scout Agent implementation guide
+- `SCOUT_AGENT_V2_DOCUMENTATION.md` - ⭐ Next-Generation AI-First Scout Agent V2 (Latest)
+- `SCOUT_AGENT_DOCUMENTATION.md` - Legacy Scout Agent implementation guide (V1)
 - `SCOUT_ENHANCED_DEEP_CRAWL_DOCUMENTATION.md` - Advanced crawling features
 - `SCOUT_MEMORY_PIPELINE_SUCCESS.md` - Memory pipeline integration
 
@@ -38,15 +39,18 @@ The following essential files remain in the project root:
 - `CHANGELOG.md` - Version history and change tracking
 
 ## 📊 Key Achievements Documented
+- **Scout Agent V2**: Complete AI-first architecture with 5 specialized models (News, Quality, Sentiment, Bias, Visual)
 - **Production-Scale Crawling**: 8.14 articles/second (ultra-fast), 0.86 articles/second (AI-enhanced)
 - **Root Cause Resolution**: Cookie consent and modal handling solutions
 - **Model Optimization**: LLaVA-1.5-7B stability improvements and warning elimination
+- **AI Integration**: RoBERTa sentiment analysis, specialized bias detection, multimodal visual analysis
 - **System Architecture**: Native TensorRT integration and GPU optimization
 - **Performance Metrics**: 74x-703x requirement fulfillment validation
+- **Zero Warnings**: Production-ready deployment with comprehensive error handling
 
 ## 🗓️ Documentation Date Range
-**Primary Period**: July 2025 - August 2, 2025  
-**Latest Updates**: August 2, 2025 (Production Breakthrough Session)
+**Primary Period**: July 2025 - August 7, 2025  
+**Latest Updates**: August 7, 2025 (Scout Agent V2 AI-First Architecture)
 
 ---
 

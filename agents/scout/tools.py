@@ -13,8 +13,21 @@ FEEDBACK_LOG = os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("scout.tools")
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("scout.tools")
+# Online Training Integration
+try:
+    from training_system import (
+        initialize_online_training, get_training_coordinator,
+        add_training_feedback
+    )
+    ONLINE_TRAINING_AVAILABLE = True
+    
+    # Initialize online training for Scout with 40-example threshold
+    initialize_online_training(update_threshold=40)  # Update after 40 examples for Scout
+    logger.info("🎓 Online Training enabled for Scout V2")
+    
+except ImportError:
+    ONLINE_TRAINING_AVAILABLE = False
+    logger.warning("⚠️ Online Training not available for Scout V2")
 
 # Import Crawl4AI components for advanced deep crawling
 try:
@@ -36,20 +49,34 @@ import re
 scout_engine = None
 
 def initialize_scout_intelligence():
-    """Initialize GPU-accelerated Scout intelligence engine"""
+    """Initialize Next-Generation GPU-accelerated Scout intelligence engine with AI-first approach"""
     global scout_engine
     try:
-        from gpu_scout_engine import GPUScoutInferenceEngine
-        scout_engine = GPUScoutInferenceEngine()
-        logger.info("✅ Scout Intelligence Engine initialized with LLaMA-3-8B")
+        from agents.scout.gpu_scout_engine_v2 import NextGenGPUScoutEngine
+        scout_engine = NextGenGPUScoutEngine(enable_training=True)
+        
+        model_info = scout_engine.get_model_info()
+        logger.info("🚀 Next-Gen GPU Scout Intelligence Engine initialized")
+        logger.info("📊 Model Status:")
+        for task, info in model_info.items():
+            status = "✅" if info["loaded"] else "❌"
+            logger.info(f"   {status} {task}: {info['model_name']} ({'loaded' if info['loaded'] else 'failed'})")
+        
         return True
     except Exception as e:
-        logger.warning(f"⚠️ Scout Intelligence Engine initialization failed: {e}")
+        logger.warning(f"⚠️ Next-Gen Scout Intelligence Engine initialization failed: {e}")
         logger.info("🔄 Running in web-crawling only mode")
         return False
 
 # Initialize on module load
 intelligence_available = initialize_scout_intelligence()
+
+def get_scout_engine():
+    """Get the Scout intelligence engine instance"""
+    global scout_engine
+    if scout_engine is None:
+        initialize_scout_intelligence()
+    return scout_engine
 
 def extract_article_content(html_content: str) -> str:
     """

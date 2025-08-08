@@ -1,5 +1,17 @@
 """
 Main file for the Critic Agent.
+
+IMPORTANT: Bias detection functionality has been centralized in Scout V2 Agent
+for consistency and improved performance. Critic Agent now focuses on:
+
+- Editorial logic and argument structure analysis
+- Content synthesis critique 
+- Neutrality assessment and factual consistency
+- Logical fallacy detection (future enhancement)
+
+For bias detection, use Scout V2 Agent endpoints:
+- POST /comprehensive_content_analysis (includes bias detection)
+- POST /detect_bias (dedicated bias detection)
 """
 # main.py for Critic Agent
 import logging

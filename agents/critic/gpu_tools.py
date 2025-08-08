@@ -384,28 +384,30 @@ class GPUAcceleratedCritic:
                 if not critique_text:
                     critique_text = "No specific critique generated."
                 
-                # Create critique assessment
+                # Create critique assessment (bias detection removed)
                 critique = {
                     'article_title': title,
                     'article_url': article.get('url', 'No URL'),
                     'critique': critique_text,
                     'quality_score': self._assess_quality(content),
-                    'bias_indicators': self._detect_bias_indicators(content),
-                    'accuracy_flags': self._check_accuracy_flags(content)
+                    'bias_indicators': [],  # REMOVED - Use Scout V2 for bias detection
+                    'accuracy_flags': self._check_accuracy_flags(content),
+                    'note': 'Bias detection centralized in Scout V2 Agent'
                 }
                 
                 batch_critiques.append(critique)
                 
             except Exception as e:
                 logger.warning(f"⚠️ Failed to critique article '{article.get('title', 'Unknown')}': {e}")
-                # Create error critique
+                # Create error critique (bias detection removed)
                 batch_critiques.append({
                     'article_title': article.get('title', 'Unknown'),
                     'article_url': article.get('url', 'No URL'),
                     'critique': f"Critique generation failed: {str(e)}",
                     'quality_score': 0.0,
-                    'bias_indicators': [],
-                    'accuracy_flags': []
+                    'bias_indicators': [],  # REMOVED - Use Scout V2 for bias detection
+                    'accuracy_flags': [],
+                    'note': 'Bias detection centralized in Scout V2 Agent'
                 })
         
         return batch_critiques
@@ -443,30 +445,24 @@ class GPUAcceleratedCritic:
             return 0.5  # Neutral score on error
     
     def _detect_bias_indicators(self, content: str) -> List[str]:
-        """Detect potential bias indicators in content"""
-        bias_indicators = []
-        content_lower = content.lower()
+        """
+        DEPRECATED: Bias detection functionality moved to Scout V2 Agent
         
-        # Emotional language indicators
-        emotional_words = ['outrageous', 'shocking', 'devastating', 'incredible', 'amazing', 
-                          'terrible', 'wonderful', 'awful', 'fantastic', 'horrible']
-        for word in emotional_words:
-            if word in content_lower:
-                bias_indicators.append(f"Emotional language: '{word}'")
+        This method is kept for backward compatibility but should not be used.
+        All bias detection is now centralized in Scout V2 Agent using specialized models.
         
-        # Absolute statements
-        absolute_phrases = ['always', 'never', 'all', 'none', 'every', 'completely', 'totally']
-        for phrase in absolute_phrases:
-            if phrase in content_lower:
-                bias_indicators.append(f"Absolute statement: '{phrase}'")
+        Use Scout V2 endpoints:
+        - POST /comprehensive_content_analysis (includes bias detection)
+        - POST /detect_bias (dedicated bias detection)
         
-        # Political bias indicators (simplified)
-        political_loaded = ['radical', 'extremist', 'militant', 'activist']
-        for term in political_loaded:
-            if term in content_lower:
-                bias_indicators.append(f"Potentially loaded term: '{term}'")
-        
-        return bias_indicators[:5]  # Limit to top 5 indicators
+        Args:
+            content: Content text (unused)
+            
+        Returns:
+            Empty list (bias detection moved to Scout V2)
+        """
+        logger.warning("⚠️ _detect_bias_indicators called - bias detection moved to Scout V2")
+        return []  # Return empty list since bias detection is centralized in Scout V2
     
     def _check_accuracy_flags(self, content: str) -> List[str]:
         """Check for potential accuracy issues"""

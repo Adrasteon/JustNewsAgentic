@@ -158,4 +158,19 @@ crawl4ai_best_practice.py
 deep_content_analysis.py
 *_intelligence_test.py
 
+# Database Files and Vector Stores
+*.db
+*_vectordb/
+memory_v2.db
+memory_v2_vectordb/
+
+# Screenshots and Test Images
+bbc_screenshots/
+test_screenshots/
+page_*.png
+screenshot_*.png
+
+# Conda Environment Files (keep local only)
+environment-*.yml
+
 agents/reasoning/nucleoid_repo/

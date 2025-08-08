@@ -42,38 +42,77 @@ class UltraFastBBCCrawler:
         }
     
     def fast_modal_dismissal_script(self) -> str:
-        """JavaScript to instantly dismiss all modals/overlays"""
+        """Enhanced JavaScript to instantly dismiss all modals/overlays"""
         return """
-        // Ultra-fast modal dismissal
+        // Ultra-fast modal dismissal with comprehensive patterns
         (function() {
-            // Cookie consent patterns
+            // Cookie consent - comprehensive patterns
             const cookieSelectors = [
                 'button:contains("Accept")', 'button:contains("I Agree")',
-                'button:contains("Continue")', '[data-testid="accept-all"]',
-                '.fc-cta-consent', '.banner-actions-button'
+                'button:contains("Continue")', 'button:contains("Accept all")',
+                'button:contains("Accept All")', '[data-testid="accept-all"]',
+                '[id*="accept"]', '[id*="cookie"]', '.fc-cta-consent',
+                '.banner-actions-button', '.cookie-banner button',
+                '[class*="cookie"] button', '[class*="consent"] button'
             ];
             
-            // Dismiss/close patterns
+            // Dismiss/close patterns - comprehensive
             const dismissSelectors = [
                 'button:contains("Not now")', 'button:contains("Skip")',
-                'button:contains("Maybe later")', '[aria-label="Dismiss"]',
-                '[aria-label="Close"]', '.close-button', '.modal-close'
+                'button:contains("Maybe later")', 'button:contains("Continue without")',
+                'button:contains("No thanks")', '[aria-label="Dismiss"]',
+                '[aria-label="Close"]', '[aria-label="close"]',
+                'button[aria-label*="close"]', '.close-button', '.modal-close',
+                '[data-testid="close"]', '[data-testid="dismiss"]',
+                '.close', '.dismiss', '[class*="close"]'
             ];
             
-            // Try all selectors immediately
-            [...cookieSelectors, ...dismissSelectors].forEach(selector => {
+            // Try all selectors immediately with fallback methods
+            const trySelector = (selector) => {
                 try {
-                    document.querySelectorAll(selector).forEach(el => {
-                        if (el.offsetParent !== null) el.click();
-                    });
+                    // CSS selector with text content
+                    if (selector.includes(':contains(')) {
+                        const text = selector.match(/:contains\\("([^"]+)"/)?.[1];
+                        if (text) {
+                            document.querySelectorAll('button, a, div[role="button"]').forEach(el => {
+                                if (el.textContent.includes(text) && el.offsetParent !== null) {
+                                    el.click();
+                                }
+                            });
+                        }
+                    } else {
+                        // Regular selector
+                        document.querySelectorAll(selector).forEach(el => {
+                            if (el.offsetParent !== null) el.click();
+                        });
+                    }
                 } catch(e) {}
+            };
+            
+            // Execute all dismissal patterns
+            [...cookieSelectors, ...dismissSelectors].forEach(trySelector);
+            
+            // Remove common overlay containers aggressively
+            ['.modal', '.overlay', '.popup', '.banner', '.consent', 
+             '.cookie-banner', '.privacy-banner', '.gdpr-banner',
+             '[class*="modal"]', '[class*="overlay"]', '[class*="popup"]'
+            ].forEach(cls => {
+                document.querySelectorAll(cls).forEach(el => {
+                    if (el.style.zIndex > 100 || 
+                        el.style.position === 'fixed' || 
+                        el.style.position === 'absolute') {
+                        el.style.display = 'none';
+                        el.remove();
+                    }
+                });
             });
             
-            // Remove common overlay containers
-            ['.modal', '.overlay', '.popup', '.banner', '.consent'].forEach(cls => {
-                document.querySelectorAll(cls).forEach(el => {
-                    if (el.style.zIndex > 100) el.remove();
-                });
+            // Final cleanup: hide high z-index elements that might be modals
+            document.querySelectorAll('*').forEach(el => {
+                const zIndex = parseInt(window.getComputedStyle(el).zIndex);
+                if (zIndex > 1000 && el.offsetParent !== null) {
+                    el.style.display = 'none';
+                }
             });
         })();
         """
@@ -315,21 +354,25 @@ class UltraFastBBCCrawler:
             "successful_articles": len(results),
             "total_time_seconds": total_time,
             "articles_per_second": len(results) / total_time if total_time > 0 else 0,
+            "success_rate": len(results) / len(urls) if urls else 0.0,
             "projected_daily_capacity": (len(results) / total_time) * 86400 if total_time > 0 else 0,
             "timestamp": datetime.now().isoformat(),
-            "results": results
+            "articles": results  # Use 'articles' key to match orchestrator expectation
         }
         
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(summary, f, indent=2, ensure_ascii=False)
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(summary, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Could not save results file: {e}")
         
         logger.info(f"🎉 Ultra-Fast Crawl Complete!")
         logger.info(f"📊 {len(results)} articles in {total_time:.1f}s")
         logger.info(f"⚡ Rate: {len(results) / total_time:.2f} articles/second")
-        logger.info(f"📈 Daily capacity: {(len(results) / total_time) * 86400:.0f} articles/day")
-        logger.info(f"💾 Results: {output_file}")
+        logger.info(f"✅ Success Rate: {len(results) / len(urls) * 100:.1f}%")
+        logger.info(f"� Daily capacity: {(len(results) / total_time) * 86400:.0f} articles/day")
         
-        return results
+        return summary
 
 async def main():
     """Run ultra-fast crawler"""

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Production-Scale BBC Crawler with Cookie/Modal Handling
+Production-Scale BBC AI-Enhanced Crawler - Integrated Version
 
-This reverts to fast batch processing while addressing root causes:
+Superior implementation integrating:
 - Aggressive cookie consent and modal dismissal
-- Proper page state management
-- Memory-efficient batch processing 
-- DOM-based content extraction (faster than screenshots)
-- Targeted memory cleanup only when needed
+- Robust DOM-based content extraction
+- AI-enhanced analysis with NewsReader
+- Memory-efficient batch processing
+- Production-scale error handling
 
-Goal: 1000+ articles/day processing with stability
+Target: 0.8+ articles/second with AI analysis
 """
 
 import asyncio
@@ -21,19 +21,14 @@ from datetime import datetime
 from playwright.async_api import async_playwright
 from typing import List, Dict, Optional
 import logging
-
-# Import our practical NewsReader for analysis
-import sys
 import os
+import sys
 
-# Add the newsreader agent path for imports
-newsreader_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'newsreader', 'main_options')
-sys.path.insert(0, newsreader_path)
-
+# Import NewsReader from Scout agent directory
 from practical_newsreader_solution import PracticalNewsReader
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("production_bbc_crawler")
+logger = logging.getLogger("production_bbc_ai_crawler")
 
 class ProductionBBCCrawler:
     """Fast, production-scale BBC crawler that handles root causes"""
@@ -316,7 +311,7 @@ class ProductionBBCCrawler:
         """Main production crawling function"""
         
         start_time = time.time()
-        logger.info(f"🚀 Starting production crawl for {max_articles} articles")
+        logger.info(f"🚀 Starting AI-enhanced production crawl for {max_articles} articles")
         
         # Initialize
         await self.initialize()
@@ -325,33 +320,48 @@ class ProductionBBCCrawler:
         urls = await self.get_bbc_england_urls(max_urls=max_articles)
         if not urls:
             logger.error("❌ No URLs found!")
-            return
+            return {
+                "articles": [],
+                "success_rate": 0.0,
+                "processing_time_seconds": time.time() - start_time,
+                "articles_per_second": 0.0
+            }
         
         # Process in batches
         results = await self.process_batch(urls)
         
-        # Save results
-        output_file = f"production_bbc_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        # Calculate metrics
+        processing_time = time.time() - start_time
+        success_rate = len(results) / len(urls) if urls else 0.0
+        articles_per_second = len(results) / processing_time if processing_time > 0 else 0.0
+        
+        # Save results (optional)
+        output_file = f"production_bbc_ai_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         
         summary = {
             "production_crawl": True,
+            "mode": "ai_enhanced",
             "total_urls": len(urls),
             "successful_articles": len(results),
-            "processing_time_seconds": time.time() - start_time,
-            "articles_per_second": len(results) / (time.time() - start_time),
+            "processing_time_seconds": processing_time,
+            "articles_per_second": articles_per_second,
+            "success_rate": success_rate,
             "timestamp": datetime.now().isoformat(),
-            "results": results
+            "articles": results
         }
         
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(summary, f, indent=2, ensure_ascii=False)
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(summary, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Could not save results file: {e}")
         
-        logger.info(f"🎉 Crawl complete!")
-        logger.info(f"📊 Processed {len(results)} articles in {time.time() - start_time:.1f}s")
-        logger.info(f"⚡ Rate: {len(results) / (time.time() - start_time):.2f} articles/second")
-        logger.info(f"💾 Results saved to: {output_file}")
+        logger.info(f"🎉 AI-Enhanced crawl complete!")
+        logger.info(f"📊 Processed {len(results)} articles in {processing_time:.1f}s")
+        logger.info(f"⚡ Rate: {articles_per_second:.2f} articles/second")
+        logger.info(f"✅ Success Rate: {success_rate:.1%}")
         
-        return results
+        return summary
 
 async def main():
     """Run production BBC crawler"""

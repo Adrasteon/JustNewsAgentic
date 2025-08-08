@@ -10,17 +10,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import requests
 
-from tensorrt_tools import (
+from .tools import (
     identify_entities,
+    analyze_text_statistics,
+    extract_key_metrics,
+    analyze_content_trends,
     log_feedback,
-    score_bias,
-    score_sentiment,
-    score_bias_batch,
-    score_sentiment_batch,
-    analyze_article,
-    analyze_articles_batch,
-    get_engine_info,
-    cleanup_tensorrt_engine,
 )
 
 # Configure logging
@@ -57,13 +52,12 @@ class MCPBusClient:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handles startup and shutdown events for the FastAPI application."""
-    logger.info("🏆 Analyst agent starting with NATIVE TENSORRT acceleration")
-    logger.info("⚡ Performance: 406.9 articles/sec (2.69x improvement)")
-    logger.info("💾 Memory: 2.3GB efficient GPU utilization")
-    logger.info("✅ Engines: Native TensorRT FP16 precision")
+    logger.info("🔍 Analyst Agent V2 - Specialized Quantitative Analysis")
+    logger.info("📊 Focus: Entity extraction, statistical analysis, numerical metrics")
+    logger.info("🎯 Specialization: Text statistics, trends, financial/temporal data")
+    logger.info("🤝 Integration: Works with Scout V2 for comprehensive content analysis")
     
-    # TensorRT engines will be loaded lazily when first needed
-    logger.info("Native TensorRT engines ready for on-demand loading")
+    logger.info("Specialized analysis modules loaded and ready")
 
     # Register agent with MCP Bus
     mcp_bus_client = MCPBusClient()
@@ -72,9 +66,10 @@ async def lifespan(app: FastAPI):
             agent_name="analyst",
             agent_address=f"http://localhost:{ANALYST_AGENT_PORT}",
             tools=[
-                "score_bias", "score_sentiment", "identify_entities",
-                "score_bias_batch", "score_sentiment_batch", 
-                "analyze_article", "analyze_articles_batch", "get_engine_info"
+                "identify_entities",
+                "analyze_text_statistics", 
+                "extract_key_metrics",
+                "analyze_content_trends"
             ],
         )
         logger.info("Registered tools with MCP Bus.")
@@ -84,9 +79,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Cleanup on shutdown
-    logger.info("Analyst agent is shutting down.")
-    cleanup_tensorrt_engine()
-    logger.info("✅ TensorRT engine cleanup completed.")
+    logger.info("✅ Analyst agent shutdown completed.")
 
     logger.info("Analyst agent is shutting down.")
 
@@ -97,23 +90,15 @@ def health():
     """Health check endpoint."""
     return {"status": "ok"}
 
-@app.post("/score_bias")
-def score_bias_endpoint(call: ToolCall):
-    """Scores the bias of a given text."""
-    try:
-        return score_bias(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in score_bias: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# REMOVED ENDPOINTS - Sentiment and bias analysis centralized in Scout V2 Agent
+# Use Scout V2 for all sentiment and bias analysis:
+# - POST /comprehensive_content_analysis (includes sentiment + bias)  
+# - POST /analyze_sentiment (dedicated sentiment analysis)
+# - POST /detect_bias (dedicated bias detection)
 
-@app.post("/score_sentiment")
-def score_sentiment_endpoint(call: ToolCall):
-    """Scores the sentiment of a given text."""
-    try:
-        return score_sentiment(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in score_sentiment: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# @app.post("/score_bias") - REMOVED
+# @app.post("/score_sentiment") - REMOVED
+# @app.post("/analyze_sentiment_and_bias") - REMOVED
 
 @app.post("/identify_entities")
 def identify_entities_endpoint(call: ToolCall):
@@ -135,64 +120,47 @@ def log_feedback_endpoint(call: ToolCall):
         logger.error(f"An error occurred while logging feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Native TensorRT batch processing endpoints
-@app.post("/score_bias_batch")
-def score_bias_batch_endpoint(call: ToolCall):
-    """Scores bias for multiple texts using native TensorRT batch processing."""
-    try:
-        return score_bias_batch(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in score_bias_batch: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# REMOVED ENDPOINTS - All sentiment and bias analysis centralized in Scout V2 Agent
+# Use Scout V2 for all sentiment and bias analysis (including batch operations):
+# - POST /comprehensive_content_analysis (includes sentiment + bias)  
+# - POST /analyze_sentiment (dedicated sentiment analysis)
+# - POST /detect_bias (dedicated bias detection)
 
-@app.post("/score_sentiment_batch")
-def score_sentiment_batch_endpoint(call: ToolCall):
-    """Scores sentiment for multiple texts using native TensorRT batch processing."""
-    try:
-        return score_sentiment_batch(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in score_sentiment_batch: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# High-level analysis endpoints
-@app.post("/analyze_article")
-def analyze_article_endpoint(call: ToolCall):
-    """Analyzes an article for both sentiment and bias using native TensorRT."""
-    try:
-        return analyze_article(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in analyze_article: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/analyze_articles_batch")
-def analyze_articles_batch_endpoint(call: ToolCall):
-    """Analyzes multiple articles using native TensorRT batch processing."""
-    try:
-        return analyze_articles_batch(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in analyze_articles_batch: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# The following TensorRT batch endpoints have been removed from Analyst:
+# - POST /score_bias_batch - REMOVED (use Scout V2 batch analysis)
+# - POST /score_sentiment_batch - REMOVED (use Scout V2 batch analysis) 
+# - POST /analyze_article - REMOVED (use Scout V2 comprehensive analysis)
+# - POST /analyze_articles_batch - REMOVED (use Scout V2 batch analysis)
 
 # Engine information endpoint
-@app.get("/engine_info")
-def engine_info_endpoint():
-    """Gets information about loaded TensorRT engines."""
+@app.post("/analyze_text_statistics")
+def analyze_text_statistics_endpoint(call: ToolCall):
+    """Analyzes text statistics including readability and complexity."""
     try:
-        return get_engine_info()
+        return analyze_text_statistics(*call.args, **call.kwargs)
     except Exception as e:
-        logger.error(f"An error occurred getting engine info: {e}")
+        logger.error(f"An error occurred in analyze_text_statistics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/analyze_sentiment_and_bias")
-def analyze_sentiment_and_bias_endpoint(call: ToolCall):
-    """Analyzes both sentiment and bias for a given text."""
+@app.post("/extract_key_metrics")
+def extract_key_metrics_endpoint(call: ToolCall):
+    """Extracts key numerical and statistical metrics from text."""
     try:
-        sentiment_result = score_sentiment(*call.args, **call.kwargs)
-        bias_result = score_bias(*call.args, **call.kwargs)
-        return {
-            "sentiment_score": sentiment_result,
-            "bias_score": bias_result
-        }
+        return extract_key_metrics(*call.args, **call.kwargs)
     except Exception as e:
-        logger.error(f"An error occurred in analyze_sentiment_and_bias: {e}")
+        logger.error(f"An error occurred in extract_key_metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze_content_trends")
+def analyze_content_trends_endpoint(call: ToolCall):
+    """Analyzes trends across multiple content pieces."""
+    try:
+        return analyze_content_trends(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in analyze_content_trends: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# REMOVED ENDPOINT - Combined sentiment and bias analysis centralized in Scout V2 Agent
+# Use Scout V2 /comprehensive_content_analysis endpoint for combined analysis
+
+# @app.post("/analyze_sentiment_and_bias") - REMOVED

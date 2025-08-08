@@ -283,8 +283,8 @@ class ArticlePipelineTest:
         """Restart all services required for the pipeline"""
         self.log_test("Service Restart", "🔄 RUNNING", "Restarting all services")
         try:
-            os.system("./stop_services.sh")
-            os.system("./start_services_daemon.sh")
+            os.system("bash ./stop_services.sh")
+            os.system("bash ./start_services_daemon.sh")
             self.log_test("Service Restart", "✅ PASS", "All services restarted successfully")
         except Exception as e:
             self.log_test("Service Restart", "❌ FAIL", str(e))
