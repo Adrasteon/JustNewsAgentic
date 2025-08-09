@@ -140,6 +140,13 @@ crawl4ai_docs/
 archive_obsolete_files/*
 !archive_obsolete_files/development_session_aug_2/
 
+# Documentation Organization (Only essential .md files in root)
+# All other .md files should be in markdown_docs/ subdirectories
+# Keep only: README.md, CHANGELOG.md in root
+/*.md
+!/README.md
+!/CHANGELOG.md
+
 # Ignore virtual environment folder for newsreader
 agents/newsreader/newsreader-env/
 agents/newsreader/main_options/
