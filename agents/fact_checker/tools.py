@@ -1,15 +1,15 @@
 """
 Fact Checker V2 - Production-Ready Multi-Model AI Architecture
-Specialized fact verification with 5 AI models matching Scout V2 standard
+Focused fact verification with 4 specialized AI models
 
 AI Models:
 1. DistilBERT-base: Fact verification (factual/questionable classification)
 2. RoBERTa-base: Source credibility assessment (reliability scoring)  
-3. BERT-large: Contradiction detection (logical consistency)
-4. SentenceTransformers: Evidence retrieval (semantic search)
-5. spaCy NER: Claim extraction (verifiable claims identification)
+3. SentenceTransformers: Evidence retrieval (semantic search)
+4. spaCy NER: Claim extraction (verifiable claims identification)
 
-Performance: Production-ready with GPU acceleration and professional error handling
+Note: Contradiction detection moved to Reasoning Agent (Nucleoid symbolic logic)
+Performance: Production-ready with GPU acceleration
 V4 Compliance: TensorRT-ready multi-model architecture with MCP bus integration
 Dependencies: transformers, sentence-transformers, spacy, torch, numpy
 """
