@@ -36,17 +36,49 @@ def init_tracing(service_name: str) -> bool:
         _tracing_enabled = False
         return False
     try:
-        from opentelemetry import trace
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry import trace  # type: ignore
+        from opentelemetry.sdk.resources import Resource  # type: ignore
+        from opentelemetry.sdk.trace import TracerProvider  # type: ignore
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor  # type: ignore
+
+        # Prefer HTTP exporter if available and endpoint looks like http(s),
+        # otherwise fall back to gRPC exporter. Both imports are optional.
+        exporter = None
+
+        # HTTP exporter path (optional)
+        http_exporter = None
+        if endpoint.startswith("http://") or endpoint.startswith("https://"):
+            try:
+                from opentelemetry.exporter.otlp.proto.http.trace_exporter import (  # type: ignore[import-not-found]
+                    OTLPSpanExporter as HttpOTLPSpanExporter,
+                )
+                http_exporter = HttpOTLPSpanExporter(endpoint=endpoint)
+                exporter = http_exporter
+            except Exception:
+                http_exporter = None
+
+        # gRPC exporter path (optional)
+        if exporter is None:
+            try:
+                from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (  # type: ignore[import-not-found]
+                    OTLPSpanExporter as GrpcOTLPSpanExporter,
+                )
+                # For gRPC, endpoint may be like "http://host:4317" or "host:4317"
+                # The exporter accepts either; pass through as provided.
+                exporter = GrpcOTLPSpanExporter(endpoint=endpoint)
+            except Exception:
+                exporter = None
+
+        if exporter is None:
+            logger.warning("OpenTelemetry exporters not available; tracing disabled")
+            _tracing_enabled = False
+            _tracer = None
+            return False
 
         resource = Resource.create({
             "service.name": service_override or service_name,
         })
         provider = TracerProvider(resource=resource)
-        exporter = OTLPSpanExporter(endpoint=endpoint)
         provider.add_span_processor(BatchSpanProcessor(exporter))
         trace.set_tracer_provider(provider)
         _tracer = trace.get_tracer(service_override or service_name)

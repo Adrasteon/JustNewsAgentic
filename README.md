@@ -30,7 +30,7 @@ JustNewsAgentic V4 is a production-ready, multi-agent news analysis system that 
 - OS: Ubuntu 24.04 with systemd (production deployment is native on Ubuntu)
 - Python: 3.12+ with CUDA 12.1+ support
 
-Note: Docker is deprecated for this project. All deployment and operations use native systemd services and shell scripts under `deploy/systemd/`.
+Note: Docker is deprecated and removed from this project. All deployment and operations use native systemd services and shell scripts under `deploy/systemd/`.
 
 ### Installation
 

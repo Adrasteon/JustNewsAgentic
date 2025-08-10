@@ -15,7 +15,6 @@ Features:
 import asyncio
 import json
 import logging
-from pathlib import Path
 from typing import List, Dict, Optional
 import time
 from datetime import datetime
@@ -24,10 +23,9 @@ from datetime import datetime
 import sys
 sys.path.append('/home/adra/JustNewsAgentic')
 from production_newsreader_fixed import ProductionNewsReader
-from playwright.async_api import async_playwright, Page, Browser
+from playwright.async_api import async_playwright
 from PIL import Image
 import io
-import base64
 
 # Configure logging
 logging.basicConfig(

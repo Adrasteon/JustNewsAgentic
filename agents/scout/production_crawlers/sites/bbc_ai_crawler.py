@@ -24,8 +24,10 @@ import logging
 import os
 import sys
 
-# Import NewsReader from Scout agent directory
-from practical_newsreader_solution import PracticalNewsReader
+# Import NewsReader from the Agents package (moved from repo root)
+from agents.newsreader.main_options.practical_newsreader_solution import (
+    PracticalNewsReader,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("production_bbc_ai_crawler")

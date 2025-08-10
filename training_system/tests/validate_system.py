@@ -13,8 +13,8 @@ Features Tested:
 """
 
 import sys
-import os
-import atexit
+import os  # noqa: F401
+import atexit  # noqa: F401
 sys.path.insert(0, '/home/adra/JustNewsAgentic')
 
 # Initialize GPU cleanup manager
@@ -30,12 +30,12 @@ def test_online_training_system():
         # Test 1: Core Training Coordinator
         print("📦 Testing Core Training Coordinator...")
         from training_system.core.training_coordinator import (
-            initialize_online_training, get_training_coordinator,
+            initialize_online_training, get_training_coordinator,  # noqa: F401
             add_training_feedback, add_user_correction, get_online_training_status
         )
         
-        # Initialize training coordinator
-        coordinator = initialize_online_training(update_threshold=5)  # Low threshold for testing
+    # Initialize training coordinator
+    _ = initialize_online_training(update_threshold=5)  # Low threshold for testing
         print("✅ Training coordinator initialized")
         print()
         
@@ -43,10 +43,10 @@ def test_online_training_system():
         print("🎯 Testing System-Wide Training Manager...")
         from training_system.core.system_manager import (
             get_system_training_manager, collect_prediction,
-            submit_correction, get_training_dashboard, force_update
+            submit_correction, get_training_dashboard, force_update  # noqa: F401
         )
         
-        manager = get_system_training_manager()
+    _ = get_system_training_manager()
         print("✅ System-wide training manager initialized")
         print()
         

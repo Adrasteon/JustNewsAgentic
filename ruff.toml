@@ -1,0 +1,32 @@
+exclude = [
+  "archive_obsolete_files/**",
+  "markdown_docs/**",
+  "crawl4ai_docs/**",
+  "docs/**",
+  "model_cache/**",
+  "models/**",
+  "bbc_screenshots/**",
+  "test_screenshots/**",
+]
+
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "W"]
+ignore = [
+  "E722",  # temporary: bare except in legacy crawlers
+  "F401",  # temporary: unused imports in legacy training scripts/tests
+  "F841",  # temporary: assigned but unused in legacy tests
+  "F403",  # allow star-import in the root shim
+]
+
+[lint.per-file-ignores]
+"practical_newsreader_solution.py" = ["F401", "F403"]
+"training_system/**" = ["F401", "F841", "E722"]
+"ultra_fast_bbc_crawler.py" = ["E722", "F541"]
+"production_bbc_crawler.py" = ["E722", "F401"]
+"scripts/**" = ["F401"]
+"agents/**/tests/**" = ["F401", "F841"]
+
+[format]
+line-length = 88

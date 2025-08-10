@@ -96,12 +96,12 @@ def warmup():
     """Lightweight warmup to trigger lazy imports and caches without heavy work."""
     try:
         # Touch GPU tools if available (loads module and any lightweight caches)
-        from gpu_tools import get_synthesizer_performance  # noqa: F401
+        from .gpu_tools import get_synthesizer_performance  # noqa: F401
     except Exception:
         pass
     # Touch CPU tools as well
     try:
-        from tools import cluster_articles  # noqa: F401
+        from .tools import cluster_articles  # noqa: F401
     except Exception:
         pass
     metrics["warmups_total"] += 1
@@ -129,7 +129,7 @@ def log_feedback(call: ToolCall):
 @app.post("/aggregate_cluster")
 def aggregate_cluster_endpoint(call: ToolCall):
     try:
-        from tools import aggregate_cluster
+        from .tools import aggregate_cluster
         logger.info(f"Calling aggregate_cluster with args: {call.args} and kwargs: {call.kwargs}")
         return aggregate_cluster(*call.args, **call.kwargs)
     except Exception as e:
@@ -139,7 +139,7 @@ def aggregate_cluster_endpoint(call: ToolCall):
 @app.post("/cluster_articles")
 def cluster_articles_endpoint(call: ToolCall):
     try:
-        from tools import cluster_articles
+        from .tools import cluster_articles
         logger.info(f"Calling cluster_articles with args: {call.args} and kwargs: {call.kwargs}")
         return cluster_articles(*call.args, **call.kwargs)
     except Exception as e:
@@ -149,7 +149,7 @@ def cluster_articles_endpoint(call: ToolCall):
 @app.post("/neutralize_text")
 def neutralize_text_endpoint(call: ToolCall):
     try:
-        from tools import neutralize_text
+        from .tools import neutralize_text
         logger.info(f"Calling neutralize_text with args: {call.args} and kwargs: {call.kwargs}")
         return neutralize_text(*call.args, **call.kwargs)
     except Exception as e:
@@ -161,7 +161,7 @@ def neutralize_text_endpoint(call: ToolCall):
 def synthesize_news_articles_gpu_endpoint(call: ToolCall):
     """GPU-accelerated news article synthesis endpoint"""
     try:
-        from gpu_tools import synthesize_news_articles_gpu
+        from .gpu_tools import synthesize_news_articles_gpu
         logger.info(
             f"Calling GPU synthesize with {len(call.args[0]) if call.args else 0} articles"
         )
@@ -181,7 +181,7 @@ def synthesize_news_articles_gpu_endpoint(call: ToolCall):
         logger.error(f"❌ GPU synthesis error: {e}")
         # Graceful fallback to CPU implementation
         try:
-            from tools import cluster_articles, aggregate_cluster
+            from .tools import cluster_articles, aggregate_cluster
             logger.info("🔄 Falling back to CPU synthesis")
             # Simple fallback implementation
             articles = call.args[0] if call.args else []
@@ -208,7 +208,7 @@ def synthesize_news_articles_gpu_endpoint(call: ToolCall):
 def get_synthesizer_performance_endpoint(call: ToolCall):
     """Get synthesizer performance statistics"""
     try:
-        from gpu_tools import get_synthesizer_performance
+        from .gpu_tools import get_synthesizer_performance
         logger.info("Retrieving synthesizer performance stats")
         return get_synthesizer_performance(*call.args, **call.kwargs)
     except Exception as e:

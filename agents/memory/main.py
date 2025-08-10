@@ -336,6 +336,8 @@ def db_init(schema_path: str | None = None, x_service_token: str | None = Header
 @app.post("/save_article")
 def save_article_endpoint(request: dict, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Saves an article to the database. Handles both direct calls and MCP Bus format."""
+    # Enforce inter-service auth if configured
+    require_service_token(x_service_token)
     try:
         # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
         if "args" in request and "kwargs" in request:
@@ -356,6 +358,8 @@ def save_article_endpoint(request: dict, x_service_token: str | None = Header(de
 @app.get("/get_article/{article_id}")
 def get_article_endpoint(article_id: int, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Retrieves an article from the database."""
+    # Enforce inter-service auth if configured
+    require_service_token(x_service_token)
     conn = None
     try:
         conn = get_db_connection()
@@ -372,6 +376,8 @@ def get_article_endpoint(article_id: int, x_service_token: str | None = Header(d
 @app.post("/vector_search_articles")
 def vector_search_articles_endpoint(request: dict, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Performs a vector search for articles. Handles both direct calls and MCP Bus format."""
+    # Enforce inter-service auth if configured
+    require_service_token(x_service_token)
     try:
         # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
         if "args" in request and "kwargs" in request:
@@ -392,6 +398,8 @@ def vector_search_articles_endpoint(request: dict, x_service_token: str | None =
 @app.post("/log_training_example")
 def log_training_example_endpoint(example: TrainingExample, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Logs a training example to the database."""
+    # Enforce inter-service auth if configured
+    require_service_token(x_service_token)
     return log_training_example(
         example.task, example.input, example.output, example.critique
     )

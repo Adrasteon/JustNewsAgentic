@@ -73,11 +73,11 @@ def health():
 def warmup():
     """Lightweight warmup to trigger lazy imports and caches without heavy work."""
     try:
-        from gpu_tools import get_fact_checker_performance  # noqa: F401
+        from .gpu_tools import get_fact_checker_performance  # noqa: F401
     except Exception:
         pass
     try:
-        from tools import validate_is_news  # noqa: F401
+        from .tools import validate_is_news  # noqa: F401
     except Exception:
         pass
     metrics["warmups_total"] += 1
@@ -100,7 +100,7 @@ class ToolCall(BaseModel):
 @app.post("/validate_is_news")
 def validate_is_news(call: ToolCall):
     try:
-        from tools import validate_is_news
+        from .tools import validate_is_news
         logger.info(f"Calling validate_is_news with args: {call.args} and kwargs: {call.kwargs}")
         return validate_is_news(*call.args, **call.kwargs)
     except Exception as e:
@@ -110,7 +110,7 @@ def validate_is_news(call: ToolCall):
 @app.post("/verify_claims")
 def verify_claims(call: ToolCall):
     try:
-        from tools import verify_claims
+        from .tools import verify_claims
         logger.info(f"Calling verify_claims with args: {call.args} and kwargs: {call.kwargs}")
         return verify_claims(*call.args, **call.kwargs)
     except Exception as e:
@@ -143,32 +143,32 @@ def validate_claims_endpoint(request: dict):
 @app.post("/validate_is_news_gpu")
 def validate_is_news_gpu(call: ToolCall):
     try:
-        from gpu_tools import validate_is_news_detailed
+        from .gpu_tools import validate_is_news_detailed
         logger.info(f"Calling GPU validate_is_news with args: {call.args} and kwargs: {call.kwargs}")
         return validate_is_news_detailed(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in GPU validate_is_news: {e}")
         # Fallback to original implementation
-        from tools import validate_is_news
-        return validate_is_news(*call.args, **call.kwargs)
+    from .tools import validate_is_news
+    return validate_is_news(*call.args, **call.kwargs)
 
 @app.post("/verify_claims_gpu")
 def verify_claims_gpu(call: ToolCall):
     try:
-        from gpu_tools import verify_claims_detailed
+        from .gpu_tools import verify_claims_detailed
         logger.info(f"Calling GPU verify_claims with args: {call.args} and kwargs: {call.kwargs}")
         return verify_claims_detailed(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in GPU verify_claims: {e}")
         # Fallback to original implementation
-        from tools import verify_claims
-        return verify_claims(*call.args, **call.kwargs)
+    from .tools import verify_claims
+    return verify_claims(*call.args, **call.kwargs)
 
 @app.get("/performance/stats")
 def get_performance_stats():
     """Get GPU acceleration performance statistics"""
     try:
-        from gpu_tools import get_fact_checker_performance
+        from .gpu_tools import get_fact_checker_performance
         return get_fact_checker_performance()
     except Exception as e:
         logger.error(f"Error getting performance stats: {e}")

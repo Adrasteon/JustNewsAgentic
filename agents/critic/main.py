@@ -84,11 +84,11 @@ def health():
 def warmup():
     """Lightweight warmup to trigger lazy imports and caches without heavy work."""
     try:
-        from gpu_tools import get_critic_performance  # noqa: F401
+        from .gpu_tools import get_critic_performance  # noqa: F401
     except Exception:
         pass
     try:
-        from tools import critique_synthesis  # noqa: F401
+        from .tools import critique_synthesis  # noqa: F401
     except Exception:
         pass
     metrics["warmups_total"] += 1
@@ -111,7 +111,7 @@ class ToolCall(BaseModel):
 @app.post("/critique_synthesis")
 def critique_synthesis(call: ToolCall):
     try:
-        from tools import critique_synthesis
+        from .tools import critique_synthesis
         logger.info(f"Calling critique_synthesis with args: {call.args} and kwargs: {call.kwargs}")
         return critique_synthesis(*call.args, **call.kwargs)
     except Exception as e:
@@ -121,7 +121,7 @@ def critique_synthesis(call: ToolCall):
 @app.post("/critique_neutrality")
 def critique_neutrality(call: ToolCall):
     try:
-        from tools import critique_neutrality
+        from .tools import critique_neutrality
         logger.info(f"Calling critique_neutrality with args: {call.args} and kwargs: {call.kwargs}")
         return critique_neutrality(*call.args, **call.kwargs)
     except Exception as e:
@@ -147,7 +147,7 @@ def log_feedback(call: ToolCall):
 def critique_content_gpu_endpoint(call: ToolCall):
     """GPU-accelerated content critique endpoint"""
     try:
-        from gpu_tools import critique_content_gpu
+        from .gpu_tools import critique_content_gpu
         logger.info(f"Calling GPU critique with {len(call.args[0]) if call.args else 0} articles")
         result = critique_content_gpu(*call.args, **call.kwargs)
         
@@ -161,7 +161,7 @@ def critique_content_gpu_endpoint(call: ToolCall):
         logger.error(f"❌ GPU critique error: {e}")
         # Graceful fallback to CPU implementation
         try:
-            from tools import critique_synthesis, critique_neutrality
+            from .tools import critique_synthesis, critique_neutrality
             logger.info("🔄 Falling back to CPU critique")
             # Simple fallback implementation
             articles = call.args[0] if call.args else []
@@ -189,7 +189,7 @@ def critique_content_gpu_endpoint(call: ToolCall):
 def get_critic_performance_endpoint(call: ToolCall):
     """Get critic performance statistics"""
     try:
-        from gpu_tools import get_critic_performance
+        from .gpu_tools import get_critic_performance
         logger.info("Retrieving critic performance stats")
         return get_critic_performance(*call.args, **call.kwargs)
     except Exception as e:

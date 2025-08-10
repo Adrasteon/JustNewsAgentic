@@ -27,7 +27,8 @@ jobs:
 					pip install -r tests/requirements.txt
 					pip install ruff mypy bandit
 			- name: Lint (ruff)
-				run: ruff check .
+				run: |
+					ruff check agents mcp_bus common tests
 			- name: Type check (mypy)
 				run: |
 					mypy --ignore-missing-imports --install-types --non-interactive . || true

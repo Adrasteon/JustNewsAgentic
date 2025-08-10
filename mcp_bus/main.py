@@ -2,7 +2,7 @@
 Main file for the MCP Bus with idempotency, enhanced observability, and standardized schemas.
 """
 # main.py for MCP Message Bus
-from fastapi import FastAPI, HTTPException, Response, Header, Request
+from fastapi import FastAPI, HTTPException, Response, Header
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import time
@@ -11,12 +11,12 @@ import logging
 import hashlib
 import json
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any, Set
+from typing import Optional, Dict, Any
 from threading import Lock
 
 # Import standardized schemas
 from common.schemas import (
-    ToolCallV1, AgentRegistration, MCPResponse, ErrorResponse,
+    ToolCallV1, AgentRegistration, MCPResponse,
     HealthResponse, ReadinessResponse, WarmupResponse
 )
 from common.observability import MetricsCollector, request_timing_middleware
@@ -62,6 +62,10 @@ def _rate_limit_check(route: str) -> bool:
     if count >= limit:
         return False
     counters[bucket] = count + 1
+    # Purge old buckets to avoid unbounded growth
+    for b in list(counters.keys()):
+        if b < bucket - (window * 2):  # keep current and previous windows only
+            counters.pop(b, None)
     return True
 
 # Create FastAPI app with enhanced middleware

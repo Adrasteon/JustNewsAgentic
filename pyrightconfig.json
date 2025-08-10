@@ -1,0 +1,30 @@
+{
+  "include": [
+    "agents",
+    "common",
+    "mcp_bus",
+    "tests",
+    "training_system"
+  ],
+  "exclude": [
+    "archive_obsolete_files",
+    "crawl4ai_docs",
+    "bbc_screenshots",
+    "model_cache",
+    "memory_v2_vectordb",
+    "__pycache__",
+    ".pytest_cache"
+  ],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        ".",
+        "agents"
+      ]
+    }
+  ],
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "warning",
+  "typeCheckingMode": "off"
+}
