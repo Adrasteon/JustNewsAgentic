@@ -3,11 +3,12 @@ Main file for the Dashboard Agent.
 """
 
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 import requests
 from contextlib import asynccontextmanager
 from config import load_config, save_config
+from common.observability import MetricsCollector, request_timing_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -53,6 +54,32 @@ async def lifespan(app: FastAPI):
     save_config(config)
 
 app = FastAPI(lifespan=lifespan)
+
+# Observability
+collector = MetricsCollector("dashboard")
+request_timing_middleware(app, collector)
+
+ready = True
+legacy_metrics = {"warmups_total": 0}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+@app.get("/ready")
+def ready_endpoint():
+    return {"ready": ready}
+
+@app.post("/warmup")
+def warmup():
+    legacy_metrics["warmups_total"] += 1
+    collector.inc("warmups_total")
+    return {"warmed": True}
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    body = collector.render() + f"dashboard_warmups_total {legacy_metrics['warmups_total']}\n"
+    return Response(content=body, media_type="text/plain; version=0.0.4")
 
 class ToolCall(BaseModel):
     args: list
