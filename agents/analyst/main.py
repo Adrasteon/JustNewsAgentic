@@ -18,6 +18,7 @@ from .tools import (
     log_feedback,
 )
 from common.observability import MetricsCollector, request_timing_middleware
+from common.tracing import init_tracing, add_tracing_middleware
 from common.security import get_service_headers, require_service_token, HEADER_NAME
 
 # Import standardized schemas
@@ -110,6 +111,8 @@ app = FastAPI(
 
 # Add observability middleware
 request_timing_middleware(app, agent_metrics)
+if init_tracing("analyst"):
+    add_tracing_middleware(app, "analyst")
 
 @app.get("/health", response_model=HealthResponse)
 def health():

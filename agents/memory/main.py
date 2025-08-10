@@ -22,6 +22,7 @@ from .tools import (
     vector_search_articles,
 )
 from common.observability import MetricsCollector, request_timing_middleware
+from common.tracing import init_tracing, add_tracing_middleware
 from common.security import get_service_headers, require_service_token, HEADER_NAME
 
 # Configure logging
@@ -179,6 +180,8 @@ app = FastAPI(lifespan=lifespan)
 # Observability: request metrics
 collector = MetricsCollector(agent="memory")
 request_timing_middleware(app, collector)
+if init_tracing("memory"):
+    add_tracing_middleware(app, "memory")
 
 @app.get("/health")
 def health(x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
@@ -198,7 +201,26 @@ def ready_endpoint(x_service_token: str | None = Header(default=None, alias=HEAD
         require_service_token(x_service_token)
     except HTTPException:
         pass
-    return {"ready": ready}
+    # Vector-store readiness: check DB connectivity and vector extension
+    db_ok = False
+    vector_ok = False
+    conn = None
+    try:
+        conn = get_db_connection()
+        db_ok = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname='vector');")
+            vector_ok = bool(cur.fetchone()[0])
+    except Exception:
+        db_ok = False
+        vector_ok = False
+    finally:
+        if conn:
+            try:
+                release_connection(conn)
+            except Exception:
+                pass
+    return {"ready": ready and db_ok and vector_ok, "db_ok": db_ok, "vector_ok": vector_ok}
 
 @app.post("/warmup")
 def warmup(x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):

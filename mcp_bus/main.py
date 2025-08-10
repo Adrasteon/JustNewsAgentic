@@ -20,6 +20,7 @@ from common.schemas import (
     HealthResponse, ReadinessResponse, WarmupResponse
 )
 from common.observability import MetricsCollector, request_timing_middleware
+from common.tracing import init_tracing, add_tracing_middleware
 from common.security import require_service_token, HEADER_NAME, get_service_headers
 
 # Configure logging
@@ -81,6 +82,8 @@ app.add_middleware(
 
 # Add request timing middleware
 request_timing_middleware(app, metrics_collector)
+if init_tracing("mcp_bus"):
+    add_tracing_middleware(app, "mcp_bus")
 
 def _generate_cache_key(agent: str, tool: str, args: list, kwargs: dict, idempotency_key: Optional[str] = None) -> str:
     """Generate cache key for idempotency checks."""
