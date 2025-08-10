@@ -9,6 +9,7 @@ import os
 import requests
 from datetime import datetime
 from contextlib import asynccontextmanager
+from common.observability import MetricsCollector, request_timing_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -78,6 +79,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Observability
+collector = MetricsCollector("synth")
+request_timing_middleware(app, collector)
+
 class ToolCall(BaseModel):
     args: list
     kwargs: dict
@@ -100,6 +105,7 @@ def warmup():
     except Exception:
         pass
     metrics["warmups_total"] += 1
+    collector.inc("warmups_total")
     log_gpu_usage("warmup")
     return {"warmed": True}
 
@@ -220,10 +226,12 @@ def get_synthesizer_performance_endpoint(call: ToolCall):
 @app.get("/metrics")
 def metrics_endpoint() -> Response:
     """Return Prometheus-style metrics in text/plain"""
+    # Base counters
     lines = [
         f"synth_warmups_total {metrics['warmups_total']}",
         f"synth_requests_total {metrics['synth_requests_total']}",
         f"synth_errors_total {metrics['synth_errors_total']}",
     ]
-    body = "\n".join(lines) + "\n"
+    # Append shared request metrics
+    body = collector.render() + "\n".join(lines) + "\n"
     return Response(content=body, media_type="text/plain; version=0.0.4")

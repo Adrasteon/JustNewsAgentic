@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import Dict, Any, List
 import os
+from common.observability import MetricsCollector, request_timing_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -82,6 +83,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Observability
+collector = MetricsCollector("newsreader")
+request_timing_middleware(app, collector)
+
 class ToolCall(BaseModel):
     args: List[Any]
     kwargs: Dict[str, Any]
@@ -143,11 +148,12 @@ async def warmup():
         agent = PracticalNewsReader()
     # Do NOT load models here to keep warmup fast and non-blocking
     metrics["warmups_total"] += 1
+    collector.inc("warmups_total")
     return {"warmed": True, "model_loaded": getattr(agent, "model", None) is not None}
 
 @app.get("/metrics")
 def metrics_endpoint() -> Response:
-    body = f"newsreader_warmups_total {metrics['warmups_total']}\n"
+    body = collector.render() + f"newsreader_warmups_total {metrics['warmups_total']}\n"
     return Response(content=body, media_type="text/plain; version=0.0.4")
 
 # Tool functions for direct import

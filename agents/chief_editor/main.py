@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from datetime import datetime
 import os
 import requests
+from common.observability import MetricsCollector, request_timing_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -61,6 +62,10 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(title="Chief Editor Agent", lifespan=lifespan)
 
+# Observability
+collector = MetricsCollector("chief_editor")
+request_timing_middleware(app, collector)
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -77,11 +82,13 @@ def warmup():
     except Exception:
         pass
     metrics["warmups_total"] += 1
+    collector.inc("warmups_total")
     return {"warmed": True}
 
 @app.get("/metrics")
 def metrics_endpoint() -> Response:
-    body = f"chief_editor_warmups_total {metrics['warmups_total']}\n"
+    # Combine legacy metric with shared collector output
+    body = collector.render() + f"chief_editor_warmups_total {metrics['warmups_total']}\n"
     return Response(content=body, media_type="text/plain; version=0.0.4")
 
 # Pydantic models

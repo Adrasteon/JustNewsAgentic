@@ -96,12 +96,81 @@ class MetricsCollector:
         for key, value in self.counters.items():
             name = key[0]
             lines.append(f"{self.agent}_{name} {value}")
-        # Histograms
+        # Histograms with percentile calculations
         for key, h in self.histograms.items():
             name = key[0]
+            # Render bucket counts
             for k, v in h.items():
-                lines.append(f"{self.agent}_{name}_{k} {v}")
+                if k.startswith("bucket_le_"):
+                    lines.append(f"{self.agent}_{name}_{k} {v}")
+            # Render count and sum
+            lines.append(f"{self.agent}_{name}_count {h['count']}")  
+            lines.append(f"{self.agent}_{name}_sum {h['sum']}")
+            
+            # Calculate and render percentiles (p50, p95, p99) if we have data
+            if h['count'] > 0:
+                percentiles = self._calculate_percentiles(h)
+                for pct, value in percentiles.items():
+                    lines.append(f"{self.agent}_{name}_p{pct} {value}")
+                    
         return "\n".join(lines) + "\n"
+    
+    def _calculate_percentiles(self, histogram_data: Dict[str, float]) -> Dict[int, float]:
+        """Calculate percentiles from histogram bucket data.
+        
+        Args:
+            histogram_data: Histogram data with bucket counts
+            
+        Returns:
+            Dictionary mapping percentile (50, 95, 99) to estimated values
+        """
+        total_count = histogram_data['count']
+        if total_count == 0:
+            return {50: 0.0, 95: 0.0, 99: 0.0}
+            
+        # Extract buckets and sort by upper bound
+        buckets = []
+        for key, count in histogram_data.items():
+            if key.startswith("bucket_le_"):
+                upper_bound = float(key.replace("bucket_le_", ""))
+                buckets.append((upper_bound, count))
+        
+        buckets.sort(key=lambda x: x[0])  # Sort by upper bound
+        
+        # Calculate cumulative counts
+        cumulative = []
+        cum_count = 0
+        for bound, count in buckets:
+            cum_count += count
+            cumulative.append((bound, cum_count))
+        
+        # Calculate percentiles
+        percentiles = {}
+        for pct in [50, 95, 99]:
+            target_count = (pct / 100.0) * total_count
+            
+            # Find the bucket where this percentile falls
+            estimated_value = 0.0
+            for i, (bound, cum_count) in enumerate(cumulative):
+                if cum_count >= target_count:
+                    if i == 0:
+                        # First bucket - linear interpolation from 0
+                        estimated_value = bound * (target_count / cum_count)
+                    else:
+                        # Linear interpolation between buckets
+                        prev_bound, prev_cum = cumulative[i-1]
+                        bucket_range = bound - prev_bound
+                        bucket_count = cum_count - prev_cum
+                        remaining_count = target_count - prev_cum
+                        estimated_value = prev_bound + (bucket_range * remaining_count / bucket_count)
+                    break
+            else:
+                # Percentile is beyond all buckets
+                estimated_value = buckets[-1][0] if buckets else 0.0
+                
+            percentiles[pct] = round(estimated_value, 6)
+            
+        return percentiles
 
 
 def request_timing_middleware(app: FastAPI, metrics: MetricsCollector) -> FastAPI:

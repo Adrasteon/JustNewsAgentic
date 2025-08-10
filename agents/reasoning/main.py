@@ -22,6 +22,7 @@ import requests
 from datetime import datetime
 from pathlib import Path
 import shutil
+from common.observability import MetricsCollector, request_timing_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -180,6 +181,10 @@ async def lifespan(app: FastAPI):
     logger.info("Reasoning agent is shutting down.")
 
 app = FastAPI(title="JustNews V4 Reasoning Agent (Nucleoid)", lifespan=lifespan)
+
+# Observability
+collector = MetricsCollector("reasoning")
+request_timing_middleware(app, collector)
 
 # --- Nucleoid GitHub Integration ---
 class NucleoidEngine:
@@ -695,11 +700,12 @@ def warmup():
     except Exception:
         pass
     metrics["warmups_total"] += 1
+    collector.inc("warmups_total")
     return {"warmed": True}
 
 @app.get("/metrics")
 def metrics_endpoint() -> Response:
-    body = f"reasoning_warmups_total {metrics['warmups_total']}\n"
+    body = collector.render() + f"reasoning_warmups_total {metrics['warmups_total']}\n"
     return Response(content=body, media_type="text/plain; version=0.0.4")
 
 # --- MCP Bus Integration ---
