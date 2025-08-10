@@ -338,11 +338,15 @@ def metrics_endpoint() -> Response:
     # Add circuit breaker state metrics
     for agent_name, state in cb_state.items():
         is_open = 1 if state.get("open_until", 0) > time.time() else 0
-        metrics_collector.set_gauge(f"circuit_breaker_open", is_open)
-        metrics_collector.set_gauge(f"circuit_breaker_fails", state.get("fails", 0))
-        # Expose open_until remaining seconds when open
+        # Backward-compatible generic gauges (will reflect the last iterated agent)
+        metrics_collector.set_gauge("circuit_breaker_open", is_open)
+        metrics_collector.set_gauge("circuit_breaker_fails", state.get("fails", 0))
         remaining = max(0, state.get("open_until", 0) - time.time())
         metrics_collector.set_gauge("circuit_breaker_open_remaining_seconds", remaining)
+        # Per-agent gauges to avoid overwrite
+        metrics_collector.set_gauge(f"circuit_breaker_open_{agent_name}", is_open)
+        metrics_collector.set_gauge(f"circuit_breaker_fails_{agent_name}", state.get("fails", 0))
+        metrics_collector.set_gauge(f"circuit_breaker_open_remaining_seconds_{agent_name}", remaining)
     
     # Add cache metrics
     metrics_collector.set_gauge("idempotency_cache_size", len(idempotency_cache))
