@@ -8,7 +8,7 @@ from datetime import datetime
 
 import psycopg2
 import requests
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, Json
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -53,27 +53,34 @@ def get_embedding_model():
     return SentenceTransformer(EMBEDDING_MODEL_NAME)
 
 def save_article(content: str, metadata: dict) -> dict:
-    """Saves an article to the database and generates an embedding for the content."""
+    """Saves an article to the database.
+
+    Attempts to generate an embedding if the sentence-transformers dependency is available;
+    otherwise gracefully saves without an embedding.
+    """
     conn = get_db_connection()
     if not conn:
         return {"error": "Database connection failed"}
     try:
         with conn.cursor() as cur:
-            embedding_model = get_embedding_model()
-            embedding = embedding_model.encode(content)
-            
-            # Get the next available ID (simple approach without sequence)
-            cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM articles")
-            next_id = cur.fetchone()[0]
-            
-            # Insert with explicit ID
+            # Try embedding, but allow fallback
+            embedding_arr = None
+            try:
+                embedding_model = get_embedding_model()
+                embedding = embedding_model.encode(content)
+                embedding_arr = list(map(float, embedding))
+            except Exception as e:
+                logger.info(f"Embedding unavailable; saving without embedding: {e}")
+
+            # Insert and return id (let SERIAL handle id assignment)
             cur.execute(
-                "INSERT INTO articles (id, content, metadata, embedding) VALUES (%s, %s, %s, %s)",
-                (next_id, content, metadata, list(map(float, embedding))),
+                "INSERT INTO articles (content, metadata, embedding) VALUES (%s, %s, %s) RETURNING id",
+                (content, Json(metadata), embedding_arr),
             )
+            new_id = cur.fetchone()[0]
             conn.commit()
-            log_feedback("save_article", {"status": "success", "article_id": next_id})
-            return {"status": "success", "article_id": next_id}
+            log_feedback("save_article", {"status": "success", "article_id": new_id})
+            return {"status": "success", "article_id": new_id}
     except Exception as e:
         logger.error(f"Error saving article: {e}")
         conn.rollback()

@@ -29,3 +29,32 @@ CREATE OR REPLACE VIEW v_counts AS
 SELECT
   (SELECT COUNT(*) FROM articles) AS articles_count,
   (SELECT COUNT(*) FROM training_examples) AS training_examples_count;
+
+-- Ensure sequences/defaults exist and align for id columns
+DO $$
+BEGIN
+    -- Articles sequence and default
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'articles_id_seq'
+    ) THEN
+        CREATE SEQUENCE articles_id_seq;
+    END IF;
+    ALTER SEQUENCE articles_id_seq OWNED BY articles.id;
+    ALTER TABLE articles ALTER COLUMN id SET DEFAULT nextval('articles_id_seq');
+    PERFORM setval('articles_id_seq', COALESCE((SELECT MAX(id) FROM articles), 1), true);
+
+    -- Training examples sequence and default (best-effort; ignore ownership issues)
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'training_examples_id_seq'
+        ) THEN
+            CREATE SEQUENCE training_examples_id_seq;
+        END IF;
+        ALTER SEQUENCE training_examples_id_seq OWNED BY training_examples.id;
+        ALTER TABLE training_examples ALTER COLUMN id SET DEFAULT nextval('training_examples_id_seq');
+        PERFORM setval('training_examples_id_seq', COALESCE((SELECT MAX(id) FROM training_examples), 1), true);
+    EXCEPTION WHEN OTHERS THEN
+        -- Do not fail schema init if we don't own existing sequence
+        NULL;
+    END;
+END $$;
