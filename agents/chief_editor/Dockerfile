@@ -1,4 +1,4 @@
-# Dockerfile for Chief Editor Agent
+# DEPRECATED: Dockerfile for Chief Editor Agent (systemd is the supported runtime)
 FROM python:3.11-slim
 
 WORKDIR /app

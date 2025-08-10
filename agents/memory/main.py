@@ -9,16 +9,31 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 import psycopg2
-from fastapi import FastAPI, HTTPException
+from psycopg2.pool import SimpleConnectionPool
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 
-from tools import (get_embedding_model, log_feedback,
-                   log_training_example, save_article, vector_search_articles)
+from .tools import (
+    get_embedding_model,
+    log_feedback,
+    log_training_example,
+    save_article,
+    vector_search_articles,
+)
+from common.observability import MetricsCollector, request_timing_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Readiness flag and metrics
+ready = False
+metrics = {
+    "warmups_total": 0,
+    "db_health_checks_total": 0,
+    "db_last_available": 0,
+}
 
 # Environment variables
 POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
@@ -28,6 +43,18 @@ POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
 MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+# Optional connection pool (initialized on first use)
+DB_POOL: SimpleConnectionPool | None = None
+
+def release_connection(conn) -> None:
+    """Release a DB connection back to the pool or close it."""
+    try:
+        if DB_POOL is not None:
+            DB_POOL.putconn(conn)
+        else:
+            conn.close()
+    except Exception:
+        pass
 # Pydantic models
 class Article(BaseModel):
     content: str
@@ -57,7 +84,7 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -65,15 +92,49 @@ class MCPBusClient:
             raise
 
 # Use connection pooling for database connections
+def _init_pool(minconn: int = 1, maxconn: int = 5) -> None:
+    """Initialize a global PostgreSQL connection pool if possible."""
+    global DB_POOL
+    if DB_POOL is not None:
+        return
+    try:
+        DB_POOL = SimpleConnectionPool(
+            minconn,
+            maxconn,
+            host=POSTGRES_HOST,
+            database=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            connect_timeout=3,
+            options='-c search_path=public',
+        )
+        logger.info("PostgreSQL connection pool initialized")
+    except Exception as e:
+        logger.warning(f"Could not initialize DB pool: {e}")
+        DB_POOL = None
+
+
 def get_db_connection():
     """Establishes a connection to the PostgreSQL database with pooling."""
+    # Prefer pool if available
+    global DB_POOL
+    if DB_POOL is None:
+        _init_pool()
+    if DB_POOL is not None:
+        try:
+            return DB_POOL.getconn()
+        except Exception as e:
+            logger.warning(f"DB pool unavailable, falling back to direct connect: {e}")
+            DB_POOL = None
+    # Fallback direct connection
     try:
         conn = psycopg2.connect(
             host=POSTGRES_HOST,
             database=POSTGRES_DB,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
-            options='-c search_path=public'
+            connect_timeout=3,
+            options='-c search_path=public',
         )
         logger.info("Database connection established successfully.")
         return conn
@@ -101,15 +162,134 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    # Mark ready after startup and optional registration
+    global ready
+    ready = True
     yield
     logger.info("Memory agent is shutting down.")
 
 app = FastAPI(lifespan=lifespan)
 
+# Observability: request metrics
+collector = MetricsCollector(agent="memory")
+request_timing_middleware(app, collector)
+
 @app.get("/health")
 def health():
     """Health check endpoint."""
     return {"status": "ok"}
+
+@app.get("/ready")
+def ready_endpoint():
+    """Readiness endpoint for startup gating."""
+    return {"ready": ready}
+
+@app.post("/warmup")
+def warmup():
+    """Minimal warmup to touch lazy paths without heavy DB ops."""
+    try:
+        # Light imports only
+        from .tools import get_embedding_model  # noqa: F401
+    except Exception:
+        pass
+    metrics["warmups_total"] += 1
+    return {"warmed": True}
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    """Prometheus-style metrics for the Memory agent.
+
+    Exposes counters and lightweight gauges, including DB pool status if available.
+    """
+    pool_in_use = 0
+    pool_available = 0
+    try:
+        if DB_POOL is not None:
+            # psycopg2 SimpleConnectionPool doesn't expose public counters; use internals safely
+            pool_in_use = len(getattr(DB_POOL, "_used", []))
+            pool_available = len(getattr(DB_POOL, "_pool", []))
+    except Exception:
+        # Best-effort: keep zeros if inspection fails
+        pass
+
+    body = (
+        f"memory_warmups_total {metrics['warmups_total']}\n"
+        f"memory_db_health_checks_total {metrics['db_health_checks_total']}\n"
+        f"memory_db_last_available {metrics['db_last_available']}\n"
+        f"memory_db_pool_in_use {pool_in_use}\n"
+        f"memory_db_pool_available {pool_available}\n"
+    )
+    # Append request metrics from collector
+    body += collector.render()
+    return Response(content=body, media_type="text/plain; version=0.0.4")
+
+@app.get("/db/health")
+def db_health():
+    """Database health probe. Always 200 with availability status.
+
+    Returns:
+        {"available": bool, "version": Optional[str], "error": Optional[str]}
+    """
+    metrics["db_health_checks_total"] += 1
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT version();")
+            version = cur.fetchone()[0]
+        metrics["db_last_available"] = 1
+        return {"available": True, "version": version}
+    except Exception as e:
+        metrics["db_last_available"] = 0
+        # Do not fail the endpoint to keep orchestration simple
+        return {"available": False, "error": str(e)}
+    finally:
+        if conn:
+            try:
+                release_connection(conn)
+            except Exception:
+                pass
+
+@app.post("/db/init")
+def db_init(schema_path: str | None = None):
+    """Initialize the PostgreSQL schema by executing the provided SQL file.
+
+    Args:
+        schema_path: Optional path to a .sql file. If not provided, defaults to
+                     scripts/init_postgres_schema.sql relative to repo dir.
+    """
+    # Resolve default path
+    if not schema_path:
+        repo_dir = os.environ.get("REPO_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+        schema_path = os.path.join(repo_dir, "scripts", "init_postgres_schema.sql")
+
+    if not os.path.exists(schema_path):
+        raise HTTPException(status_code=400, detail=f"Schema file not found: {schema_path}")
+
+    sql_text = ""
+    try:
+        with open(schema_path, "r", encoding="utf-8") as f:
+            sql_text = f.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read schema file: {e}")
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute(sql_text)
+        conn.commit()
+        return {"status": "ok", "applied": True, "path": schema_path}
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        raise HTTPException(status_code=500, detail=f"Schema apply failed: {e}")
+    finally:
+        if conn:
+            release_connection(conn)
 
 @app.post("/save_article")
 def save_article_endpoint(request: dict):
@@ -134,8 +314,9 @@ def save_article_endpoint(request: dict):
 @app.get("/get_article/{article_id}")
 def get_article_endpoint(article_id: int):
     """Retrieves an article from the database."""
-    conn = get_db_connection()
+    conn = None
     try:
+        conn = get_db_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM articles WHERE id = %s", (article_id,))
             article = cur.fetchone()
@@ -143,7 +324,8 @@ def get_article_endpoint(article_id: int):
                 raise HTTPException(status_code=404, detail="Article not found")
             return article
     finally:
-        conn.close()
+        if conn:
+            release_connection(conn)
 
 @app.post("/vector_search_articles")
 def vector_search_articles_endpoint(request: dict):

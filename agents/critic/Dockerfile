@@ -1,4 +1,4 @@
-# Dockerfile for Critic Agent
+# DEPRECATED: Dockerfile for Critic Agent (systemd is the supported runtime)
 FROM python:3.11-slim
 
 WORKDIR /app

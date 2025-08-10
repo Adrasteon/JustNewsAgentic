@@ -3,7 +3,7 @@ MCP Bus Integration for LLaVA NewsReader Agent
 Integrates with JustNews V4 MCP Bus system
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 import asyncio
 import uvicorn
 import requests
@@ -11,12 +11,14 @@ import logging
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import Dict, Any, List
-import sys
 import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+ready = False
+metrics = {"warmups_total": 0}
 
 # Environment variables
 NEWSREADER_AGENT_PORT = int(os.environ.get("NEWSREADER_AGENT_PORT", 8009))
@@ -32,17 +34,14 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from newsreader_agent import PracticalNewsReader, ToolCall as NewsExtractionRequest
+from .newsreader_agent import PracticalNewsReader
 
 # Global agent instance
 agent = None
@@ -68,6 +67,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
     
+    global ready
+    ready = True
     yield
     
     # Shutdown
@@ -129,6 +130,25 @@ def health():
         "environment": "rapids-25.06",
         "lifespan": "modern"
     }
+
+@app.get("/ready")
+def ready_endpoint():
+    return {"ready": ready}
+
+@app.post("/warmup")
+async def warmup():
+    """Minimal warmup: construct agent if missing, avoid heavy model loads."""
+    global agent
+    if agent is None:
+        agent = PracticalNewsReader()
+    # Do NOT load models here to keep warmup fast and non-blocking
+    metrics["warmups_total"] += 1
+    return {"warmed": True, "model_loaded": getattr(agent, "model", None) is not None}
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    body = f"newsreader_warmups_total {metrics['warmups_total']}\n"
+    return Response(content=body, media_type="text/plain; version=0.0.4")
 
 # Tool functions for direct import
 async def extract_news_content(url: str, screenshot_path: str = None) -> Dict[str, Any]:

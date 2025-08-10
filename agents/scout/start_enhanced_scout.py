@@ -52,7 +52,7 @@ def install_dependencies():
             
     except subprocess.CalledProcessError as e:
         logger.warning(f"⚠️ Could not install Crawl4AI: {e}")
-        logger.info("Scout will use Docker fallback for deep crawling")
+        logger.info("Docker fallback deprecated; deep crawling features disabled when Crawl4AI is unavailable")
 
 def start_scout_agent():
     """Start the Scout agent with enhanced deep crawl capability"""
@@ -75,7 +75,7 @@ def start_scout_agent():
     logger.info("   ✅ BestFirstCrawlingStrategy deep crawling")
     logger.info("   ✅ Scout Intelligence analysis")
     logger.info("   ✅ User parameters: depth=3, pages=100, min_words=500")
-    logger.info("   ✅ Native Crawl4AI integration with Docker fallback")
+    logger.info("   ✅ Native Crawl4AI integration (Docker fallback removed)")
     
     try:
         subprocess.run(cmd, check=True)

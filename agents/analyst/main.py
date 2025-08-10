@@ -6,7 +6,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 import requests
 
@@ -17,10 +17,15 @@ from .tools import (
     analyze_content_trends,
     log_feedback,
 )
+from common.observability import MetricsCollector, request_timing_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Readiness flag
+ready = False
+metrics = {"warmups_total": 0}
 
 # Environment variables
 ANALYST_AGENT_PORT = int(os.environ.get("ANALYST_AGENT_PORT", 8004))
@@ -42,7 +47,7 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -75,7 +80,9 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-
+    # Mark ready after successful startup tasks
+    global ready
+    ready = True
     yield
     
     # Cleanup on shutdown
@@ -85,10 +92,37 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Observability
+collector = MetricsCollector(agent="analyst")
+request_timing_middleware(app, collector)
+
 @app.get("/health")
 def health():
     """Health check endpoint."""
     return {"status": "ok"}
+
+@app.get("/ready")
+def ready_endpoint():
+    """Readiness endpoint for startup gating."""
+    return {"ready": ready}
+
+@app.post("/warmup")
+def warmup():
+    """Lightweight warmup to trigger lazy imports and caches without heavy work."""
+    try:
+        # Touch CPU-only tools
+        from .tools import analyze_text_statistics as _ats  # noqa: F401
+        _ = _ats("warmup text")
+    except Exception:
+        pass
+    metrics["warmups_total"] += 1
+    return {"warmed": True}
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    body = f"analyst_warmups_total {metrics['warmups_total']}\n"
+    body += collector.render()
+    return Response(content=body, media_type="text/plain; version=0.0.4")
 
 # REMOVED ENDPOINTS - Sentiment and bias analysis centralized in Scout V2 Agent
 # Use Scout V2 for all sentiment and bias analysis:

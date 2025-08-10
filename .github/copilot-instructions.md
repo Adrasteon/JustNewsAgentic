@@ -1,621 +1,337 @@
-# JustNews V4 AI Coding Agent Instructions
+# JustNews V4 - GitHub Copilot Instructions
 
-## System Architecture
-JustNews V4 is a multi-agent news analysis system with **native TensorRT GPU acceleration** and **MCP (Model Context Protocol) bus communication**. The architecture consists of 8 specialized agents communicating through a central message bus.
+## Project Overview
 
-**Current Status**: Production-Scale News Crawling Operational - achieving **8.14 articles/second** ultra-fast processing and **0.86 articles/second** AI-enhanced processing with complete root cause resolution for web scraping challenges.
+JustNews V4 is a production-ready multi-agent news analysis system featuring GPU-accelerated processing, continuous learning, and distributed architecture. The system processes news content through specialized AI agents that communicate via MCP (Model Context Protocol) for collaborative analysis, fact-checking, and synthesis.
 
-### Core Components
-- **MCP Bus** (Port 8000): Central communication hub using FastAPI with `/register`, `/call`, `/agents` endpoints
-- **Agents** (Ports 8001-8008): Independent FastAPI services (GPU/CPU)
-- **Reasoning Agent** (Port 8008): Nucleoid-based symbolic reasoning, fact validation, contradiction detection, explainability
-- **Database**: PostgreSQL + vector search for semantic article storage
-- **GPU Stack**: Water-cooled RTX 3090 with native TensorRT 10.10.0.31, PyCUDA, professional CUDA management
-- **Production Crawlers**: BBC news crawling at production scale with cookie wall bypass
+**Current Status** (August 9, 2025): Production deployment with **Synthesizer V3** complete, documentation organization restructured, and **V2 engines completion** phase initiated.
 
-## Production News Crawling Achievement (AUGUST 2, 2025)
-**Production-Scale Breakthrough** - Root cause resolution for enterprise web scraping:
-- **Ultra-Fast Processing**: **8.14 articles/second** (703,559 articles/day capacity)
-- **AI-Enhanced Processing**: **0.86 articles/second** (74,400 articles/day capacity)  
-- **Success Rate**: **95.5%** real content extraction with BBC news validation
-- **Root Cause Solution**: Cookie consent and JavaScript modal handling completely resolved
-- **Model Stability**: LLaVA-1.5-7B warnings eliminated, INT8 quantization optimized
+## Development Standards
 
-### Production Files (Active Development)
-- **`production_bbc_crawler.py`**: Full AI analysis pipeline with NewsReader integration
-- **`ultra_fast_bbc_crawler.py`**: High-speed heuristic processing with concurrent browsers
-- **`practical_newsreader_solution.py`**: Fixed LLaVA implementation with zero warnings
+### Code Quality Requirements
+- **Python Style**: Follow PEP 8 with 88-character line limit
+- **Type Hints**: Required for all function signatures and class attributes
+- **Docstrings**: Google-style docstrings for all public functions and classes
+- **Error Handling**: Comprehensive exception handling with specific error types
+- **Logging**: Structured logging with appropriate levels (DEBUG, INFO, WARNING, ERROR)
 
-## Native TensorRT Performance (PRODUCTION STRESS TESTED)
-**Water-Cooled RTX 3090 Results** - Validated with 1,000 articles × 2,000 characters each:
-- **Sentiment Analysis**: **720.8 articles/sec** (production stress tested)
-- **Bias Analysis**: **740.3 articles/sec** (production stress tested)  
-- **Combined Average**: **730+ articles/sec** sustained throughput
-- **Memory Efficiency**: 2.3GB GPU utilization (highly optimized)
-- **System Stability**: Zero crashes, zero warnings, 100% reliability
-- **Production Validated**: Successfully processed 2M+ characters in 2.7 seconds
-
-## Optimized V4 Architecture (Strategic Pipeline Design)
-**Intelligence-First Design** - Scout pre-filtering enables downstream optimization:
-- **Scout Agent**: 8GB (LLaMA-3-8B + self-learning) - Critical content quality pre-filter
-- **Fact Checker**: 2.5GB (DialoGPT-medium) - Optimized due to Scout pre-filtering clean input
-- **Pipeline Efficiency**: Scout's ML-based news detection reduces downstream model requirements
-- **Memory Buffer Target**: 2-3GB minimum for production stability and context management
-
-## Agent Communication Pattern
-**Critical**: All agents follow identical communication patterns:
-
+### Code Organization Patterns
 ```python
-# Agent main.py structure (every agent)
+# Standard agent structure pattern
+from typing import List, Dict, Optional, Any
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
 class ToolCall(BaseModel):
+    """Standard MCP tool call format"""
     args: list
     kwargs: dict
 
 @app.post("/tool_name")
-def tool_endpoint(call: ToolCall):
-    from tools import tool_function
-    return tool_function(*call.args, **call.kwargs)
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+def tool_endpoint(call: ToolCall) -> Dict[str, Any]:
+    """Tool endpoint with proper error handling"""
+    try:
+        from tools import tool_function
+        result = tool_function(*call.args, **call.kwargs)
+        logger.info(f"Tool {tool_name} executed successfully")
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Tool {tool_name} failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 ```
 
-**MCP Bus Integration**: Agents call other agents via `POST /call` with:
+### Performance Guidelines
+- **GPU Memory Management**: Use context managers and proper cleanup
+- **Batch Processing**: Implement 16-32 item batches for optimal GPU utilization
+- **Memory Monitoring**: Include memory usage logging in GPU operations
+- **Fallback Systems**: Always provide CPU fallback for GPU operations
+
+## Architecture Guidelines
+
+### Agent Communication Protocol
+**Critical**: All agents must follow the MCP (Model Context Protocol) pattern:
+
 ```python
-payload = {
-    "agent": "target_agent",
-    "tool": "tool_name", 
-    "args": [arg1, arg2],
-    "kwargs": {}
-}
-requests.post(f"{MCP_BUS_URL}/call", json=payload)
+# MCP Bus Integration Pattern
+def call_agent_tool(agent: str, tool: str, *args, **kwargs) -> Any:
+    """Standard pattern for inter-agent communication"""
+    payload = {
+        "agent": agent,
+        "tool": tool,
+        "args": list(args),
+        "kwargs": kwargs
+    }
+    response = requests.post(f"{MCP_BUS_URL}/call", json=payload)
+    response.raise_for_status()
+    return response.json()
 ```
 
-## Enhanced Scout Agent Integration (Production Ready)
+### Core Components Architecture
 
-### Scout Agent Enhanced Deep Crawl System
-**Status**: ✅ Production deployment complete with native Crawl4AI integration
+#### MCP Bus (Port 8000)
+- Central communication hub using FastAPI
+- Agent registration with `/register`, `/call`, `/agents` endpoints
+- Health check and service discovery
 
-**Key Features**:
-- **Native Crawl4AI Integration**: Version 0.7.2 with BestFirstCrawlingStrategy
-- **Scout Intelligence Engine**: LLaMA-3-8B GPU-accelerated content analysis
-- **User-Configurable Parameters**: max_depth=3, max_pages=100, word_count_threshold=500
-- **Quality Filtering**: Dynamic threshold-based content selection
-- **MCP Bus Communication**: Full integration with agent registration system
+#### Agents (Ports 8001-8008)
+- **Scout** (8002): Content discovery with 5-model AI architecture
+- **Analyst** (8004): TensorRT-accelerated sentiment/bias analysis  
+- **Fact Checker** (8003): 5-model verification system
+- **Synthesizer** (8005): **V3 Production** - 4-model synthesis (BERTopic, BART, FLAN-T5, SentenceTransformers)
+- **Critic** (8006): Quality assessment and review
+- **Chief Editor** (8001): Workflow orchestration
+- **Memory** (8007): PostgreSQL + vector search storage
+- **Reasoning** (8008): Nucleoid symbolic logic engine
 
-### Production BBC Crawling Integration
-**Latest Achievement**: Enhanced Scout capabilities now validated with production BBC crawling:
-- **Content Quality Assessment**: Real news content validation (murders, arrests, government announcements)
-- **Modal Handling**: JavaScript injection for cookie consent and overlay dismissal
-- **Performance Scaling**: Multi-browser concurrent processing integration
-- **Content Extraction**: DOM-based fallback with screenshot analysis backup
+### GPU Integration Standards
 
-**Implementation Pattern**:
+#### Native TensorRT Implementation (Production Pattern)
 ```python
-# Enhanced deep crawl with Scout Intelligence + Production BBC Integration
-async def enhanced_deep_crawl_site(
-    url: str,
-    max_depth: int = 3,
-    max_pages: int = 100,
-    word_count_threshold: int = 500,
-    quality_threshold: float = 0.6,
-    analyze_content: bool = True,
-    handle_cookies: bool = True  # NEW: Production cookie handling
-) -> List[Dict]:
-    # Native Crawl4AI with BestFirstCrawlingStrategy + BBC production patterns
-    strategy = BestFirstCrawlingStrategy(
-        max_depth=max_depth,
-        max_pages=max_pages,
-        filter_chain=FilterChain([
-            ContentTypeFilter(["text/html"]),
-            DomainFilter(allowed_domains=[domain])
-        ]),
-        word_count_threshold=word_count_threshold
-    )
-    
-    # Scout Intelligence analysis with quality filtering
-    if intelligence_available and scout_engine and analyze_content:
-        analysis = scout_engine.comprehensive_content_analysis(content, url)
-        scout_score = analysis.get("scout_score", 0.0)
-        
-        if scout_score >= quality_threshold:
-            result["scout_analysis"] = analysis
-            result["scout_score"] = scout_score
-            # Additional quality metrics and filtering
-```
-
-**Performance Validation**:
-- Sky News crawl: 148k characters in 1.3 seconds
-- Scout Intelligence analysis: Content scoring and quality filtering operational
-- MCP Bus integration: Full agent registration and communication validated
-
-## Reasoning Agent Integration (Production Ready)
-
-### Reasoning Agent (Nucleoid) - Complete GitHub Implementation
-- **Purpose**: Symbolic logic, fact validation, contradiction detection, and explainability for news analysis
-- **Status**: ✅ **PRODUCTION DEPLOYMENT COMPLETE** - Full GitHub Integration Achieved
-- **Implementation**: Complete Nucleoid Python implementation from official GitHub repository
-- **Port**: 8008 (default)
-- **Resource Usage**: <1GB RAM, CPU only (symbolic logic operations)
-- **Integration**: Full MCP bus integration with comprehensive FastAPI endpoints
-
-**Technical Achievement**: Successfully integrated the complete Nucleoid Python implementation from the official GitHub repository (https://github.com/nucleoidai/nucleoid), providing enterprise-grade symbolic reasoning capabilities.
-
-**Core Components**:
-- **AST-based Parser**: Proper Python syntax handling with Abstract Syntax Tree parsing
-- **NetworkX Dependency Graphs**: Advanced variable relationship tracking and dependency management  
-- **Expression Handler**: Complex mathematical expression evaluation (addition, subtraction, multiplication, division)
-- **Assignment Handler**: Automatic dependency detection and graph construction with variable scoping
-- **State Management**: Persistent variable storage with proper state isolation
-- **Comparison Operations**: Full logical comparison support (==, !=, <, >, <=, >=)
-
-**Production Features**:
-- **Complex Logic**: Variable assignments (`x = 5`), mathematical expressions (`y = x + 10`), dependency resolution
-- **Query System**: Real-time variable queries with computed results (`y` → `15`)
-- **Contradiction Detection**: Sophisticated logical consistency checking with detailed conflict reporting
-- **Graph Dependencies**: NetworkX-powered relationship mapping between variables and expressions
-- **Error Handling**: Comprehensive exception handling with detailed error messages
-- **Fallback System**: SimpleNucleoidImplementation provides backward compatibility
-
-**API Endpoints**: `/add_fact`, `/add_facts`, `/add_rule`, `/query`, `/evaluate`, `/validate_claim`, `/health`
-**MCP Integration**: Full agent registration and `/call` endpoint for inter-agent reasoning requests
-**Test Coverage**: 100% test pass rate with comprehensive validation suite
-
-**Example Workflow:**
-1. Scout/Analyst extracts a claim: `article_credibility = 0.8`
-2. Fact Checker verifies with neural models: `source_verified = true`
-3. Reasoning Agent ingests facts: `if source_verified == true and article_credibility > 0.7 then trust_level = high`
-4. Query resolution: `trust_level` → `high`
-5. Contradiction detection: Automatic flagging of conflicting statements
-6. Editorial workflow: Reasoning Agent provides explanations for transparency
-
-**File Structure**:
-- `agents/reasoning/main.py`: Main FastAPI application with MCP integration
-- `agents/reasoning/nucleoid_implementation.py`: Complete Nucleoid GitHub implementation 
-- `agents/reasoning/test_reasoning_agent.py`: Comprehensive test suite
-- `agents/reasoning/requirements.txt`: NetworkX, FastAPI, Pydantic dependencies
-
-## Development Workflows
-
-### Production Environment (VALIDATED)
-**Conda Environment**: `rapids-25.06` (Python 3.12)
-**Key Packages**: PyTorch 2.2.0+cu121, transformers 4.39.0, sentence-transformers 2.6.1
-**Compatibility Fix**: NumPy 1.26.4 (resolved torchvision::nms conflicts)
-**Hardware**: Water-cooled RTX 3090 (25.3GB memory available)
-
-### Starting the System
-```bash
-# Full system (Docker Compose)
-docker-compose up --build
-
-# Native GPU analyst (Ubuntu native - PRODUCTION READY)
-source /home/adra/miniconda3/etc/profile.d/conda.sh
-conda activate rapids-25.06
-python start_native_gpu_analyst.py
-
-# Production BBC Crawlers (NEW - PRODUCTION READY)
-conda activate rapids-25.06
-python production_bbc_crawler.py      # AI-enhanced processing (0.86 art/sec)
-python ultra_fast_bbc_crawler.py      # Ultra-fast processing (8.14 art/sec)
-```
-
-### Testing Individual Agents
-Each agent can run standalone on its designated port. Always test agent endpoints individually before Docker integration.
-
-### Performance Testing
-Use `production_stress_test.py` for production-scale validation with full-length news articles (2,717+ chars). Current GPU performance: **151.4 articles/sec sentiment, 146.8 articles/sec bias analysis**.
-
-## Project-Specific Patterns
-
-### Feedback Logging (Universal Pattern)
-**Every agent** implements identical feedback logging:
-```python
-def log_feedback(event: str, details: dict):
-    with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
-        f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
-```
-
-### GPU Integration Strategy
-The `native_tensorrt_engine.py` demonstrates the current **native TensorRT production implementation** with professional CUDA management:
-
-#### Current GPU Status (✅ NATIVE TENSORRT PRODUCTION DEPLOYED):
-- ✅ **Analyst**: **Native TensorRT production deployment** (730+ articles/sec - 4.8x improvement)
-  - ✅ Sentiment Analysis: 720.8 articles/sec (production stress tested)
-  - ✅ Bias Analysis: 740.3 articles/sec (production stress tested)
-  - ✅ Memory Efficiency: 2.3GB GPU utilization (65% reduction)
-  - ✅ Stability: Zero crashes, zero warnings, 100% reliability
-  - ✅ Stress Testing: 1,000 articles × 2,000 chars processed successfully
-  - ✅ Context Management: Professional CUDA context lifecycle with persistent global engine
-- ⏳ **Scout**: LLaMA-3-8B ready for TensorRT migration (8GB - critical content pre-filter)
-- ⏳ **Fact Checker**: DialoGPT-medium ready for TensorRT migration (2.5GB - Scout-optimized)
-- ⏳ **Synthesizer**: DialoGPT-medium + embeddings ready for TensorRT migration (3GB)
-- ⏳ **Critic**: DialoGPT-medium ready for TensorRT migration (2.5GB)  
-- ⏳ **Chief Editor**: DialoGPT-medium orchestration focus (2GB - specification-optimized)
-- ⏳ **Memory**: Vector embeddings ready for TensorRT migration (1.5GB)
-
-#### Native TensorRT Implementation Pattern (✅ PRODUCTION READY):
-```python
-# Production-Ready Native TensorRT with Professional CUDA Management
-class NativeTensorRTInferenceEngine:
+# Professional GPU context management
+class GPUAcceleratedAgent:
     def __init__(self, engines_dir="tensorrt_engines"):
-        # Professional CUDA context management
         self.cuda_context = None
         self.context_created = False
         self._initialize_cuda_context()
-        self._load_tensorrt_engines()
-    
-    def score_sentiment_batch_native(self, texts: List[str]) -> List[Optional[float]]:
-        # Native TensorRT execution with FP16 precision
-        # 786.8 articles/sec performance validated
-        return self._run_native_batch_inference(texts, "sentiment")
-    
-    def cleanup(self):
-        # Proper CUDA context cleanup with Context.pop()
-        if self.context_created and self.cuda_context:
-            self.cuda_context.pop()
-    
+        
     def __enter__(self):
         return self
-    
+        
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanup()
-```
-        # Professional CUDA device management
-        torch.cuda.set_device(0)
-        torch.cuda.empty_cache()
         
-        # Using HuggingFace transformers with GPU acceleration
-        self.sentiment_analyzer = pipeline(
-            "sentiment-analysis",
-            model="cardiffnlp/twitter-roberta-base-sentiment-latest",
-            device=0,  # GPU device
-            batch_size=32,  # Batch processing for 10x speedup
-            torch_dtype=torch.float16  # FP16 for memory efficiency
-        )
-    
-    def score_sentiment_batch_gpu(self, texts: List[str]) -> List[Optional[float]]:
-        # Professional device context management
-        torch.cuda.set_device(0)
-        with torch.cuda.device(0):
-            results = self.sentiment_analyzer(texts)
-        return processed_results
-```python
-# Current Working Implementation (V3.5 achieving V4 performance)
-class GPUAcceleratedAnalyst:
-    def _initialize_gpu_models(self):
-        # Using HuggingFace transformers with GPU acceleration
-        self.sentiment_analyzer = pipeline(
-            "sentiment-analysis",
-            model="cardiffnlp/twitter-roberta-base-sentiment-latest",
-            device=0,  # GPU device
-            batch_size=32  # Batch processing for 10x speedup
-        )
-
-# Planned V4 RTX AI Toolkit Integration (Future):
-class RTXOptimizedHybridManager:
-    def __init__(self):
-        # Future V4 implementation with AIM SDK
-        from nvidia_aim import InferenceManager  # Not yet implemented
-        self.aim_client = InferenceManager()
+    def cleanup(self):
+        """Professional CUDA context cleanup"""
+        if self.context_created and self.cuda_context:
+            self.cuda_context.pop()
+            torch.cuda.empty_cache()
 ```
 
-#### GPU Memory Allocation Strategy (Native TensorRT):
-- **RTX 3090 24GB**: Using only 2.3GB for analyst agent (highly efficient)
-- **Native TensorRT**: FP16 precision with compiled engines
-- **Batch Processing**: 100-article batches for maximum throughput
+#### Performance Targets
+- **Production Validated**: 730+ articles/sec (TensorRT engines)
+- **Memory Efficiency**: 2-3GB GPU buffer minimum for stability
+- **Batch Optimization**: 100-article batches for maximum throughput
+- **Error Rate**: Zero crashes, zero warnings in production
 
-### Model Loading Convention
-```python
-# Native TensorRT engine loading pattern
-from native_tensorrt_engine import NativeTensorRTInferenceEngine
+## File Organization
 
-# Production-ready TensorRT loading
-def load_tensorrt_engine(engines_dir: str = "tensorrt_engines"):
-    with NativeTensorRTInferenceEngine(engines_dir=engines_dir) as engine:
-        logger.info("✅ Native TensorRT engines loaded")
-        return engine
-
-# Fallback to HuggingFace for non-TensorRT agents
-def load_model_gpu_optimized(model_name: str):
-    if torch.cuda.is_available():
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            trust_remote_code=True
-        )
-        logger.info(f"✅ GPU model loaded: {model_name}")
-    else:
-        model = AutoModelForCausalLM.from_pretrained(model_name)
-        logger.warning(f"⚠️ CPU fallback: {model_name}")
-    return model
+### Directory Structure Standards
+```
+JustNewsAgentic/
+├── agents/                           # Agent implementations
+│   ├── {agent_name}/
+│   │   ├── main.py                  # FastAPI application
+│   │   ├── tools.py                 # Business logic implementation
+│   │   ├── requirements.txt         # Agent-specific dependencies
+│   │   └── {agent_name}_engine.py   # AI model implementations
+├── training_system/                  # Continuous learning system
+├── mcp_bus/                         # Central communication hub
+├── markdown_docs/                   # **ORGANIZED DOCUMENTATION**
+│   ├── production_status/           # Achievement reports
+│   ├── agent_documentation/         # Agent-specific guides
+│   └── development_reports/         # Technical analysis
+├── archive_obsolete_files/          # Development artifacts
+└── docs/                           # V4 specifications
 ```
 
-## Critical File Locations
-
-### Core Architecture
-- `docker-compose.yml`: Multi-agent orchestration with GPU support
-- `mcp_bus/main.py`: Central message bus implementation
-- `agents/*/main.py`: FastAPI agent endpoints (identical pattern)
-- `agents/*/tools.py`: Business logic implementation
-
-### GPU Integration
-- `agents/analyst/native_tensorrt_engine.py`: Native TensorRT implementation (PRODUCTION READY)
-- `agents/analyst/ultra_safe_tensorrt_test.py`: Production validation testing
-- `agents/analyst/tensorrt_engines/`: Compiled TensorRT engines and metadata
-- `start_native_gpu_analyst.py`: Native GPU deployment script
-- `wsl_deployment/`: Native GPU environment deployment
-
-### Configuration
-- `config.json`: Mistral model configuration
-- `.env.example`: Environment variables template
-- `requirements.txt`: Python dependencies (per agent + root)
-
-## Integration Points
-
-### Database Integration (Memory Agent)
-- PostgreSQL on port 5432 with vector search
-- Migrations in `agents/memory/db_migrations/`
-- Semantic search using sentence-transformers embeddings
-
-### External Services
-- **Crawl4AI**: Web scraping service (port 5000)
-- **SerpAPI**: Search API integration (requires key)
-- **HuggingFace**: Model downloads (transformers, sentence-transformers)
-
-## Performance Expectations
-- **Native TensorRT Performance**: 730+ articles/sec (RTX 3090, production stress tested)
-- **Individual Engine Performance**: Sentiment 720.8 art/sec, Bias 740.3 art/sec
-- **Memory Efficiency**: 2.3GB GPU utilization (highly optimized)
-- **System Stability**: Zero crashes, zero warnings, completely clean operation
-- **Production Scale**: 1,000 articles × 2,000 chars processed in 2.7 seconds
-- **Target Full GPU Integration**: 800-1000 articles/sec across all agents with TensorRT
-- **Docker CPU Baseline**: 0.24-0.6 articles/sec
-- **Batch Processing**: 100-article batches for maximum throughput
-- **Production Ready**: Ubuntu native deployment with professional CUDA management
-
-## GPU Integration Roadmap (Production TensorRT Achieved)
-### Current Status: Native TensorRT Production Success
-**Achieved**: 406.9 articles/sec with native TensorRT engines (2.69x improvement over baseline)
-**Validated**: Zero crashes, zero warnings, completely clean operation
-**Production Ready**: Ultra-safe testing confirms deployment readiness
-
-### Phase 1: Expand TensorRT to All Agents (Current Phase)
-1. **Apply TensorRT Pattern**: Migrate remaining agents to native TensorRT implementation
-2. **Optimize Engine Loading**: Implement efficient TensorRT engine management across agents
-3. **Memory Management**: Professional CUDA context management for multi-agent deployment
-4. **Production Validation**: Apply stress testing to validate each agent at production scale
-5. **Space-Saving Optimizations**: Target 2-3GB memory buffer for production stability
-
-**Optimized System Memory Allocation (RTX 3090 24GB):**
-- Analyst: 2.3GB (✅ TensorRT validated)
-- Scout: 8.0GB (LLaMA-3-8B + self-learning - critical pre-filter)
-- Fact Checker: 2.5GB (DialoGPT-medium - Scout-optimized)
-- Synthesizer: 3.0GB (DialoGPT-medium + embeddings)
-- Critic: 2.5GB (DialoGPT-medium)
-- Chief Editor: 2.0GB (DialoGPT-medium - orchestration focus)
-- Memory: 1.5GB (Vector embeddings)
-- **Total: 21.8GB | Buffer: 0.2GB** ⚠️ (Requires additional optimization)
-
-**Target Optimizations for 2-3GB Buffer:**
-- Model quantization (INT8 where possible)
-- Context window optimization
-- Batch size tuning
-- Memory-efficient attention mechanisms
-
-### Phase 2: RTX AI Toolkit Migration (V4 Architecture)
-4. **AIM SDK Integration**: Replace HuggingFace with nvidia_aim.InferenceManager
-5. **TensorRT-LLM**: Migrate from transformers.pipeline to tensorrt_llm inference
-6. **Docker Model Runner**: Implement as specified fallback system
-
-### Phase 3: Full V4 Implementation
-7. **AI Workbench**: QLoRA fine-tuning for domain specialization
-8. **Custom Models**: RTX-optimized news analysis models
-9. **Complete Architecture**: Full RTXOptimizedHybridManager implementation
-
-## Development Context
-This system evolved from V3 Docker-only to V4 hybrid GPU acceleration. The migration to Ubuntu 24.04 native is documented in `UBUNTU_MIGRATION_GUIDE.md`. All development history preserved in `DEVELOPMENT_CONTEXT.md`.
-
-Always check existing patterns in `agents/*/` before implementing new features. The MCP bus communication pattern is non-negotiable and must be maintained across all agents.
-
-## Documentation Maintenance Requirements
-
-### V4 Conformance Standards
-**Critical**: All development must conform to both `docs/JustNews_Proposal_V4.md` and `docs/JustNews_Plan_V4.md` specifications:
-
-**Note**: Authority documents may be modified with explicit user authorization when architectural changes are required.
-
-#### RTX AI Toolkit Integration Requirements:
-- **TensorRT-LLM Primary**: 4x performance improvement target with Docker fallback
-- **AI Workbench Pipeline**: QLoRA fine-tuning with NVIDIA AI Workbench integration
-- **AIM SDK Orchestration**: Intelligent routing between TensorRT-LLM and Docker backends
-- **Professional GPU Memory Management**: Crash-free operation with RTX 3090 optimization
-
-#### V4 Architecture Compliance:
-- **Hybrid AI Pipeline**: Stage 1 (RTX-Optimized Bootstrap) + Stage 2 (AI Workbench Evolution)
-- **Domain Specialization**: News-analysis optimized models using RTX AI Toolkit
-- **Three-Phase Migration**: Foundation → Training Pipeline → RTX-Native Replacement
-- **Performance Targets**: 4x inference speed, 3x model compression, zero downtime deployment
-
-### Documentation Update Protocol
-**Every code change requires corresponding documentation updates:**
-
-#### 1. README.md Updates
-```markdown
-# When adding features, update:
-- Architecture section with new components
-- Performance metrics with validated benchmarks
-- Installation steps for new dependencies
-- API endpoints for new agent tools
-```
-
-#### 2. CHANGELOG.md Maintenance
-```markdown
-# Required format for all releases:
-## [Version] - Date - Feature Summary
-### Added/Enhanced/Fixed/Removed
-- Specific feature descriptions with performance metrics
-- Technical infrastructure changes
-- Status updates (✅/⏳/❌) for GPU integration
-```
-
-#### 3. Agent Documentation Pattern
-```python
-# Every agent tools.py must include:
-"""
-Agent: [Name] Agent
-Purpose: [Specific function in V4 architecture]
-GPU Status: [✅ Integrated | ⏳ Ready for GPU | ❌ CPU Only]
-Performance: [Current metrics vs baseline]
-V4 Compliance: [TensorRT-LLM/Docker fallback status]
-Dependencies: [Model requirements, GPU memory allocation]
-"""
-```
-
-### V4-Specific Documentation Requirements
-
-#### GPU Integration Documentation:
-- **Performance Validation**: Always include realistic article-length benchmarks
-- **Memory Management**: Document GPU memory allocation (4-6GB per agent on RTX 3090)
-- **Fallback Behavior**: Specify CPU fallback triggers and error handling
-- **Batch Processing**: Document batch size optimization for each model type
-
-#### Model Conformance:
-- **TensorRT-LLM Integration**: Document quantization (INT8/FP16) and optimization
-- **Docker Model Runner**: Maintain compatibility with `ai/mistral` and `ai/llama3.2`
-- **HuggingFace Models**: Specify model versions and GPU optimization settings
-- **Custom Training**: Document AI Workbench integration for domain specialization
-
-### Documentation File Structure (UPDATED AUGUST 2025)
-```
-markdown_docs/                          # � Organized documentation directory
-├── README.md                          # 📖 Documentation navigation index
-├── DEVELOPMENT_CONTEXT.md             # � Complete development history
-├── production_status/                 # 🏭 Production deployment reports
-│   ├── PRODUCTION_DEPLOYMENT_STATUS.md
-│   ├── PRODUCTION_SUCCESS_SUMMARY.md
-│   ├── BBC_ENGLAND_CRAWLER_SUCCESS.md
-│   └── [other production reports]
-├── agent_documentation/               # 🤖 Agent-specific guides
-│   ├── SCOUT_AGENT_DOCUMENTATION.md
-│   ├── SCOUT_ENHANCED_DEEP_CRAWL_DOCUMENTATION.md
-│   └── [other agent docs]
-└── development_reports/               # � Technical analysis reports
-    ├── LLAVA_MODEL_WARNINGS_ANALYSIS.md
-    ├── NEWSREADER_SYSTEM_IMPACT_ANALYSIS.md
-    └── [other technical reports]
-
-Root Documentation (Essential Only):
-├── README.md                          # 🔄 Primary project documentation
-├── CHANGELOG.md                       # 🔄 All version changes with metrics
-└── .github/copilot-instructions.md   # 🔄 This file
-```
-
-### Documentation Organization Rules (CRITICAL)
-**ALL .md files except README.md and CHANGELOG.md MUST be placed in `markdown_docs/` subdirectories:**
+### Documentation Organization Rules ⚠️ **CRITICAL**
+**ALL .md files except README.md and CHANGELOG.md MUST be in `markdown_docs/` subdirectories:**
 
 1. **Production Status** → `markdown_docs/production_status/`
-   - Deployment status reports, success summaries, achievement documentation
-   - Performance benchmarks, production validation results
+2. **Agent Documentation** → `markdown_docs/agent_documentation/`  
+3. **Technical Reports** → `markdown_docs/development_reports/`
+4. **Root Directory**: Only README.md, CHANGELOG.md permitted
 
-2. **Agent Documentation** → `markdown_docs/agent_documentation/`
-   - Agent-specific implementation guides
-   - Feature documentation, integration guides
+### Development File Management
+- **Test Files**: Archive to `archive_obsolete_files/development_session_[DATE]/`
+- **Debug Scripts**: Never commit to main branch
+- **Temporary Results**: Use `.gitignore` patterns for exclusion
 
-3. **Development Reports** → `markdown_docs/development_reports/`
-   - Technical analysis, model validation reports
-   - Development status tracking, action plans
+## Development Workflow
 
-4. **Core Development** → `markdown_docs/` (root level)
-   - DEVELOPMENT_CONTEXT.md (complete development history)
-   - Major architectural documentation
+### Feature Development Process
+1. **Analysis Phase**: Use `semantic_search` and `grep_search` to understand existing patterns
+2. **Implementation**: Follow established agent patterns and MCP integration
+3. **Testing**: Implement comprehensive error handling and performance validation
+4. **Documentation**: Update relevant `markdown_docs/` files
+5. **Integration**: Ensure MCP bus compatibility and health checks
 
-### Development Lifecycle Management
-
-#### File Archiving Protocol (MANDATORY)
-When development files complete their purpose, archive them to maintain clean workspace:
-
-```bash
-# Archive completed development files to organized structure
-archive_obsolete_files/development_session_[DATE]/
-├── test_files/           # All test_*.py files
-├── debug_files/          # Debug scripts, investigation tools
-├── results_data/         # Output files, logs, temporary data
-├── scripts/              # Utility scripts, service management
-└── ARCHIVE_CONTENTS.md   # Documentation of archived files
-```
-
-#### Development File Categories for Archiving:
-- **Test Files**: `test_*.py`, `*_test.py` → `/test_files/`
-- **Debug Files**: `debug_*.py`, `inspect_*.py`, `investigate_*.py` → `/debug_files/`
-- **Results Data**: `*.json`, `*.csv`, `*.log`, temp outputs → `/results_data/`
-- **Utility Scripts**: Development tools, service scripts → `/scripts/`
-
-#### Git Ignore Patterns (AUTO-EXCLUDE):
-```gitignore
-# Development artifacts (auto-archived)
-test_*.py
-debug_*.py
-*_test.py
-*.log
-*_results*.json
-temp/
-tmp/
-
-# Archive management
-archive_obsolete_files/
-```
-
-### Code Comment Standards
+### Testing Requirements
 ```python
-# V4-Compliant code documentation:
-class GPUOptimizedAgent:
-    """
-    V4 GPU-Accelerated Agent Implementation
-    
-    Conformance:
-    - TensorRT-LLM primary processing (4x performance target)
-    - Docker Model Runner fallback for reliability
-    - RTX 3090 memory allocation: 4-6GB per agent
-    - Batch processing: 32-item batches for optimal GPU utilization
-    
-    Performance Metrics:
-    - GPU: [X] articles/sec (vs [Y] CPU baseline)
-    - Memory: [Z]GB VRAM utilization
-    - Fallback: <500ms detection and switching
-    """
+# Standard test pattern for agent tools
+def test_agent_tool():
+    """Test with proper error handling and performance measurement"""
+    start_time = time.time()
+    try:
+        result = agent_tool(*test_args, **test_kwargs)
+        assert result is not None
+        assert "status" in result
+        execution_time = time.time() - start_time
+        logger.info(f"Tool executed in {execution_time:.3f}s")
+        return result
+    except Exception as e:
+        logger.error(f"Test failed: {str(e)}")
+        raise
 ```
+
+### GPU Development Standards
+```python
+# Professional GPU resource management
+@contextmanager
+def gpu_context():
+    """Context manager for safe GPU operations"""
+    torch.cuda.set_device(0)
+    initial_memory = torch.cuda.memory_allocated()
+    try:
+        yield
+    finally:
+        torch.cuda.empty_cache()
+        final_memory = torch.cuda.memory_allocated()
+        if final_memory > initial_memory:
+            logger.warning(f"Potential memory leak: {final_memory - initial_memory} bytes")
+```
+
+## Current System Status (August 9, 2025)
+
+### Production-Ready Components ✅
+- **Synthesizer V3**: 4-model production stack (BERTopic, BART, FLAN-T5, SentenceTransformers)
+- **Training System**: EWC-based continuous learning (48 examples/min, 82.3 updates/hour)
+- **Native TensorRT**: 730+ articles/sec performance (Analyst agent)
+- **Production Crawling**: 8.14 art/sec ultra-fast + 0.86 art/sec AI-enhanced
+- **Documentation**: Professional organization in `markdown_docs/` structure
+- **Reasoning Agent**: Complete Nucleoid implementation with AST parsing
+
+### Development Priorities (V2 Engines Completion)
+1. **Expand TensorRT**: Apply native GPU acceleration to remaining agents
+2. **Training Integration**: Complete continuous learning across all agents  
+3. **Performance Optimization**: Achieve 2-3GB memory buffer target
+4. **Quality Assurance**: Maintain zero-crash, zero-warning operation
+
+### Memory Allocation Strategy (RTX 3090)
+- **Scout**: 8.0GB (LLaMA-3-8B + 5-model architecture)
+- **Analyst**: 2.3GB (TensorRT optimized) ✅ Production
+- **Synthesizer**: 3.0GB (4-model V3 stack) ✅ Production  
+- **Other Agents**: 2.0-2.5GB each (DialoGPT-medium)
+- **Target Buffer**: 2-3GB for system stability
+
+## Error Handling Standards
+
+### Exception Management Pattern
+```python
+class AgentError(Exception):
+    """Base exception for agent operations"""
+    pass
+
+class ModelLoadError(AgentError):
+    """Model loading failures"""
+    pass
+
+class GPUError(AgentError):
+    """GPU operation failures"""
+    pass
+
+def safe_gpu_operation(operation, *args, **kwargs):
+    """Standard GPU operation wrapper"""
+    try:
+        with gpu_context():
+            return operation(*args, **kwargs)
+    except RuntimeError as e:
+        if "CUDA" in str(e):
+            logger.error(f"CUDA error in {operation.__name__}: {e}")
+            raise GPUError(f"GPU operation failed: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in {operation.__name__}: {e}")
+        raise AgentError(f"Operation failed: {e}")
+```
+
+### Logging Standards
+```python
+# Structured logging pattern
+import structlog
+
+logger = structlog.get_logger()
+
+def log_performance(operation: str, duration: float, **kwargs):
+    """Standard performance logging"""
+    logger.info(
+        "operation_completed",
+        operation=operation,
+        duration_ms=round(duration * 1000, 2),
+        **kwargs
+    )
+
+def log_gpu_usage(operation: str):
+    """GPU memory usage logging"""
+    if torch.cuda.is_available():
+        memory_used = torch.cuda.memory_allocated() / 1024**3  # GB
+        logger.info(
+            "gpu_memory_usage",
+            operation=operation,
+            memory_gb=round(memory_used, 2)
+        )
+```
+
+## Security Guidelines
+
+### API Security
+- **Input Validation**: Use Pydantic models for all API inputs
+- **Error Exposure**: Never expose internal paths or sensitive info in errors
+- **Resource Limits**: Implement timeouts and memory limits
+- **Health Checks**: Secure health endpoints without sensitive data
+
+### Model Security
+- **Model Validation**: Verify model checksums before loading
+- **Safe Loading**: Use `trust_remote_code=False` unless explicitly required
+- **Memory Protection**: Clear sensitive data from GPU memory after use
+
+## Documentation Requirements
+
+### Code Documentation
+- **Inline Comments**: Explain complex logic, especially GPU operations
+- **Performance Notes**: Document memory usage and optimization decisions
+- **Error Handling**: Comment on exception handling strategy
+
+### Change Documentation
+- **CHANGELOG.md**: Required for all releases with performance metrics
+- **Agent Updates**: Document in appropriate `markdown_docs/agent_documentation/`
+- **Technical Changes**: Add to `markdown_docs/development_reports/`
 
 ### Validation Checklist
-Before any commit, verify:
-- [ ] V4 Proposal/Plan conformance maintained
-- [ ] Performance metrics include realistic article benchmarks
-- [ ] Documentation updated for all modified components
-- [ ] **NEW: .md files placed in correct `markdown_docs/` subdirectory**
-- [ ] **NEW: Development files archived when complete (not committed to main)**
-- [ ] GPU integration status clearly documented
-- [ ] CHANGELOG.md entry with specific metrics
-- [ ] README.md reflects current system capabilities
-- [ ] **NEW: Workspace organization maintained (clean root directory)**
+Before any commit:
+- [ ] Code follows PEP 8 and type hint requirements
+- [ ] Error handling implemented with specific exceptions
+- [ ] Performance logging included for GPU operations
+- [ ] Documentation updated in correct `markdown_docs/` location
+- [ ] Tests include error cases and performance validation
+- [ ] GPU memory cleanup verified
+- [ ] MCP integration tested if applicable
+- [ ] CHANGELOG.md updated with metrics
 
-### Current Project Status Summary (AUGUST 2025)
-- **✅ Production News Crawling**: 8.14 art/sec ultra-fast, 0.86 art/sec AI-enhanced
-- **✅ Root Cause Resolution**: Cookie consent/modal handling solved
-- **✅ Model Stability**: LLaVA warnings eliminated, INT8 optimization
-- **✅ Complete Nucleoid Implementation**: Full GitHub integration with AST parsing, NetworkX graphs
-- **✅ Reasoning Agent Production**: 100% test pass rate, daemon integration, symbolic logic
-- **✅ Documentation Organization**: Clean structure in `markdown_docs/`
-- **✅ Native TensorRT**: 730+ art/sec performance validated
-- **✅ Workspace Management**: Archive system for development files
+## Quick Reference
 
-### Production-Ready Components
-- `production_bbc_crawler.py` - AI-enhanced crawling (0.86 art/sec)
-- `ultra_fast_bbc_crawler.py` - High-speed processing (8.14 art/sec)  
-- `practical_newsreader_solution.py` - Fixed LLaVA implementation
-- Native TensorRT engines (sentiment/bias analysis)
-- **Complete Nucleoid reasoning implementation** (symbolic logic, AST parsing)
-- MCP bus communication system
-- Organized documentation structure
+### Latest Achievements (August 9, 2025)
+- ✅ **Synthesizer V3 Production**: 4-model stack, 5/5 tests passed
+- ✅ **Documentation Restructure**: Professional GitHub standards
+- ✅ **Workspace Organization**: Clean root directory, archived development files
+- ✅ **Continuous Learning**: 48 examples/min, EWC-based training
 
-Always reference `markdown_docs/DEVELOPMENT_CONTEXT.md` for complete project history and `markdown_docs/production_status/PRODUCTION_SUCCESS_SUMMARY.md` for latest achievements.
+### Key Performance Metrics
+- **TensorRT Production**: 730+ articles/sec (4.8x improvement)
+- **Production Crawling**: 8.14 art/sec ultra-fast processing
+- **Training System**: 82.3 model updates/hour across agents
+- **Memory Efficiency**: 2.3GB GPU utilization (highly optimized)
+
+### Critical References
+- **Technical Architecture**: `markdown_docs/TECHNICAL_ARCHITECTURE.md`
+- **Development History**: `markdown_docs/DEVELOPMENT_CONTEXT.md`
+- **Production Status**: `markdown_docs/production_status/`
+- **V4 Specifications**: `docs/JustNews_Proposal_V4.md`, `docs/JustNews_Plan_V4.md`
+
+---
+
+**Remember**: This is a production system. All changes must maintain system stability, follow established patterns, and include comprehensive error handling and performance monitoring.

@@ -1,3 +1,4 @@
+## DEPRECATED: Dockerfile for Memory Agent (use systemd deployment instead)
 
 FROM python:3.11-slim
 

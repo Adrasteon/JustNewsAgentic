@@ -1,4 +1,4 @@
-# Dockerfile for MCP Message Bus
+# DEPRECATED: Dockerfile for MCP Message Bus (use systemd deployment instead)
 FROM python:3.11-slim
 
 WORKDIR /app

@@ -1,0 +1,9 @@
+[Unit]
+Description=JustNews Failure Logger (%i)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -lc 'echo "==== Failure: justnews@%i ===="; journalctl -u justnews@%i --no-pager -n 100 || true'
+
+[Install]
+WantedBy=multi-user.target

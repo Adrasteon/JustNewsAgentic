@@ -3,7 +3,7 @@ Main file for the Chief Editor Agent.
 """
 # main.py for Chief Editor Agent
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from datetime import datetime
@@ -13,6 +13,9 @@ import requests
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+ready = False
+metrics = {"warmups_total": 0}
 
 # Environment variables
 CHIEF_EDITOR_AGENT_PORT = int(os.environ.get("CHIEF_EDITOR_AGENT_PORT", 8001))
@@ -28,7 +31,7 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -49,7 +52,8 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-    
+    global ready
+    ready = True
     yield
     
     logger.info("Chief Editor agent is shutting down.")
@@ -60,6 +64,25 @@ app = FastAPI(title="Chief Editor Agent", lifespan=lifespan)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/ready")
+def ready_endpoint():
+    return {"ready": ready}
+
+@app.post("/warmup")
+def warmup():
+    """Minimal warmup to trigger lazy imports."""
+    try:
+        from . import main as _self  # noqa: F401
+    except Exception:
+        pass
+    metrics["warmups_total"] += 1
+    return {"warmed": True}
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    body = f"chief_editor_warmups_total {metrics['warmups_total']}\n"
+    return Response(content=body, media_type="text/plain; version=0.0.4")
 
 # Pydantic models
 class ToolCall(BaseModel):
