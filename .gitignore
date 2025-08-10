@@ -68,6 +68,7 @@ tmp/
 *.csv
 *.png
 *.txt
+!requirements-dev.txt
 batch_*.json
 production_*.json
 ultra_fast_*.json

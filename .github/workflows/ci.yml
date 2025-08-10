@@ -33,9 +33,10 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; else echo "requirements.txt not found, skipping"; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; else echo "requirements-dev.txt not found, skipping"; fi
-          pip install ruff mypy bandit pytest
-          # Minimal runtime deps for unit tests
-          pip install "pydantic>=2" requests fastapi uvicorn httpx
+          # Fallback installs if requirements-dev.txt not present
+          pip install ruff mypy bandit pytest || true
+          # Minimal runtime deps for unit tests (noop if already from requirements-dev.txt)
+          pip install "pydantic>=2" requests fastapi uvicorn httpx || true
 
       - name: Lint (ruff)
         run: ruff check mcp_bus common tests
