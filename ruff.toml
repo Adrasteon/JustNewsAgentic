@@ -10,6 +10,7 @@ exclude = [
 ]
 
 target-version = "py311"
+line-length = 88
 
 [lint]
 select = ["E", "F", "I", "W"]
@@ -27,6 +28,3 @@ ignore = [
 "production_bbc_crawler.py" = ["E722", "F401"]
 "scripts/**" = ["F401"]
 "agents/**/tests/**" = ["F401", "F841"]
-
-[format]
-line-length = 88
