@@ -14,6 +14,8 @@ from contextlib import asynccontextmanager
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+ready = False
+
 # Environment variables
 SYNTHESIZER_AGENT_PORT = int(os.environ.get("SYNTHESIZER_AGENT_PORT", 8005))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
@@ -28,7 +30,7 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -52,6 +54,8 @@ async def lifespan(app: FastAPI):
 
     # Note: Models will be downloaded automatically by HuggingFace transformers when first used
 
+    global ready
+    ready = True
     yield
     logger.info("Synthesizer agent is shutting down.")
 
@@ -64,6 +68,10 @@ class ToolCall(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/ready")
+def ready_endpoint():
+    return {"ready": ready}
 
 @app.post("/log_feedback")
 def log_feedback(call: ToolCall):

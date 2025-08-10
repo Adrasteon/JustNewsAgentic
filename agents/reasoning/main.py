@@ -27,6 +27,8 @@ import shutil
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+ready = False
+
 # Environment variables
 REASONING_AGENT_PORT = int(os.environ.get("REASONING_AGENT_PORT", 8008))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
@@ -41,7 +43,7 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -169,6 +171,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
     
+    global ready
+    ready = True
     yield
     
     # Shutdown logic
@@ -676,6 +680,11 @@ def health():
     """Health check endpoint."""
     status = "ok" if engine else "unavailable"
     return {"status": status, "nucleoid_available": engine is not None}
+
+@app.get("/ready")
+def ready_endpoint():
+    """Readiness endpoint."""
+    return {"ready": ready}
 
 # --- MCP Bus Integration ---
 @app.post("/call")

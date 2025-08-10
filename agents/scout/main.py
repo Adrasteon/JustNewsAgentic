@@ -14,6 +14,8 @@ from contextlib import asynccontextmanager
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+ready = False
+
 # Environment variables
 SCOUT_AGENT_PORT = int(os.environ.get("SCOUT_AGENT_PORT", 8002))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
@@ -28,7 +30,7 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -53,6 +55,8 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    global ready
+    ready = True
     yield
     logger.info("Scout agent is shutting down.")
 
@@ -145,6 +149,10 @@ def enhanced_newsreader_crawl_endpoint(call: ToolCall):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/ready")
+def ready_endpoint():
+    return {"ready": ready}
 
 @app.post("/log_feedback")
 def log_feedback(call: ToolCall):

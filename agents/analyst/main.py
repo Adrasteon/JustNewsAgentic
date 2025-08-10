@@ -22,6 +22,9 @@ from .tools import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Readiness flag
+ready = False
+
 # Environment variables
 ANALYST_AGENT_PORT = int(os.environ.get("ANALYST_AGENT_PORT", 8004))
 MODEL_PATH = os.environ.get("MISTRAL_7B_PATH", "./models/mistral-7b-instruct-v0.2")
@@ -42,7 +45,7 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -75,7 +78,9 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-
+    # Mark ready after successful startup tasks
+    global ready
+    ready = True
     yield
     
     # Cleanup on shutdown
@@ -89,6 +94,11 @@ app = FastAPI(lifespan=lifespan)
 def health():
     """Health check endpoint."""
     return {"status": "ok"}
+
+@app.get("/ready")
+def ready_endpoint():
+    """Readiness endpoint for startup gating."""
+    return {"ready": ready}
 
 # REMOVED ENDPOINTS - Sentiment and bias analysis centralized in Scout V2 Agent
 # Use Scout V2 for all sentiment and bias analysis:

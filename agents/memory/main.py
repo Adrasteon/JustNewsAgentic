@@ -20,6 +20,9 @@ from tools import (get_embedding_model, log_feedback,
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Readiness flag
+ready = False
+
 # Environment variables
 POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
 POSTGRES_DB = os.environ.get("POSTGRES_DB")
@@ -57,7 +60,7 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -101,6 +104,9 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    # Mark ready after startup and optional registration
+    global ready
+    ready = True
     yield
     logger.info("Memory agent is shutting down.")
 
@@ -110,6 +116,11 @@ app = FastAPI(lifespan=lifespan)
 def health():
     """Health check endpoint."""
     return {"status": "ok"}
+
+@app.get("/ready")
+def ready_endpoint():
+    """Readiness endpoint for startup gating."""
+    return {"ready": ready}
 
 @app.post("/save_article")
 def save_article_endpoint(request: dict):
