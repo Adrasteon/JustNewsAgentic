@@ -212,9 +212,8 @@ def ready_endpoint(x_service_token: str | None = Header(default=None, alias=HEAD
         with conn.cursor() as cur:
             cur.execute("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname='vector');")
             vector_ok = bool(cur.fetchone()[0])
-    except Exception:
-        db_ok = False
-        vector_ok = False
+    except psycopg2.Error as e:
+        logger.error(f"Readiness check failed during DB operation: {e}")
     finally:
         if conn:
             try:
