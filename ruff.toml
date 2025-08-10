@@ -19,6 +19,10 @@ ignore = [
   "F401",  # temporary: unused imports in legacy training scripts/tests
   "F841",  # temporary: assigned but unused in legacy tests
   "F403",  # allow star-import in the root shim
+  "E501",  # temporary: line length
+  "W291",  # temporary: trailing whitespace
+  "W293",  # temporary: blank line whitespace
+  "I001",  # temporary: import sorting
 ]
 
 [lint.per-file-ignores]

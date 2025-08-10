@@ -45,4 +45,10 @@ jobs:
         run: bandit -q -r agents mcp_bus common || true
 
       - name: Run unit tests (subset)
-        run: pytest -q tests/test_common_schemas.py tests/test_mcp_bus_idempotency.py tests/test_security_and_limits.py
+        run: |
+          if [ -f tests/test_common_schemas.py ] || [ -f tests/test_mcp_bus_idempotency.py ] || [ -f tests/test_security_and_limits.py ]; then
+            pytest -q tests/test_common_schemas.py tests/test_mcp_bus_idempotency.py tests/test_security_and_limits.py
+          else
+            echo "Targeted tests not found; running full test suite"
+            pytest -q
+          fi
