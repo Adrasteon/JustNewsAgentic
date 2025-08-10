@@ -189,8 +189,9 @@ def health(x_service_token: str | None = Header(default=None, alias=HEADER_NAME)
     # Optional enforcement: only if token configured
     try:
         require_service_token(x_service_token)
-    except HTTPException:
+    except HTTPException as e:
         # For health, allow anonymous if token not set; if set and invalid, still expose 200 with status
+        logger.warning(f"Service token validation failed for health check: {e.detail}")
         pass
     return {"status": "ok"}
 
