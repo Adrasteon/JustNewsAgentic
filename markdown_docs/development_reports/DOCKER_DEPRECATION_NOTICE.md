@@ -1,4 +1,20 @@
-# Docker Deprecation Notice (August 10, 2025)
+# Docker Deprecation Notice
+
+As of Aug 10, 2025, Docker and Docker Compose are deprecated and removed from the JustNewsAgentic codebase. Deployment uses native systemd services under `deploy/systemd/`.
+
+Highlights:
+
+- All CI pipelines are Dockerless and focus on unit/static checks.
+- Local and production runs use `deploy/systemd/enable_all.sh --fresh` and companion scripts.
+- Any remaining Docker artifacts are archived under `archive_obsolete_files/` and must not be used.
+
+Rationale:
+
+- Reduced complexity and cold-start overhead
+- Better GPU and filesystem control on production hosts
+- Simplified observability and service supervision with systemd
+
+See also: `deploy/systemd/` scripts and project README for current run instructions.# Docker Deprecation Notice (August 10, 2025)
 
 Docker and docker-compose are deprecated for JustNewsAgentic. Production and development operations are standardized on native Ubuntu + systemd.
 
