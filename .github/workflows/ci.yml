@@ -34,6 +34,6 @@ jobs:
 			- name: Security scan (bandit)
 				run: |
 					bandit -q -r agents mcp_bus common || true
-					- name: Run unit tests (subset)
-						run: |
-							pytest -q tests/test_common_schemas.py tests/test_mcp_bus_idempotency.py tests/test_security_and_limits.py
+			- name: Run unit tests (subset)
+				run: |
+					pytest -q tests/test_common_schemas.py tests/test_mcp_bus_idempotency.py tests/test_security_and_limits.py
