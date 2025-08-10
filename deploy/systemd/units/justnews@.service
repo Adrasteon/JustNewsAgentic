@@ -13,6 +13,9 @@ ExecStartPre=/bin/bash -c '[ "${REQUIRE_BUS:-1}" = "0" ] || /usr/local/bin/wait_
 ExecStart=/bin/bash -c 'cd "${REPO_DIR}" && exec "${JUSTNEWS_PYTHON}" -m uvicorn "${MODULE:-main}:${APP:-app}" --host 0.0.0.0 --port "${PORT:-8000}"'
 Restart=on-failure
 RestartSec=3
+LimitNOFILE=65535
+# On failure, emit a brief log tail for diagnostics
+OnFailure=justnews-failure@%i.service
 # Uncomment to restrict core dumps and add basic security hardening
 # NoNewPrivileges=true
 # PrivateTmp=true

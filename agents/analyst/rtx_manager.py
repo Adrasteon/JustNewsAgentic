@@ -31,20 +31,22 @@ class RTXManager:
     def __init__(self):
         self.rtx_available = False
         self.tensorrt_engine = None
-        self.docker_fallback = None
-        self.performance_metrics = {}
+    # Docker fallback is deprecated; always disabled
+    self.docker_fallback = False
+    self.performance_metrics = {}
         
         # Configuration from environment
-        self.rtx_endpoint = os.getenv('RTX_PRIMARY_ENDPOINT', 'tensorrt://localhost:8080')
-        self.docker_endpoint = os.getenv('DOCKER_FALLBACK_ENDPOINT', 'http://model-runner:12434/v1/')
+    self.rtx_endpoint = os.getenv('RTX_PRIMARY_ENDPOINT', 'tensorrt://localhost:8080')
+    # Deprecated: Docker Model Runner endpoint no longer used
+    self.docker_endpoint = None
         self.aim_sdk_enabled = os.getenv('AIM_SDK_ENABLED', 'false').lower() == 'true'
         self.quantization = os.getenv('QUANTIZATION', 'int4')
         self.batch_size = int(os.getenv('RTX_BATCH_SIZE', '4'))
         self.max_tokens = int(os.getenv('RTX_MAX_TOKENS', '512'))
         
-        logger.info("🚀 RTX Manager V4 initialized")
-        logger.info(f"RTX Endpoint: {self.rtx_endpoint}")
-        logger.info(f"Docker Fallback: {self.docker_endpoint}")
+    logger.info("🚀 RTX Manager V4 initialized")
+    logger.info(f"RTX Endpoint: {self.rtx_endpoint}")
+    logger.info("Docker Fallback: DEPRECATED (disabled)")
         logger.info(f"AIM SDK Enabled: {self.aim_sdk_enabled}")
         logger.info(f"Quantization: {self.quantization}")
         
@@ -59,8 +61,8 @@ class RTXManager:
             # Phase 2: AIM SDK Integration (pending approval)
             self._initialize_aim_sdk()
             
-            # Phase 3: Fallback Systems
-            self._initialize_docker_fallback()
+            # Phase 3: Fallback Systems (Docker deprecated)
+            logger.info("Docker fallback removed; relying on native backends only")
             
             # Mark RTX as available
             self.rtx_available = True
@@ -68,8 +70,7 @@ class RTXManager:
             
         except Exception as e:
             logger.warning(f"⚠️  RTX initialization failed: {e}")
-            logger.info("Falling back to Docker Model Runner only")
-            self._initialize_docker_fallback()
+            logger.info("Docker fallback removed; no container-based fallback will be used")
     
     def _initialize_tensorrt_llm(self):
         """Initialize TensorRT-LLM for high-performance inference."""
@@ -131,20 +132,9 @@ class RTXManager:
             logger.info("This is expected during Phase 1 development")
     
     def _initialize_docker_fallback(self):
-        """Initialize Docker Model Runner fallback."""
-        try:
-            import requests
-            # Test Docker Model Runner availability
-            response = requests.get(f"{self.docker_endpoint.rstrip('/v1/')}/health", timeout=5)
-            if response.status_code == 200:
-                logger.info("✅ Docker Model Runner fallback available")
-                self.docker_fallback = True
-            else:
-                logger.warning("⚠️  Docker Model Runner not responding")
-                self.docker_fallback = False
-        except Exception as e:
-            logger.warning(f"⚠️  Docker Model Runner fallback not available: {e}")
-            self.docker_fallback = False
+        """Deprecated: Docker fallback is disabled."""
+        self.docker_fallback = False
+        logger.info("Docker fallback initialization skipped (deprecated)")
     
     async def query_model(self, prompt: str, max_tokens: Optional[int] = None, temperature: float = 0.1) -> Tuple[str, str]:
         """
@@ -175,20 +165,9 @@ class RTXManager:
             except Exception as e:
                 logger.warning(f"TensorRT-LLM query failed, falling back to Docker: {e}")
         
-        # Phase 2: Fallback to Docker Model Runner
+        # Phase 2: Docker fallback removed
         if self.docker_fallback:
-            try:
-                response = await self._query_docker_model(prompt, max_tokens, temperature)
-                elapsed = time.time() - start_time
-                
-                # Log performance metrics
-                self._log_performance('docker_model_runner', elapsed, len(prompt), len(response or ''))
-                
-                return response or "Error: No response from model", "docker"
-                
-            except Exception as e:
-                logger.error(f"Docker Model Runner query failed: {e}")
-                return f"Error: Model query failed - {e}", "error"
+            logger.warning("Docker fallback unexpectedly enabled; ignoring due to deprecation")
         
         # If no backends available
         logger.error("No inference backends available")

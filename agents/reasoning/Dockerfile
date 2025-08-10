@@ -1,3 +1,4 @@
+## DEPRECATED: Dockerfile for Reasoning Agent (use systemd deployment instead)
 FROM python:3.12-slim
 
 # Set working directory

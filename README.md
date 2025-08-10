@@ -26,9 +26,11 @@ JustNewsAgentic V4 is a production-ready, multi-agent news analysis system that 
 
 ### Prerequisites
 
-- **Hardware**: NVIDIA RTX 3090 (24GB VRAM recommended) or RTX 4090
-- **Software**: Ubuntu 24.04, Docker, NVIDIA Container Toolkit
-- **Python**: 3.12+ with CUDA 12.1+ support
+- Hardware: NVIDIA RTX 3090 (24GB VRAM recommended) or RTX 4090
+- OS: Ubuntu 24.04 with systemd (production deployment is native on Ubuntu)
+- Python: 3.12+ with CUDA 12.1+ support
+
+Note: Docker is deprecated for this project. All deployment and operations use native systemd services and shell scripts under `deploy/systemd/`.
 
 ### Installation
 
@@ -44,14 +46,17 @@ JustNewsAgentic V4 is a production-ready, multi-agent news analysis system that 
    conda activate rapids-25.06  # or your CUDA-enabled environment
    ```
 
-3. **Start the system**
-   ```bash
-   # Docker multi-agent deployment
-   docker-compose up --build
-   
-   # Or native GPU deployment
-   ./start_services_daemon.sh
-   ```
+3. Start the system (systemd native)
+  ```bash
+  # One-time install of systemd units and env (requires sudo)
+  deploy/systemd/install_native.sh
+
+  # Fresh start all services with readiness gating (MCP Bus first)
+  deploy/systemd/enable_all.sh --fresh
+
+  # Optional: check health/readiness of all agents
+  deploy/systemd/health_check.sh
+  ```
 
 4. **Verify system health**
    ```bash
@@ -78,11 +83,11 @@ JustNewsAgentic V4 employs a **distributed multi-agent architecture** where spec
 
 ### Key Technologies
 
-- **Native TensorRT**: 4.8x performance improvement (730+ articles/sec)
-- **MCP Protocol**: Standardized agent communication
-- **Continuous Learning**: EWC-based training without catastrophic forgetting
-- **Production Crawling**: Advanced cookie handling and modal dismissal
-- **GPU Safety**: Professional CUDA context management
+- Native TensorRT: 4.8x performance improvement (730+ articles/sec)
+- MCP Protocol: Standardized agent communication
+- Continuous Learning: EWC-based training without catastrophic forgetting
+- Production Crawling: Advanced cookie handling and modal dismissal
+- GPU Safety: Professional CUDA context management
 
 ## 📋 Usage Examples
 
@@ -200,6 +205,16 @@ pre-commit install
 # Run tests
 pytest tests/
 ```
+
+### Deployment Note: Docker Deprecated
+
+Docker and docker-compose files are kept only for archival reference and must not be used for deployment. Use the systemd scripts in `deploy/systemd/`:
+
+- install_native.sh: install unit files and environment
+- enable_all.sh: start all services (MCP Bus first) with readiness checks
+- health_check.sh: verify /health and /ready endpoints across agents
+
+For details, see `markdown_docs/development_reports/DOCKER_DEPRECATION_NOTICE.md`.
 
 ### Code Standards
 

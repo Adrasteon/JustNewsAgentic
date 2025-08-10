@@ -1,3 +1,4 @@
+## DEPRECATED: Dockerfile for Synthesizer Agent (use systemd deployment instead)
 
 FROM python:3.11-slim
 

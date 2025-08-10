@@ -7,7 +7,7 @@ V4 Compliance: Designed for multi-agent orchestration, FastAPI, and MCP bus inte
 Dependencies: git, networkx, fastapi, pydantic, uvicorn
 """
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Union
 from contextlib import asynccontextmanager
@@ -28,6 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ready = False
+metrics = {"warmups_total": 0}
 
 # Environment variables
 REASONING_AGENT_PORT = int(os.environ.get("REASONING_AGENT_PORT", 8008))
@@ -685,6 +686,21 @@ def health():
 def ready_endpoint():
     """Readiness endpoint."""
     return {"ready": ready}
+
+@app.post("/warmup")
+def warmup():
+    """Minimal warmup touching light code paths (no git/network)."""
+    try:
+        _ = SimpleNucleoidImplementation()  # noqa: F841
+    except Exception:
+        pass
+    metrics["warmups_total"] += 1
+    return {"warmed": True}
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    body = f"reasoning_warmups_total {metrics['warmups_total']}\n"
+    return Response(content=body, media_type="text/plain; version=0.0.4")
 
 # --- MCP Bus Integration ---
 @app.post("/call")

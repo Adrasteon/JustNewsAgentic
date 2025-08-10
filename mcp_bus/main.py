@@ -2,7 +2,7 @@
 Main file for the MCP Bus.
 """
 # main.py for MCP Message Bus
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 import requests
 import time
@@ -22,6 +22,13 @@ cb_state = {}
 CB_FAIL_THRESHOLD = 3
 CB_COOLDOWN_SEC = 10
 
+# Simple in-process metrics (Prometheus text format)
+metrics = {
+    "mcp_agents_registered": 0,
+    "mcp_requests_total": 0,
+    "mcp_errors_total": 0,
+}
+
 class Agent(BaseModel):
     name: str
     address: str
@@ -38,6 +45,7 @@ def register_agent(agent: Agent):
     agents[agent.name] = agent.address
     # Reset circuit breaker on registration
     cb_state[agent.name] = {"fails": 0, "open_until": 0}
+    metrics["mcp_agents_registered"] += 1
     return {"status": "ok"}
 
 @app.post("/call")
@@ -66,6 +74,7 @@ def call_tool(call: ToolCall):
             response.raise_for_status()
             # Success: reset failures
             cb_state[agent_name] = {"fails": 0, "open_until": 0}
+            metrics["mcp_requests_total"] += 1
             return response.json()
         except requests.exceptions.RequestException as e:
             last_error = str(e)
@@ -79,6 +88,7 @@ def call_tool(call: ToolCall):
     else:
         cb_state[agent_name] = {"fails": fails, "open_until": 0}
 
+    metrics["mcp_errors_total"] += 1
     raise HTTPException(status_code=502, detail=f"Tool call failed: {last_error}")
 
 @app.get("/agents")
@@ -93,6 +103,19 @@ def health():
 @app.get("/ready")
 def ready_endpoint():
     return {"ready": ready}
+
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    """Return Prometheus-style metrics in text/plain"""
+    # Render minimal text exposition
+    lines = [
+        f"mcp_agents_registered {metrics['mcp_agents_registered']}",
+        f"mcp_requests_total {metrics['mcp_requests_total']}",
+        f"mcp_errors_total {metrics['mcp_errors_total']}",
+    ]
+    body = "\n".join(lines) + "\n"
+    return Response(content=body, media_type="text/plain; version=0.0.4")
 
 @asynccontextmanager
 async def lifespan(app):

@@ -1,3 +1,9 @@
+# DEPRECATED: Docker Compose is no longer used for deployment as of Aug 10, 2025.
+# Use systemd scripts under deploy/systemd/ instead:
+#   - deploy/systemd/install_native.sh
+#   - deploy/systemd/enable_all.sh --fresh
+#   - deploy/systemd/health_check.sh
+
 services:
   mcp_bus:
     container_name: mcp_bus

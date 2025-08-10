@@ -40,7 +40,7 @@ try:
     logger.info("✅ Native Crawl4AI components loaded for advanced deep crawling")
 except ImportError as e:
     CRAWL4AI_NATIVE_AVAILABLE = False
-    logger.warning(f"⚠️ Native Crawl4AI not available: {e}. Using Docker fallback.")
+    logger.warning(f"⚠️ Native Crawl4AI not available: {e}. Docker fallback deprecated; certain features disabled.")
 
 # Import for HTML text extraction
 import re

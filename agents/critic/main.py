@@ -15,18 +15,20 @@ For bias detection, use Scout V2 Agent endpoints:
 """
 # main.py for Critic Agent
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from datetime import datetime
 import os
 import requests
 from contextlib import asynccontextmanager
+from common.observability import MetricsCollector, request_timing_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ready = False
+metrics = {"warmups_total": 0}
 
 # Environment variables
 CRITIC_AGENT_PORT = int(os.environ.get("CRITIC_AGENT_PORT", 8006))
@@ -70,9 +72,33 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Observability
+collector = MetricsCollector(agent="critic")
+request_timing_middleware(app, collector)
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.post("/warmup")
+def warmup():
+    """Lightweight warmup to trigger lazy imports and caches without heavy work."""
+    try:
+        from gpu_tools import get_critic_performance  # noqa: F401
+    except Exception:
+        pass
+    try:
+        from tools import critique_synthesis  # noqa: F401
+    except Exception:
+        pass
+    metrics["warmups_total"] += 1
+    return {"warmed": True}
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    body = f"critic_warmups_total {metrics['warmups_total']}\n"
+    body += collector.render()
+    return Response(content=body, media_type="text/plain; version=0.0.4")
 
 @app.get("/ready")
 def ready_endpoint():

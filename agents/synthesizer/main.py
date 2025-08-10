@@ -3,7 +3,7 @@ Main file for the Synthesizer Agent.
 """
 # main.py for Synthesizer Agent
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 import os
 import requests
@@ -19,6 +19,23 @@ ready = False
 # Environment variables
 SYNTHESIZER_AGENT_PORT = int(os.environ.get("SYNTHESIZER_AGENT_PORT", 8005))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
+
+# Simple metrics store (Prometheus text format)
+metrics = {
+    "warmups_total": 0,
+    "synth_requests_total": 0,
+    "synth_errors_total": 0,
+}
+
+def log_gpu_usage(operation: str) -> None:
+    """Log GPU memory usage if torch.cuda is available"""
+    try:
+        import torch  # type: ignore
+        if torch.cuda.is_available():
+            mem_gb = torch.cuda.memory_allocated() / 1024**3
+            logger.info(f"GPU mem [{operation}]: {mem_gb:.2f} GB")
+    except Exception as e:
+        logger.debug(f"GPU usage log skipped: {e}")
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -68,6 +85,23 @@ class ToolCall(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.post("/warmup")
+def warmup():
+    """Lightweight warmup to trigger lazy imports and caches without heavy work."""
+    try:
+        # Touch GPU tools if available (loads module and any lightweight caches)
+        from gpu_tools import get_synthesizer_performance  # noqa: F401
+    except Exception:
+        pass
+    # Touch CPU tools as well
+    try:
+        from tools import cluster_articles  # noqa: F401
+    except Exception:
+        pass
+    metrics["warmups_total"] += 1
+    log_gpu_usage("warmup")
+    return {"warmed": True}
 
 @app.get("/ready")
 def ready_endpoint():
@@ -122,14 +156,20 @@ def synthesize_news_articles_gpu_endpoint(call: ToolCall):
     """GPU-accelerated news article synthesis endpoint"""
     try:
         from gpu_tools import synthesize_news_articles_gpu
-        logger.info(f"Calling GPU synthesize with {len(call.args[0]) if call.args else 0} articles")
+        logger.info(
+            f"Calling GPU synthesize with {len(call.args[0]) if call.args else 0} articles"
+        )
         result = synthesize_news_articles_gpu(*call.args, **call.kwargs)
-        
+        metrics["synth_requests_total"] += 1
+        log_gpu_usage("synthesize_gpu")
+
         # Log performance for monitoring
-        if result.get('success') and 'performance' in result:
-            perf = result['performance']
-            logger.info(f"✅ GPU synthesis: {perf['articles_per_sec']:.1f} articles/sec")
-        
+        if result.get("success") and "performance" in result:
+            perf = result["performance"]
+            logger.info(
+                f"✅ GPU synthesis: {perf['articles_per_sec']:.1f} articles/sec"
+            )
+
         return result
     except Exception as e:
         logger.error(f"❌ GPU synthesis error: {e}")
@@ -141,15 +181,22 @@ def synthesize_news_articles_gpu_endpoint(call: ToolCall):
             articles = call.args[0] if call.args else []
             clusters = cluster_articles(articles)
             synthesis = aggregate_cluster(clusters)
+            metrics["synth_requests_total"] += 1
             return {
                 "success": True,
                 "themes": [{"theme_name": "General News", "articles": articles}],
                 "synthesis": synthesis,
-                "performance": {"articles_per_sec": 1.0, "gpu_used": False}
+                "performance": {"articles_per_sec": 1.0, "gpu_used": False},
             }
         except Exception as fallback_error:
             logger.error(f"❌ CPU fallback failed: {fallback_error}")
-            raise HTTPException(status_code=500, detail=f"GPU synthesis failed: {e}, CPU fallback failed: {fallback_error}")
+            metrics["synth_errors_total"] += 1
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"GPU synthesis failed: {e}, CPU fallback failed: {fallback_error}"
+                ),
+            )
 
 @app.post("/get_synthesizer_performance")
 def get_synthesizer_performance_endpoint(call: ToolCall):
@@ -169,3 +216,14 @@ def get_synthesizer_performance_endpoint(call: ToolCall):
             "models_loaded": False,
             "error": str(e)
         }
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    """Return Prometheus-style metrics in text/plain"""
+    lines = [
+        f"synth_warmups_total {metrics['warmups_total']}",
+        f"synth_requests_total {metrics['synth_requests_total']}",
+        f"synth_errors_total {metrics['synth_errors_total']}",
+    ]
+    body = "\n".join(lines) + "\n"
+    return Response(content=body, media_type="text/plain; version=0.0.4")

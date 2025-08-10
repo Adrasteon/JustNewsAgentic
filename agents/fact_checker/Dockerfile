@@ -1,5 +1,5 @@
 
-# Dockerfile for Fact-Checker Agent
+# DEPRECATED: Dockerfile for Fact-Checker Agent (systemd is the supported runtime)
 FROM python:3.11-slim
 
 WORKDIR /app
