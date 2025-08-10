@@ -46,8 +46,13 @@ jobs:
 
       - name: Run unit tests (subset)
         run: |
-          if [ -f tests/test_common_schemas.py ] || [ -f tests/test_mcp_bus_idempotency.py ] || [ -f tests/test_security_and_limits.py ]; then
-            pytest -q tests/test_common_schemas.py tests/test_mcp_bus_idempotency.py tests/test_security_and_limits.py
+          targets=()
+          for f in tests/test_common_schemas.py tests/test_mcp_bus_idempotency.py tests/test_security_and_limits.py; do
+            if [ -f "$f" ]; then targets+=("$f"); fi
+          done
+          if [ ${#targets[@]} -gt 0 ]; then
+            echo "Running targeted tests: ${targets[*]}"
+            pytest -q "${targets[@]}"
           else
             echo "Targeted tests not found; running full test suite"
             pytest -q
