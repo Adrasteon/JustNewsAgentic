@@ -2,7 +2,7 @@
 Main file for the MCP Bus with idempotency, enhanced observability, and standardized schemas.
 """
 # main.py for MCP Message Bus
-from fastapi import FastAPI, HTTPException, Response, Header
+from fastapi import FastAPI, HTTPException, Response, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import time
@@ -20,6 +20,7 @@ from common.schemas import (
     HealthResponse, ReadinessResponse, WarmupResponse
 )
 from common.observability import MetricsCollector, request_timing_middleware
+from common.security import require_service_token, HEADER_NAME, get_service_headers
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +40,28 @@ IDEMPOTENCY_TTL_SECONDS = 300  # 5 minutes
 
 # Enhanced metrics with observability
 metrics_collector = MetricsCollector("mcp_bus")
+
+# Simple in-memory rate limiting (per route)
+RATE_LIMITS = {
+    "/call": {"limit": 50, "window": 60},  # 50 calls/min
+    "/register": {"limit": 30, "window": 60},
+}
+_rate_counters: Dict[str, Dict[int, int]] = {}
+
+def _rate_limit_check(route: str) -> bool:
+    now = int(time.time())
+    window = RATE_LIMITS.get(route, {}).get("window", 60)
+    bucket = now - (now % window)
+    cfg = RATE_LIMITS.get(route)
+    if not cfg:
+        return True
+    limit = cfg["limit"]
+    counters = _rate_counters.setdefault(route, {})
+    count = counters.get(bucket, 0)
+    if count >= limit:
+        return False
+    counters[bucket] = count + 1
+    return True
 
 # Create FastAPI app with enhanced middleware
 app = FastAPI(
@@ -115,8 +138,14 @@ def _store_in_idempotency_cache(cache_key: str, response: Dict[str, Any]):
 
 
 @app.post("/register", response_model=MCPResponse)
-def register_agent(agent: AgentRegistration):
+def register_agent(agent: AgentRegistration, x_service_token: Optional[str] = Header(None, alias=HEADER_NAME)):
     """Register an agent with enhanced logging and metrics."""
+    # AuthN
+    require_service_token(x_service_token)
+    # Rate limiting
+    if not _rate_limit_check("/register"):
+        metrics_collector.inc("rate_limited_total", {"route": "/register"})
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
     logger.info(f"Registering agent: {agent.name} at {agent.address} (version: {agent.version})")
     
     agents[agent.name] = {
@@ -138,9 +167,15 @@ def register_agent(agent: AgentRegistration):
     )
 
 @app.post("/call", response_model=MCPResponse)
-def call_tool(call: ToolCallV1, x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key")):
+def call_tool(call: ToolCallV1, x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"), x_service_token: Optional[str] = Header(None, alias=HEADER_NAME)):
     """Enhanced tool call with idempotency support and better observability."""
     start_time = time.time()
+    # AuthN
+    require_service_token(x_service_token)
+    # Rate limiting
+    if not _rate_limit_check("/call"):
+        metrics_collector.inc("rate_limited_total", {"route": "/call"})
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
     # Use header idempotency key if provided, otherwise use the one in body
     effective_idempotency_key = x_idempotency_key or call.idempotency_key
@@ -186,7 +221,12 @@ def call_tool(call: ToolCallV1, x_idempotency_key: Optional[str] = Header(None, 
     last_error = None
     for attempt in range(3):
         try:
-            response = requests.post(url, json=payload, timeout=timeout)
+            response = requests.post(
+                url,
+                json=payload,
+                timeout=timeout,
+                headers=get_service_headers(),
+            )
             response.raise_for_status()
             
             # Success: reset failures and record metrics
@@ -297,6 +337,9 @@ def metrics_endpoint() -> Response:
         is_open = 1 if state.get("open_until", 0) > time.time() else 0
         metrics_collector.set_gauge(f"circuit_breaker_open", is_open)
         metrics_collector.set_gauge(f"circuit_breaker_fails", state.get("fails", 0))
+        # Expose open_until remaining seconds when open
+        remaining = max(0, state.get("open_until", 0) - time.time())
+        metrics_collector.set_gauge("circuit_breaker_open_remaining_seconds", remaining)
     
     # Add cache metrics
     metrics_collector.set_gauge("idempotency_cache_size", len(idempotency_cache))

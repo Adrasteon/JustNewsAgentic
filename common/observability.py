@@ -79,10 +79,9 @@ class MetricsCollector:
             h["sum"] += value_s
 
     def set_gauge(self, name: str, value: float) -> None:
-        """Set a gauge to a specific value."""
-        key = (f"gauge_{name}",)
+        """Set a gauge to a specific value (rendered with plain metric name)."""
+        key = (name,)
         with self._lock:
-            # Store gauges in counters dict with a special prefix for simplicity
             self.counters[key] = float(value)  # type: ignore[assignment]
 
     def render(self) -> str:

@@ -18,6 +18,7 @@ from .tools import (
     log_feedback,
 )
 from common.observability import MetricsCollector, request_timing_middleware
+from common.security import get_service_headers, require_service_token, HEADER_NAME
 
 # Import standardized schemas
 from common.schemas import (
@@ -55,6 +56,7 @@ class MCPBusClient:
             response = requests.post(
                 f"{self.base_url}/register", 
                 json=registration.model_dump(),
+                headers=get_service_headers(),
                 timeout=(2, 5)
             )
             response.raise_for_status()
@@ -145,6 +147,8 @@ def warmup():
         service="analyst",
         duration_seconds=duration,
         components_warmed=components_warmed
+    )
+
 @app.get("/metrics")
 def metrics_endpoint() -> Response:
     """Enhanced metrics endpoint using agent_metrics collector."""

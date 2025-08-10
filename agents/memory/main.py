@@ -10,7 +10,7 @@ from datetime import datetime
 
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Header
 from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 
@@ -22,6 +22,7 @@ from .tools import (
     vector_search_articles,
 )
 from common.observability import MetricsCollector, request_timing_middleware
+from common.security import get_service_headers, require_service_token, HEADER_NAME
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -84,7 +85,12 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(
+                f"{self.base_url}/register",
+                json=registration_data,
+                headers=get_service_headers(),
+                timeout=(2, 5),
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -175,18 +181,32 @@ collector = MetricsCollector(agent="memory")
 request_timing_middleware(app, collector)
 
 @app.get("/health")
-def health():
+def health(x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Health check endpoint."""
+    # Optional enforcement: only if token configured
+    try:
+        require_service_token(x_service_token)
+    except HTTPException:
+        # For health, allow anonymous if token not set; if set and invalid, still expose 200 with status
+        pass
     return {"status": "ok"}
 
 @app.get("/ready")
-def ready_endpoint():
+def ready_endpoint(x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Readiness endpoint for startup gating."""
+    try:
+        require_service_token(x_service_token)
+    except HTTPException:
+        pass
     return {"ready": ready}
 
 @app.post("/warmup")
-def warmup():
+def warmup(x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Minimal warmup to touch lazy paths without heavy DB ops."""
+    try:
+        require_service_token(x_service_token)
+    except HTTPException:
+        pass
     try:
         # Light imports only
         from .tools import get_embedding_model  # noqa: F401
@@ -196,7 +216,7 @@ def warmup():
     return {"warmed": True}
 
 @app.get("/metrics")
-def metrics_endpoint() -> Response:
+def metrics_endpoint(x_service_token: str | None = Header(default=None, alias=HEADER_NAME)) -> Response:
     """Prometheus-style metrics for the Memory agent.
 
     Exposes counters and lightweight gauges, including DB pool status if available.
@@ -224,7 +244,7 @@ def metrics_endpoint() -> Response:
     return Response(content=body, media_type="text/plain; version=0.0.4")
 
 @app.get("/db/health")
-def db_health():
+def db_health(x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Database health probe. Always 200 with availability status.
 
     Returns:
@@ -251,7 +271,7 @@ def db_health():
                 pass
 
 @app.post("/db/init")
-def db_init(schema_path: str | None = None):
+def db_init(schema_path: str | None = None, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Initialize the PostgreSQL schema by executing the provided SQL file.
 
     Args:
@@ -292,7 +312,7 @@ def db_init(schema_path: str | None = None):
             release_connection(conn)
 
 @app.post("/save_article")
-def save_article_endpoint(request: dict):
+def save_article_endpoint(request: dict, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Saves an article to the database. Handles both direct calls and MCP Bus format."""
     try:
         # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
@@ -312,7 +332,7 @@ def save_article_endpoint(request: dict):
         raise HTTPException(status_code=400, detail=f"Error saving article: {str(e)}")
 
 @app.get("/get_article/{article_id}")
-def get_article_endpoint(article_id: int):
+def get_article_endpoint(article_id: int, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Retrieves an article from the database."""
     conn = None
     try:
@@ -328,7 +348,7 @@ def get_article_endpoint(article_id: int):
             release_connection(conn)
 
 @app.post("/vector_search_articles")
-def vector_search_articles_endpoint(request: dict):
+def vector_search_articles_endpoint(request: dict, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Performs a vector search for articles. Handles both direct calls and MCP Bus format."""
     try:
         # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
@@ -348,7 +368,7 @@ def vector_search_articles_endpoint(request: dict):
         raise HTTPException(status_code=400, detail=f"Error searching articles: {str(e)}")
 
 @app.post("/log_training_example")
-def log_training_example_endpoint(example: TrainingExample):
+def log_training_example_endpoint(example: TrainingExample, x_service_token: str | None = Header(default=None, alias=HEADER_NAME)):
     """Logs a training example to the database."""
     return log_training_example(
         example.task, example.input, example.output, example.critique
