@@ -11,7 +11,7 @@ JustNewsAgentic V4 is a production-ready, multi-agent news analysis system that 
 
 ## ✨ Key Features
 
-## ✨ Key Features
+- 🏠 **Local-First Models**: All models run locally for editorial and functional independence (no external inference calls). Models are managed and trained via the `training_system/` using production dataflows.
 
 - 🤖 **Multi-Agent Architecture**: 10 specialized AI agents working collaboratively
 - ⚡ **GPU Acceleration**: Native TensorRT optimization with 730+ articles/sec processing
@@ -29,6 +29,11 @@ JustNewsAgentic V4 is a production-ready, multi-agent news analysis system that 
 - Hardware: NVIDIA RTX 3090 (24GB VRAM recommended) or RTX 4090
 - OS: Ubuntu 24.04 with systemd (production deployment is native on Ubuntu)
 - Python: 3.12+ with CUDA 12.1+ support
+
+Local Models & Storage Requirements
+- All AI models must run locally; cloud inference is not used.
+- Initial model bootstrap (one-time) may download weights; thereafter, the system runs in offline mode using local caches and checkpoints.
+- Allocate sufficient disk for model weights, checkpoints, and training datasets (recommend 200–500GB depending on retention policy).
 
 Note: Docker is deprecated and removed from this project. All deployment and operations use native systemd services and shell scripts under `deploy/systemd/`.
 
@@ -123,6 +128,17 @@ MCP_BUS_URL=http://localhost:8000
 GPU_MEMORY_FRACTION=0.8
 BATCH_SIZE=32
 
+# Local models & offline mode
+TRANSFORMERS_CACHE=/var/lib/justnews/models
+HF_HOME=/var/lib/justnews/hf
+TRANSFORMERS_OFFLINE=1   # after initial bootstrap
+
+# Training artifacts & datasets (persistent)
+JUSTNEWS_DATA_ROOT=/var/lib/justnews
+JUSTNEWS_DATASETS_DIR=$JUSTNEWS_DATA_ROOT/datasets
+JUSTNEWS_CHECKPOINTS_DIR=$JUSTNEWS_DATA_ROOT/checkpoints
+JUSTNEWS_EXPORTS_DIR=$JUSTNEWS_DATA_ROOT/exports
+
 # Training settings
 TRAINING_ENABLED=true
 LEARNING_RATE=0.001
@@ -179,6 +195,7 @@ Each agent can be configured via its `config.json` file:
 - **[Development Context](markdown_docs/DEVELOPMENT_CONTEXT.md)** - Complete development history
 - **[Architecture Details](docs/)** - V4 proposals and technical specifications  
 - **[Training System](training_system/)** - Continuous learning implementation
+  - Models are owned and trained here using dataflows from the full system (agents → Memory → Training). Store datasets and checkpoints to enable crisis rebuilds if a model fails.
 - **[API Reference](agents/)** - Agent-specific API documentation
 
 ## 🤝 Contributing
@@ -225,10 +242,23 @@ For details, see `markdown_docs/development_reports/DOCKER_DEPRECATION_NOTICE.md
 
 ## 🔒 Security & Privacy
 
-- **Data Protection**: Local processing, no external data transmission
+- **Data Protection**: Local processing, no external data transmission (models run locally; no remote inference)
 - **Model Security**: Validated model checksums and secure loading
 - **Access Control**: Role-based agent permissions
 - **Audit Trail**: Comprehensive logging for all operations
+
+### Local Models & Offline-First Policy
+- All models execute locally. External inference endpoints are not used in production.
+- The training system curates datasets and produces model checkpoints from production dataflows.
+- Perform a one-time bootstrap to download base weights, then set `TRANSFORMERS_OFFLINE=1` to enforce offline operation.
+- Persist and back up:
+  - Raw and processed training datasets: `$JUSTNEWS_DATASETS_DIR`
+  - Model checkpoints and exports: `$JUSTNEWS_CHECKPOINTS_DIR`, `$JUSTNEWS_EXPORTS_DIR`
+- Crisis management: If a model fails, rebuild from the most recent checkpoint and datasets without re-downloading.
+
+Dev vs Prod model versioning
+- Dev: floating revisions allowed for speed; always log resolved SHAs on startup.
+- Prod: pin per agent to exact SHAs via a committed lock manifest; runtime should refuse unpinned tags. Use a model-bump PR + canary rollout.
 
 ## 📈 Roadmap
 
