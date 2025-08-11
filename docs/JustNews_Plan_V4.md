@@ -42,6 +42,20 @@ This document provides the detailed engineering plan for migrating JustNewsAgent
 - **Training System Integration**: Continuous model improvement through production feedback
 - **Performance-First Design**: Achieve superior results through model specialization
 
+### Model Versioning Policy (Dev vs Prod)
+
+- Development
+    - Float to latest model revisions is acceptable for rapid iteration and research.
+    - Always log the resolved model revision (commit SHA) at agent startup and expose it via /metrics and logs for traceability.
+    - Prefer running the bootstrap prefetch to warm caches even while floating.
+- Production
+    - Pin each agent’s models to exact revisions (commit SHAs) using a repository-committed lock manifest.
+    - Enforce at runtime: production mode refuses unpinned tags (e.g., "main", "latest"). Load only the locked SHA.
+    - Govern updates with a model-bump workflow (CI validates, canary rollout, then promote). Maintain per-agent independence for safe rollbacks.
+    - Document the active revisions in the release notes and export the lock manifest with the build artifacts.
+  
+Note: The `scripts/bootstrap_models.py` writes a report with resolved revisions that can be promoted to the lock manifest for production deployments.
+
 ### Three-Phase Specialization Approach
 
 ```

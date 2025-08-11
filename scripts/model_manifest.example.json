@@ -1,0 +1,23 @@
+{
+  "analyst": [
+    "roberta-base"
+  ],
+  "synthesizer": [
+    "sentence-transformers/all-MiniLM-L6-v2",
+    "facebook/bart-large-cnn",
+    "google/flan-t5-base"
+  ],
+  "fact_checker": [
+    "distilbert-base-uncased",
+    "roberta-base",
+    "sentence-transformers/all-MiniLM-L6-v2"
+  ],
+  "critic": [
+    "microsoft/DialoGPT-medium"
+  ],
+  "newsreader_vision_optional": [
+    "llava-hf/llava-1.5-7b-hf",
+    "Salesforce/blip2-opt-2.7b"
+  ],
+  "scout_optional": []
+}
