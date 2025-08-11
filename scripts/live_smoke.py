@@ -115,7 +115,10 @@ def memory_roundtrip(memory_base: str, headers: Dict[str, str]) -> bool:
         print("[fail] save_article:", resp.status_code, resp.text[:200])
         return False
     obj = resp.json()
-    article_id = obj.get("article_id") or obj.get("id") or 1
+    article_id = obj.get("article_id") or obj.get("id")
+    if not article_id:
+        print("[fail] save_article did not return an article ID. Response:", str(obj)[:200])
+        return False
     # Get it back
     resp2 = get(f"{memory_base}/get_article/{article_id}", headers=headers)
     if not resp2.ok:
