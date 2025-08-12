@@ -41,8 +41,8 @@ logger = logging.getLogger("newsreader.v2_engine")
 # Model availability checks with fallback system
 try:
     from transformers import (
-        LlavaNextProcessor, 
-        LlavaNextForConditionalGeneration,
+        LlavaProcessor, 
+        LlavaForConditionalGeneration,
         CLIPModel,
         CLIPProcessor,
         BitsAndBytesConfig  # Add quantization support
@@ -99,7 +99,7 @@ class ProcessingResult:
 class NewsReaderV2Config:
     """Configuration for NewsReader V2 Engine"""
     # Model configurations
-    llava_model: str = "llava-hf/llava-v1.6-mistral-7b-hf"
+    llava_model: str = "llava-hf/llava-1.5-7b-hf"
     clip_model: str = "openai/clip-vit-large-patch14"
     ocr_languages: List[str] = None
     cache_dir: str = MODEL_CACHE_DIR
@@ -280,10 +280,10 @@ class NewsReaderV2Engine:
                 model_info += f" with {self.config.quantization_type.upper()} quantization"
             logger.info(model_info + "...")
             
-            self.processors['llava'] = LlavaNextProcessor.from_pretrained(
+            self.processors['llava'] = LlavaProcessor.from_pretrained(
                 self.config.llava_model,
-                use_fast=True,  # Fast tokenizer
-                trust_remote_code=True,  # Allow fast processing optimizations
+                use_fast=False,  # Set to False to avoid slow processor warnings
+                trust_remote_code=True,
                 cache_dir=self.config.cache_dir
             )
             
@@ -302,7 +302,7 @@ class NewsReaderV2Engine:
             if quantization_config:
                 model_kwargs["quantization_config"] = quantization_config
             
-            self.models['llava'] = LlavaNextForConditionalGeneration.from_pretrained(
+            self.models['llava'] = LlavaForConditionalGeneration.from_pretrained(
                 self.config.llava_model,
                 **model_kwargs
             )
