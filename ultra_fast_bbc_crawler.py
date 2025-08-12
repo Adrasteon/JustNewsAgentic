@@ -322,13 +322,19 @@ class UltraFastBBCCrawler:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
         
-    logger.info("🎉 Ultra-Fast Crawl Complete!")
-        logger.info(f"📊 {len(results)} articles in {total_time:.1f}s")
-        logger.info(f"⚡ Rate: {len(results) / total_time:.2f} articles/second")
-        logger.info(f"📈 Daily capacity: {(len(results) / total_time) * 86400:.0f} articles/day")
-        logger.info(f"💾 Results: {output_file}")
-        
-        return results
+
+# Fix: Move logging inside run_ultra_fast_crawl and add a main-level summary if needed
+
+# If you want to log results after crawl, you need to capture them from the main function
+
+# Example main function with logging:
+async def main():
+    """Run ultra-fast crawler"""
+    crawler = UltraFastBBCCrawler(concurrent_browsers=3, batch_size=15)
+    await crawler.run_ultra_fast_crawl(target_articles=100)
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 async def main():
     """Run ultra-fast crawler"""

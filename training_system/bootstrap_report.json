@@ -1,0 +1,53 @@
+{
+  "cache_dir": ".cache/transformers",
+  "downloads": [
+    {
+      "component": "analyst",
+      "repo_id": "roberta-base",
+      "revision": "e2da8e2f811d1448a5b465c236feacd80ffbac7b",
+      "local_path": ".cache/transformers/models--roberta-base/snapshots/e2da8e2f811d1448a5b465c236feacd80ffbac7b"
+    },
+    {
+      "component": "synthesizer",
+      "repo_id": "sentence-transformers/all-MiniLM-L6-v2",
+      "revision": "c9745ed1d9f207416be6d2e6f8de32d1f16199bf",
+      "local_path": ".cache/transformers/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/c9745ed1d9f207416be6d2e6f8de32d1f16199bf"
+    },
+    {
+      "component": "synthesizer",
+      "repo_id": "facebook/bart-large-cnn",
+      "revision": "37f520fa929c961707657b28798b30c003dd100b",
+      "local_path": ".cache/transformers/models--facebook--bart-large-cnn/snapshots/37f520fa929c961707657b28798b30c003dd100b"
+    },
+    {
+      "component": "synthesizer",
+      "repo_id": "google/flan-t5-base",
+      "revision": "7bcac572ce56db69c1ea7c8af255c5d7c9672fc2",
+      "local_path": ".cache/transformers/models--google--flan-t5-base/snapshots/7bcac572ce56db69c1ea7c8af255c5d7c9672fc2"
+    },
+    {
+      "component": "fact_checker",
+      "repo_id": "distilbert-base-uncased",
+      "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+      "local_path": ".cache/transformers/models--distilbert-base-uncased/snapshots/12040accade4e8a0f71eabdb258fecc2e7e948be"
+    },
+    {
+      "component": "fact_checker",
+      "repo_id": "roberta-base",
+      "revision": "e2da8e2f811d1448a5b465c236feacd80ffbac7b",
+      "local_path": ".cache/transformers/models--roberta-base/snapshots/e2da8e2f811d1448a5b465c236feacd80ffbac7b"
+    },
+    {
+      "component": "fact_checker",
+      "repo_id": "sentence-transformers/all-MiniLM-L6-v2",
+      "revision": "c9745ed1d9f207416be6d2e6f8de32d1f16199bf",
+      "local_path": ".cache/transformers/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/c9745ed1d9f207416be6d2e6f8de32d1f16199bf"
+    },
+    {
+      "component": "critic",
+      "repo_id": "microsoft/DialoGPT-medium",
+      "revision": "7b40bb0f92c45fefa957d088000d8648e5c7fa33",
+      "local_path": ".cache/transformers/models--microsoft--DialoGPT-medium/snapshots/7b40bb0f92c45fefa957d088000d8648e5c7fa33"
+    }
+  ]
+}
