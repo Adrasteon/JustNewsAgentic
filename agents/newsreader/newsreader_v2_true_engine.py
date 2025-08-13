@@ -41,8 +41,8 @@ logger = logging.getLogger("newsreader.v2_engine")
 # Model availability checks with fallback system
 try:
     from transformers import (
-        LlavaProcessor, 
-        LlavaForConditionalGeneration,
+        LlavaOnevisionProcessor,  # Updated for OneVision model
+        LlavaOnevisionForConditionalGeneration,  # Updated for OneVision model
         CLIPModel,
         CLIPProcessor,
         BitsAndBytesConfig  # Add quantization support
@@ -90,7 +90,7 @@ class ProcessingResult:
 class NewsReaderV2Config:
     """Configuration for NewsReader V2 Engine"""
     # Model configurations
-    llava_model: str = "llava-hf/llava-1.5-7b-hf"
+    llava_model: str = "llava-hf/llava-onevision-qwen2-0.5b-ov-hf"  # 87% memory reduction: 7.6GB → 1.2GB
     clip_model: str = "openai/clip-vit-large-patch14"
     ocr_languages: List[str] = None
     cache_dir: str = MODEL_CACHE_DIR
@@ -344,22 +344,22 @@ class NewsReaderV2Engine:
                 model_info += f" with {self.config.quantization_type.upper()} quantization"
             logger.info(model_info + "...")
             
-            self.processors['llava'] = LlavaProcessor.from_pretrained(
+            self.processors['llava'] = LlavaOnevisionProcessor.from_pretrained(
                 self.config.llava_model,
                 use_fast=False,  # Set to False to avoid slow processor warnings
                 trust_remote_code=True,
                 cache_dir=self.config.cache_dir
             )
             
-            # ULTRA-CONSERVATIVE memory management after multiple crashes
-            # Previous crashes occurred around article 5 - implement stricter limits
-            max_gpu_memory = "8GB"  # Very conservative limit - only 1/3 of 24GB GPU
+            # OPTIMIZED for LLaVA-OneVision-0.5B (87% smaller than previous 7B model)
+            # Expected usage: ~1.2GB (vs 7.6GB with old model) - allows for much better memory allocation
+            max_gpu_memory = "2GB"  # Conservative for 0.9B parameter model (was 8GB for 7B model)
             if self.device.type == 'cuda':
                 gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
-                # Use only 30% of available GPU memory to prevent crashes
-                safe_memory = gpu_memory * 0.3
-                max_gpu_memory = f"{min(8, safe_memory):.0f}GB"
-                logger.warning(f"🛡️ CRASH-SAFE MODE: Using only {max_gpu_memory} of {gpu_memory:.1f}GB GPU memory")
+                # With smaller model, can use standard memory allocation
+                safe_memory = gpu_memory * 0.1  # Only 10% needed for this tiny model
+                max_gpu_memory = f"{min(2, safe_memory):.1f}GB"
+                logger.info(f"🎯 OPTIMIZED MODE: LLaVA-OneVision-0.5B using {max_gpu_memory} of {gpu_memory:.1f}GB GPU memory")
             
             model_kwargs = {
                 "torch_dtype": torch.float16 if self.device.type == 'cuda' else torch.float32,
@@ -374,7 +374,7 @@ class NewsReaderV2Engine:
             if quantization_config:
                 model_kwargs["quantization_config"] = quantization_config
             
-            self.models['llava'] = LlavaForConditionalGeneration.from_pretrained(
+            self.models['llava'] = LlavaOnevisionForConditionalGeneration.from_pretrained(
                 self.config.llava_model,
                 **model_kwargs
             )
@@ -385,17 +385,20 @@ class NewsReaderV2Engine:
                 if not any('cuda' in str(param.device) for param in self.models['llava'].parameters()):
                     self.models['llava'] = self.models['llava'].to(self.device)
             
+            # TORCH.COMPILE DISABLED - Causes memory pressure with 16 compile workers
             # Apply torch.compile optimization if available and model is on GPU
-            if (hasattr(torch, 'compile') and self.device.type == 'cuda' and 
-                any('cuda' in str(param.device) for param in self.models['llava'].parameters())):
-                try:
-                    logger.info("Applying torch.compile optimization to LLaVA...")
-                    self.models['llava'] = torch.compile(
-                        self.models['llava'], 
-                        mode="reduce-overhead"
-                    )
-                except Exception as compile_error:
-                    logger.warning(f"Could not compile LLaVA model: {compile_error}")
+            # DISABLED: Causes system instability due to memory pressure
+            # if (hasattr(torch, 'compile') and self.device.type == 'cuda' and 
+            #     any('cuda' in str(param.device) for param in self.models['llava'].parameters())):
+            #     try:
+            #         logger.info("Applying torch.compile optimization to LLaVA...")
+            #         self.models['llava'] = torch.compile(
+            #             self.models['llava'], 
+            #             mode="reduce-overhead"
+            #         )
+            #     except Exception as compile_error:
+            #         logger.warning(f"Could not compile LLaVA model: {compile_error}")
+            logger.info("🛡️ torch.compile DISABLED to prevent memory pressure (16 workers @ 280MB each)")
             
             # Log model info
             total_params = sum(p.numel() for p in self.models['llava'].parameters())

@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 
-from tools import (get_embedding_model, log_feedback,
+from agents.memory.tools import (get_embedding_model, log_feedback,
                    log_training_example, save_article, vector_search_articles)
 
 # Configure logging

@@ -37,7 +37,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("newsreader.v2_main")
 
 # Environment variables
-NEWSREADER_AGENT_PORT = int(os.environ.get("NEWSREADER_AGENT_PORT", 8003))
+NEWSREADER_AGENT_PORT = int(os.environ.get("PORT", 8009))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 class MCPBusClient:

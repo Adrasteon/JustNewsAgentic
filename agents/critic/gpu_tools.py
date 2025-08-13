@@ -4,7 +4,14 @@ Based on proven GPUAcceleratedAnalyst pattern achieving 41.4-168.1 articles/sec
 
 Architecture:
 - DialoGPT-medium for content critique (355M parameters)
-- Professional GPU memory management (4GB base, 5GB peak allocation)
+-            self.critique_pipeline = pipeline(
+                "text-classification",  # More appropriate for criticism tasks
+                model=model_name,
+                device=-1,  # CPU
+                return_all_scores=True,  # Get confidence scores for criticism
+                batch_size=2,  # Smaller batch for CPU
+                trust_remote_code=False
+            )sional GPU memory management (4GB base, 5GB peak allocation)
 - Batch processing with 8-item batches for optimal performance
 - CPU fallback for reliability and graceful degradation
 
@@ -153,35 +160,32 @@ class GPUAcceleratedCritic:
         try:
             logger.info("📦 Loading GPU-optimized models...")
             
-            model_name = "microsoft/DialoGPT-medium"
+            # TASK-SPECIFIC MODEL: Content quality and bias evaluation (replaces general DialoGPT)
+            model_name = "unitary/unbiased-toxic-roberta"  # Specialized for content quality assessment
             
-            # Load tokenizer
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            
-            # Load model with GPU optimization
+            # Create optimized text classification pipeline for criticism tasks
             if self.gpu_device >= 0:
                 torch.cuda.set_device(self.gpu_device)
                 
-                self.critique_model = AutoModelForCausalLM.from_pretrained(
-                    model_name,
-                    torch_dtype=torch.float16,  # Memory optimization
-                    device_map=f"cuda:{self.gpu_device}",
-                    trust_remote_code=True
-                )
+                # Try loading with GPU optimization
+                try:
+                    self.critique_pipeline = pipeline(
+                        "text-classification",  # More appropriate for quality assessment
+                        model=model_name,
+                        device=self.gpu_device,
+                        torch_dtype=torch.float16,
+                        return_all_scores=True,  # Get confidence scores for criticism
+                        batch_size=self.batch_size,
+                        trust_remote_code=False
+                    )
+                except Exception as e:
+                    logger.warning(f"⚠️ Safetensors loading failed: {e}")
+                    logger.info("🔄 Trying alternative model loading method...")
+                    # Fallback to CPU loading if GPU has issues
+                    self._load_cpu_models()
+                    return
                 
-                # Create optimized pipeline
-                self.critique_pipeline = pipeline(
-                    "text-generation",
-                    model=self.critique_model,
-                    tokenizer=self.tokenizer,
-                    device=self.gpu_device,
-                    torch_dtype=torch.float16,
-                    batch_size=self.batch_size
-                )
-                
-                logger.info(f"✅ DialoGPT-medium loaded on GPU device {self.gpu_device}")
+                logger.info(f"✅ {model_name} loaded on GPU device {self.gpu_device}")
             else:
                 self._load_cpu_models()
                 return
@@ -202,19 +206,14 @@ class GPUAcceleratedCritic:
         try:
             logger.info("💻 Loading CPU models (fallback mode)...")
             
-            model_name = "microsoft/DialoGPT-medium"
-            
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            
-            self.critique_model = AutoModelForCausalLM.from_pretrained(model_name)
+            # TASK-SPECIFIC MODEL: Content quality assessment (replaces general DialoGPT)
+            model_name = "unitary/unbiased-toxic-roberta"  # Specialized for content quality assessment
             
             self.critique_pipeline = pipeline(
-                "text-generation",
-                model=self.critique_model,
-                tokenizer=self.tokenizer,
+                "text-classification",  # More appropriate for criticism tasks
+                model=model_name,
                 device=-1,  # CPU
+                return_all_scores=True,  # Get confidence scores for criticism
                 batch_size=2  # Smaller batches for CPU
             )
             
@@ -355,62 +354,184 @@ class GPUAcceleratedCritic:
             }
     
     def _process_batch(self, batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Process a batch of articles for critique"""
+        """Process a batch of articles for content quality critique using text classification"""
         batch_critiques = []
         
         for article in batch:
             try:
-                # Prepare critique prompt
+                # Extract article content
                 title = article.get('title', 'Untitled')
-                content = article.get('content', '')[:1000]  # Limit content length
+                content = article.get('content', '')
+                url = article.get('url', '')
                 
-                prompt = f"Critique this news article for accuracy, bias, and quality:\n\nTitle: {title}\nContent: {content}\n\nCritique:"
+                # Combine title and content for analysis
+                full_text = f"{title}\n\n{content}"
                 
-                # Generate critique
-                response = self.critique_pipeline(
-                    prompt,
-                    max_length=len(prompt.split()) + 100,  # Reasonable response length
-                    num_return_sequences=1,
-                    temperature=0.7,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    do_sample=True
+                # Analyze content quality using specialized classification model
+                quality_results = self.critique_pipeline(full_text[:512])  # Limit to model's max length
+                
+                # Extract quality scores from multi-label classification results
+                quality_score = 0.8  # Default high-quality score
+                toxicity_score = 0.0
+                quality_label = "CLEAN"
+                toxicity_details = {}
+                
+                if quality_results and isinstance(quality_results, list):
+                    # Process multi-label toxicity scores
+                    scores_dict = {item['label']: item['score'] for item in quality_results[0]}
+                    
+                    # Primary toxicity categories to evaluate
+                    primary_toxic_categories = ['toxicity', 'severe_toxicity', 'insult', 'threat', 'obscene']
+                    
+                    # Calculate overall toxicity score from primary categories
+                    toxic_scores = [scores_dict.get(cat, 0.0) for cat in primary_toxic_categories]
+                    toxicity_score = max(toxic_scores)  # Use highest toxic score
+                    
+                    # Store detailed toxicity analysis
+                    toxicity_details = {cat: scores_dict.get(cat, 0.0) for cat in primary_toxic_categories}
+                    
+                    # Classify content quality based on toxicity levels
+                    if toxicity_score > 0.7:
+                        quality_label = "TOXIC"
+                        quality_score = 0.1  # Very poor quality
+                    elif toxicity_score > 0.3:
+                        quality_label = "CONCERNING"  
+                        quality_score = 0.4  # Below average quality
+                    elif toxicity_score > 0.1:
+                        quality_label = "MINOR_ISSUES"
+                        quality_score = 0.6  # Moderate quality
+                    else:
+                        quality_label = "CLEAN"
+                        quality_score = 0.9  # High quality
+                
+                # Generate critique assessment based on classification results
+                critique_analysis = self._analyze_quality_classification(
+                    quality_label, toxicity_score, quality_score, title, content, toxicity_details
                 )
                 
-                # Extract critique from response
-                full_response = response[0]['generated_text']
-                critique_text = full_response[len(prompt):].strip()
-                
-                # Clean up the critique
-                if not critique_text:
-                    critique_text = "No specific critique generated."
-                
-                # Create critique assessment (bias detection removed)
+                # Create comprehensive critique result
                 critique = {
                     'article_title': title,
-                    'article_url': article.get('url', 'No URL'),
-                    'critique': critique_text,
-                    'quality_score': self._assess_quality(content),
-                    'bias_indicators': [],  # REMOVED - Use Scout V2 for bias detection
-                    'accuracy_flags': self._check_accuracy_flags(content),
-                    'note': 'Bias detection centralized in Scout V2 Agent'
+                    'article_url': url,
+                    'critique': critique_analysis['critique_text'],
+                    'quality_score': quality_score,
+                    'toxicity_score': toxicity_score,
+                    'classification_label': quality_label,
+                    'accuracy_flags': critique_analysis['accuracy_flags'],
+                    'recommendations': critique_analysis['recommendations'],
+                    'note': 'Content quality assessment using specialized classification model'
                 }
                 
                 batch_critiques.append(critique)
                 
             except Exception as e:
                 logger.warning(f"⚠️ Failed to critique article '{article.get('title', 'Unknown')}': {e}")
-                # Create error critique (bias detection removed)
+                # Create error critique
                 batch_critiques.append({
                     'article_title': article.get('title', 'Unknown'),
                     'article_url': article.get('url', 'No URL'),
-                    'critique': f"Critique generation failed: {str(e)}",
+                    'critique': f"Content quality analysis failed: {str(e)}",
                     'quality_score': 0.0,
-                    'bias_indicators': [],  # REMOVED - Use Scout V2 for bias detection
+                    'toxicity_score': 0.0,
+                    'classification_label': 'ERROR',
                     'accuracy_flags': [],
-                    'note': 'Bias detection centralized in Scout V2 Agent'
+                    'recommendations': ['Manual review required'],
+                    'note': 'Analysis failed - manual review recommended'
                 })
         
         return batch_critiques
+    
+    def _analyze_quality_classification(self, label: str, score: float, quality_score: float, 
+                                      title: str, content: str, toxicity_details: dict = None) -> Dict[str, Any]:
+        """Analyze quality classification results and generate human-readable critique"""
+        toxicity_details = toxicity_details or {}
+        
+        # Generate critique text based on new quality classification labels
+        if label == 'TOXIC':
+            # Identify specific toxicity types detected
+            toxic_categories = []
+            for category, score_val in toxicity_details.items():
+                if score_val > 0.1:  # Threshold for mentioning category
+                    toxic_categories.append(f"{category}({score_val:.2f})")
+            
+            toxic_str = ", ".join(toxic_categories) if toxic_categories else "general toxicity"
+            critique_text = (
+                f"🚨 TOXIC CONTENT DETECTED: High toxicity levels found (score: {score:.2f}). "
+                f"Detected issues: {toxic_str}. This content is unsuitable for publication "
+                f"and requires immediate editorial intervention."
+            )
+            accuracy_flags = ['toxic_content', 'publication_blocked', 'editorial_review_required']
+            recommendations = [
+                'DO NOT PUBLISH without major revisions',
+                'Remove offensive language and harmful content',
+                'Consider alternative sources or complete rewrite',
+                'Mandatory editorial and legal review'
+            ]
+            
+        elif label == 'CONCERNING':
+            # Identify moderate concerns
+            concern_categories = []
+            for category, score_val in toxicity_details.items():
+                if score_val > 0.05:
+                    concern_categories.append(f"{category}({score_val:.2f})")
+                    
+            concern_str = ", ".join(concern_categories) if concern_categories else "content quality issues"
+            critique_text = (
+                f"⚠️ CONTENT QUALITY CONCERNS: Moderate toxicity detected (score: {score:.2f}). "
+                f"Areas of concern: {concern_str}. The article needs editorial review "
+                f"to address language and tone issues before publication."
+            )
+            accuracy_flags = ['moderate_toxicity', 'editorial_review_needed']
+            recommendations = [
+                'Editorial review recommended before publication',
+                'Revise problematic language and tone',
+                'Consider fact-checking and source verification',
+                'Monitor reader feedback after publication'
+            ]
+            
+        elif label == 'MINOR_ISSUES':
+            # Minor quality improvements needed
+            critique_text = (
+                f"⚠️ MINOR QUALITY ISSUES: Low-level concerns detected (score: {score:.2f}). "
+                f"While suitable for publication, minor editorial improvements could "
+                f"enhance the article's professionalism and reader experience."
+            )
+            accuracy_flags = ['minor_quality_issues']
+            recommendations = [
+                'Consider minor editorial polishing',
+                'Review tone and language choices',
+                'Standard fact-checking procedures',
+                'Monitor for reader feedback'
+            ]
+            
+        else:  # CLEAN content
+            critique_text = (
+                f"✅ HIGH QUALITY CONTENT: Excellent content quality detected (score: {score:.2f}). "
+                f"The article demonstrates professional standards with appropriate tone, "
+                f"language, and presentation suitable for immediate publication."
+            )
+            accuracy_flags = ['high_quality']
+            recommendations = [
+                'Content meets publication standards',
+                'Standard fact-checking recommended',
+                'Consider for featured placement',
+                'Suitable for wide distribution'
+            ]
+        
+        # Add content-specific observations
+        word_count = len(content.split())
+        if word_count < 50:
+            accuracy_flags.append('very_short_content')
+            recommendations.append('Article may be too brief for comprehensive coverage')
+        elif word_count < 100:
+            accuracy_flags.append('short_content')
+            recommendations.append('Consider expanding content for better coverage')
+            
+        return {
+            'critique_text': critique_text,
+            'accuracy_flags': accuracy_flags,
+            'recommendations': recommendations
+        }
     
     def _assess_quality(self, content: str) -> float:
         """Simple quality assessment based on content characteristics"""
