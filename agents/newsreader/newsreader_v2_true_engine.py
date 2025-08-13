@@ -52,19 +52,10 @@ except ImportError:
     logger.warning("LLaVA models not available - using fallback processing")
     LLAVA_AVAILABLE = False
 
-try:
-    import easyocr
-    OCR_AVAILABLE = True
-except ImportError:
-    logger.warning("easyocr not available - text extraction limited")
-    OCR_AVAILABLE = False
-
-try:
-    import layoutparser as lp
-    LAYOUT_PARSER_AVAILABLE = True
-except ImportError:
-    logger.warning("layoutparser not available - layout analysis limited")
-    LAYOUT_PARSER_AVAILABLE = False
+# OCR and Layout Parser DEPRECATED - LLaVA provides superior vision-language understanding
+# These were causing memory bloat and crashes - LLaVA handles all vision processing
+OCR_AVAILABLE = False  # DEPRECATED: LLaVA superior for text extraction
+LAYOUT_PARSER_AVAILABLE = False  # DEPRECATED: LLaVA handles layout understanding
 
 # Environment Configuration
 FEEDBACK_LOG = os.environ.get("NEWSREADER_FEEDBACK_LOG", "./feedback_newsreader_v2.log")
@@ -150,6 +141,69 @@ class NewsReaderV2Engine:
     - V2 standards compliance (5+ models, zero warnings)
     """
     
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensure GPU memory cleanup"""
+        self.cleanup_gpu_memory()
+    
+    def cleanup_gpu_memory(self):
+        """AGGRESSIVE GPU memory cleanup to prevent crashes"""
+        logger.info("🧹 Starting aggressive GPU memory cleanup...")
+        
+        # Step 1: Clear model cache
+        if hasattr(self, 'models') and self.models:
+            for model_name, model in list(self.models.items()):
+                if model is not None:
+                    try:
+                        # Move to CPU first
+                        if hasattr(model, 'cpu'):
+                            model.cpu()
+                        # Delete model reference  
+                        del model
+                        self.models[model_name] = None
+                        logger.info(f"🧹 Cleaned up {model_name} model")
+                    except Exception as e:
+                        logger.warning(f"Error cleaning up {model_name}: {e}")
+            
+            # Clear entire models dict
+            self.models.clear()
+        
+        # Step 2: Clear processor cache
+        if hasattr(self, 'processors') and self.processors:
+            for proc_name, processor in list(self.processors.items()):
+                if processor is not None:
+                    try:
+                        del processor
+                        self.processors[proc_name] = None
+                        logger.info(f"🧹 Cleaned up {proc_name} processor")
+                    except Exception as e:
+                        logger.warning(f"Error cleaning up {proc_name}: {e}")
+            
+            self.processors.clear()
+        
+        # Step 3: Aggressive CUDA cleanup
+        if torch.cuda.is_available():
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+            # Clear CUDA cache multiple times for stubborn memory
+            for _ in range(3):
+                torch.cuda.empty_cache()
+            
+            # Synchronize CUDA operations
+            torch.cuda.synchronize()
+            
+            # Log memory status
+            allocated_mb = torch.cuda.memory_allocated() / 1e6
+            cached_mb = torch.cuda.memory_reserved() / 1e6
+            logger.info(f"🧹 GPU Memory after cleanup: {allocated_mb:.1f}MB allocated, {cached_mb:.1f}MB cached")
+        
+        logger.info("🧹 Aggressive GPU memory cleanup completed")
+
     def __init__(self, config: NewsReaderV2Config = None):
         self.config = config or NewsReaderV2Config()
         
@@ -174,6 +228,19 @@ class NewsReaderV2Engine:
         self._initialize_models()
         
         logger.info("✅ NewsReader V2 Engine initialized with TRUE multi-modal screenshot processing")
+    
+    def __enter__(self):
+        """Context manager entry - enable safe resource management"""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensure cleanup on any exit condition"""
+        self.cleanup_gpu_memory()
+        if exc_type is not None:
+            logger.error(f"NewsReader V2 Engine exiting due to exception: {exc_type.__name__}: {exc_val}")
+        else:
+            logger.info("NewsReader V2 Engine cleanly exited")
+        return False  # Don't suppress exceptions
     
     def is_llava_available(self) -> bool:
         """Check if LLaVA model is loaded and ready for use"""
@@ -218,27 +285,20 @@ class NewsReaderV2Engine:
             logger.info("✅ CUDA optimizations enabled")
     
     def _initialize_models(self):
-        """Initialize all V2 model components"""
+        """Initialize V2 model components - STREAMLINED for memory efficiency"""
         try:
-            # Component 1: Primary LLaVA Model (CORE FUNCTIONALITY)
+            # Component 1: Primary LLaVA Model (CORE FUNCTIONALITY - Only essential component)
             self._load_llava_model()
             
-            # Component 2: CLIP Vision Model 
-            self._load_clip_model()
-            
-            # Component 3: OCR Engine
-            self._load_ocr_engine()
-            
-            # Component 4: Layout Parser (Optional - LLaVA provides layout understanding)
-            if self.config.enable_layout_parser:
-                self._load_layout_parser()
-            else:
-                logger.info("✅ Layout parser disabled - LLaVA provides superior layout understanding")
-            
-            # Component 5: Screenshot Capture System
+            # Component 2: Screenshot Capture System (Essential for webpage processing)
             self._initialize_screenshot_system()
             
-            logger.info("✅ All NewsReader V2 components initialized successfully")
+            # DEPRECATED COMPONENTS SKIPPED FOR MEMORY EFFICIENCY:
+            # - OCR Engine: DEPRECATED - LLaVA provides superior text extraction
+            # - Layout Parser: DEPRECATED - LLaVA provides superior layout understanding  
+            # - CLIP Vision: DEPRECATED - LLaVA provides comprehensive vision analysis
+            
+            logger.info("✅ NewsReader V2 initialized with LLaVA-first architecture (memory optimized)")
             
         except Exception as e:
             logger.error(f"Error initializing NewsReader V2 models: {e}")
@@ -251,9 +311,13 @@ class NewsReaderV2Engine:
                 logger.warning("LLaVA not available - core functionality limited")
                 return
             
-            # Clear GPU memory first
+            # Clear GPU memory aggressively before loading
             if self.device.type == 'cuda':
                 torch.cuda.empty_cache()
+                # Get available memory and set conservative limit
+                gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9  # GB
+                available_memory = gpu_memory * 0.7  # Use only 70% of total
+                logger.info(f"🔧 GPU Memory: {gpu_memory:.1f}GB total, limiting to {available_memory:.1f}GB")
             
             # Setup quantization configuration for memory optimization
             quantization_config = None
@@ -287,13 +351,21 @@ class NewsReaderV2Engine:
                 cache_dir=self.config.cache_dir
             )
             
-            # Load model with quantization and careful memory management
+            # ULTRA-CONSERVATIVE memory management after multiple crashes
+            # Previous crashes occurred around article 5 - implement stricter limits
+            max_gpu_memory = "8GB"  # Very conservative limit - only 1/3 of 24GB GPU
+            if self.device.type == 'cuda':
+                gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
+                # Use only 30% of available GPU memory to prevent crashes
+                safe_memory = gpu_memory * 0.3
+                max_gpu_memory = f"{min(8, safe_memory):.0f}GB"
+                logger.warning(f"🛡️ CRASH-SAFE MODE: Using only {max_gpu_memory} of {gpu_memory:.1f}GB GPU memory")
+            
             model_kwargs = {
                 "torch_dtype": torch.float16 if self.device.type == 'cuda' else torch.float32,
                 "device_map": "auto",
                 "low_cpu_mem_usage": True,
-                "max_memory": {0: "18GB"},  # Limit GPU memory usage
-                "attn_implementation": "sdpa",  # Scaled Dot Product Attention
+                "max_memory": {0: max_gpu_memory},  # Conservative GPU memory limit
                 "cache_dir": self.config.cache_dir,
                 "trust_remote_code": True
             }
@@ -369,30 +441,16 @@ class NewsReaderV2Engine:
         self.models['ocr'] = None
     
     def _load_layout_parser(self):
-        """Load layout parser for document structure analysis"""
-        try:
-            if not LAYOUT_PARSER_AVAILABLE:
-                logger.warning("LayoutParser not available - using basic layout analysis")
-                self.models['layout_parser'] = self._create_basic_layout_parser()
-                logger.info("✅ Basic layout parser initialized")
-                return
-            
-            # Load pre-trained layout detection model
-            try:
-                self.models['layout_parser'] = lp.Detectron2LayoutModel(
-                    'lp://PubLayNet/faster_rcnn_R_50_FPN_3x/config',
-                    extra_config=["MODEL.ROI_HEADS.SCORE_THRESH_TEST", 0.8],
-                    label_map={0: "Text", 1: "Title", 2: "List", 3: "Table", 4: "Figure"}
-                )
-                logger.info("✅ Advanced layout parser loaded successfully")
-            except AttributeError as attr_e:
-                logger.warning(f"Detectron2LayoutModel not available: {attr_e}")
-                self.models['layout_parser'] = self._create_basic_layout_parser()
-                logger.info("✅ Basic layout parser initialized as fallback")
-            
-        except Exception as e:
-            logger.warning(f"Layout parser unavailable: {e}")
-            self.models['layout_parser'] = self._create_basic_layout_parser()
+        """Layout Parser DEPRECATED - LLaVA provides superior layout understanding
+        
+        DEPRECATED: Layout Parser caused GPU memory crashes and is redundant
+        - LLaVA natively understands document structure and layout
+        - Layout Parser consumed 500MB-1GB GPU memory unnecessarily  
+        - LLaVA provides contextual layout analysis in natural language
+        - Eliminates complex computer vision pipeline overhead
+        """
+        logger.info("🚫 Layout Parser deprecated - LLaVA handles all layout analysis")
+        self.models['layout_parser'] = None
     
     def _initialize_screenshot_system(self):
         """Initialize Playwright screenshot capture system"""
@@ -635,28 +693,21 @@ class NewsReaderV2Engine:
             if not llava_result['success']:
                 raise Exception(f"LLaVA analysis failed: {llava_result.get('error', 'Unknown error')}")
             
-            # Step 3: Enhanced processing based on mode
+            # Step 3: Enhanced processing - STREAMLINED for LLaVA-first approach
             enhanced_results = {}
             
             if processing_mode in [ProcessingMode.COMPREHENSIVE, ProcessingMode.PRECISION]:
-                # OCR enhancement - DISABLED for redundancy testing
-                if self.models.get('ocr'):
-                    ocr_result = self._enhance_with_ocr(screenshot_path)
-                    enhanced_results['ocr'] = ocr_result
-                else:
-                    # OCR disabled - LLaVA provides sufficient text extraction
-                    enhanced_results['ocr'] = {
-                        'note': 'OCR disabled - text extraction provided by LLaVA analysis',
-                        'status': 'redundancy_test'
-                    }
+                # OCR DEPRECATED - LLaVA provides superior text extraction
+                enhanced_results['ocr'] = {
+                    'note': 'OCR DEPRECATED - LLaVA provides superior contextual text extraction',
+                    'status': 'llava_replaces_ocr'
+                }
                 
-                # Layout analysis (LLaVA provides inherent layout understanding)
-                # if self.models.get('layout_parser'):
-                #     layout_result = self._enhance_with_layout_analysis(screenshot_path)
-                #     enhanced_results['layout'] = layout_result
-                
-                # LLaVA already provides layout understanding in its analysis
-                enhanced_results['layout'] = {'note': 'Layout understanding provided by LLaVA analysis'}
+                # Layout Parser DEPRECATED - LLaVA provides superior layout understanding
+                enhanced_results['layout'] = {
+                    'note': 'Layout Parser DEPRECATED - LLaVA provides contextual layout analysis',
+                    'status': 'llava_replaces_layout'
+                }
                 
                 # CLIP vision analysis - DISABLED for redundancy testing
                 if self.models.get('clip'):

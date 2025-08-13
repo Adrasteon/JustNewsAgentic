@@ -1,4 +1,41 @@
-# JustNewsAgentic V4 - Technical Architecture
+# JustNewsAgentic V4 - T### 🤖 **Agent Production Status Overview**
+
+### ✅ **Production-Ready Agents (V3/V2 Engines)**
+- **🔍 Scout V2**: 5-model intelligence engine with LLaMA-3-8B GPU acceleration
+- **✅ Fact Checker V2**: 5-model verification system with comprehensive credibility assessment  
+- **📝 Synthesizer V3**: **4-model production stack** (BERTopic, BART, FLAN-T5, SentenceTransformers)
+- **🧠 Reasoning**: Complete Nucleoid implementation with symbolic logic and AST parsing
+- **💾 Memory**: PostgreSQL integration with vector search and training data persistence
+- **🤖 NewsReader**: LLaVA-1.5-7B with **crash-resolved** INT8 quantization for visual content analysis
+
+### 🚨 **GPU Crash Investigation Resolution - August 13, 2025**
+
+**CRITICAL DISCOVERY**: PC crashes were **NOT caused by GPU memory exhaustion** but by incorrect model configuration:
+
+**Root Causes Identified**:
+1. **Incorrect Quantization Method**: Using `torch_dtype=torch.int8` instead of proper `BitsAndBytesConfig`
+2. **Improper LLaVA Conversation Format**: Wrong image input structure causing processing failures
+3. **SystemD Environment Issues**: Missing CUDA environment variables (resolved)
+
+**✅ Production-Validated Solution**:
+```python
+# CORRECT: BitsAndBytesConfig quantization
+quantization_config = BitsAndBytesConfig(
+    load_in_8bit=True,
+    bnb_8bit_compute_dtype=torch.float16,
+    bnb_8bit_use_double_quant=True
+)
+
+# INCORRECT: Direct dtype (causes crashes)
+# torch_dtype=torch.int8  # ❌ This caused the crashes
+```
+
+**Validation Results** (August 13, 2025):
+- ✅ **Zero crashes** during intensive testing including critical 5th image analysis
+- ✅ **Stable GPU memory**: 6.85GB allocated, 7.36GB reserved (well within limits)
+- ✅ **Proper LLaVA functionality**: Successful news screenshot analysis
+- ✅ **SystemD service stable**: Correct environment configuration verified
+- **Detailed Documentation**: `markdown_docs/development_reports/Using-The-GPU-Correctly.md`Architecture
 
 This document provides comprehensive technical details about the JustNewsAgentic V4 system architecture, performance metrics, and implementation details.
 

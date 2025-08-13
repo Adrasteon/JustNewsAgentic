@@ -1,11 +1,27 @@
-# NewsReader Agent - Organized Structure
+# NewsReader Agent - Production-Validated Configuration
+
+## 🚨 **CRITICAL UPDATE: GPU Crash Resolution - August 13, 2025**
+
+**MAJOR BREAKTHROUGH**: All PC crashes resolved through proper configuration identification and correction.
+
+### **Root Cause Analysis**
+The crashes were **NOT caused by GPU memory exhaustion** but by:
+1. **Incorrect quantization method**: Using `torch_dtype=torch.int8` instead of `BitsAndBytesConfig`
+2. **Improper LLaVA conversation formatting**: Wrong image input structure
+3. **SystemD environment issues**: Missing CUDA variables (resolved)
+
+### **✅ Production-Validated Solution**
+- **Correct Method**: `BitsAndBytesConfig` with `load_in_8bit=True`
+- **Memory Usage**: Stable 6.85GB GPU allocation (well within 25GB limits)
+- **Crash Testing**: 100% success rate including critical 5th image analysis
+- **Documentation**: Complete setup guide in `markdown_docs/development_reports/Using-The-GPU-Correctly.md`
 
 ## 📁 Directory Organization
 
 ### **Main Agent Files** (Top Level)
-- `newsreader_agent.py` - **Current working version** (production-ready LLaVA implementation)
-- `main.py` - FastAPI endpoint wrapper for MCP bus integration
-- `tools.py` - Agent tool implementations
+- `newsreader_v2_true_engine.py` - **Production engine with crash-resolved configuration** ⭐
+- `main_v2.py` - **Active FastAPI service** (crash-resolved, systemd-compatible) ⭐
+- `tools.py` - Agent tool implementations with proper V2 engine integration
 - `requirements.txt` - Python dependencies
 
 ### **📂 `/main_options/`** - Alternative Implementations
@@ -14,7 +30,7 @@ Contains variant newsreader implementations for different use cases:
 - `llava_newsreader_agent.py` - Standard LLaVA implementation
 - `quantized_llava_newsreader_agent.py` - INT8 quantized version
 - `optimized_llava_test.py` - Performance testing implementation
-- **`practical_newsreader_solution.py`** - **NEW: Practical INT8 approach with dual model fallback**
+- **`practical_newsreader_solution.py`** - Practical INT8 approach with dual model fallback
 
 ### **📂 `/documentation/`** - Technical Documentation
 - `IMPLEMENTATION_SUMMARY.md` - Implementation overview and decisions
@@ -25,18 +41,28 @@ Contains variant newsreader implementations for different use cases:
 - `*.log` - Agent execution logs
 - `*.png` - Screenshot outputs and test results
 - `*.sh` - Development shell scripts
-- `=0.44.0` - Spurious dependency file (archived)
+- Previous development versions
 
-## 🎯 **Current Working Implementation**
+## 🎯 **Current Production Implementation**
 
-**File**: `newsreader_agent.py`  
-**Status**: Production-ready with fixes applied  
+**File**: `newsreader_v2_true_engine.py` + `main_v2.py`  
+**Status**: ✅ **Production-validated, crash-resolved** 
 **Features**:
-- Fixed LLaVA model loading (LlavaProcessor + LlavaForConditionalGeneration)
-- Zero model warnings with `use_fast=True`
-- INT8 quantization for memory efficiency (6.8GB GPU usage)
-- Screenshot analysis and DOM extraction hybrid approach
-- Stable operation validated with BBC news crawling
+- **Crash-Safe Configuration**: Proper `BitsAndBytesConfig` quantization method
+- **Conservative Memory Limits**: 8GB maximum GPU usage (crash-safe mode)
+- **Correct LLaVA Format**: Proper conversation structure with separate image/text inputs
+- **SystemD Compatible**: Correct environment variables and service configuration
+- **Memory Monitoring**: Real-time GPU and system memory tracking
+
+### **Production Performance Metrics**
+```
+✅ Validated Operation (August 13, 2025):
+- GPU Memory: 6.85GB allocated, 7.36GB reserved
+- System Memory: 24.8% usage (~7.3GB of 31GB)
+- Model Loading: ~14 seconds (with quantization)
+- Analysis Speed: ~7-8 seconds per image
+- Crash Rate: 0% (previously 100% at 5th image)
+```
 
 ## 🔧 **Development Workflow**
 

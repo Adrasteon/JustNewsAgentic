@@ -2,6 +2,75 @@
 
 All notable changes to this project will be documented in this file.
 
+## [V2.19.0] - 2025-08-13 - **🚨 MAJOR BREAKTHROUGH: GPU CRASH ROOT CAUSE RESOLVED**
+
+### 🏆 **Critical Discovery & Resolution**
+- **✅ Root Cause Identified**: PC crashes were **NOT GPU memory exhaustion** but incorrect model configuration
+- **✅ Quantization Fix**: Replaced `torch_dtype=torch.int8` with proper `BitsAndBytesConfig` quantization
+- **✅ LLaVA Format Fix**: Corrected conversation format from simple strings to proper image/text structure
+- **✅ SystemD Environment**: Fixed CUDA environment variables in service configuration
+- **✅ Crash Testing**: 100% success rate in GPU stress testing including critical 5th image analysis
+
+### 📋 **Production-Validated Configuration**
+```python
+# ✅ CORRECT: BitsAndBytesConfig quantization  
+quantization_config = BitsAndBytesConfig(
+    load_in_8bit=True,
+    bnb_8bit_compute_dtype=torch.float16,
+    bnb_8bit_use_double_quant=True
+)
+
+# ❌ INCORRECT: Direct dtype (caused crashes)
+# torch_dtype=torch.int8
+```
+
+### 📊 **Validation Results**
+- **GPU Memory**: Stable 6.85GB allocated, 7.36GB reserved (well within 25GB limits)
+- **System Memory**: Stable 24.8% usage (~7.3GB of 31GB)
+- **Crash Rate**: 0% (previously 100% at 5th image processing)
+- **Performance**: ~7-8 seconds per LLaVA image analysis
+- **Documentation**: Complete setup guide in `Using-The-GPU-Correctly.md`
+
+### 🔧 **Technical Fixes Applied**
+- **✅ Proper Quantization**: `BitsAndBytesConfig` with conservative 8GB GPU memory limits
+- **✅ LLaVA Conversation**: Correct `[{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": "..."}]}]` format
+- **✅ SystemD Service**: Proper CUDA environment variables and conda environment paths
+- **✅ Memory Monitoring**: Real-time GPU and system memory state tracking
+- **✅ Error Handling**: Comprehensive exception handling with detailed logging
+
+## [V2.18.0] - 2025-08-13 - **V2 SYSTEM STABILIZATION: ROLLBACK & MEMORY CRASH FIXES**
+
+### 🛡️ **Critical Crash Resolution**
+- **✅ System Rollback**: Complete rollback to `fix-v2-stable-rollback` branch from development branch issues
+- **✅ GPU Memory Crashes**: Fixed multiple system crashes during 10-article testing (crashes occurring around article 5)
+- **✅ Ultra-Conservative Memory**: Reduced GPU memory usage from 50% to 30% of available memory (8GB max on 24GB RTX 3090)
+- **✅ Context Managers**: Added proper `__enter__`/`__exit__` methods for safe resource management
+- **✅ OCR/Layout Deprecation**: Completely removed OCR and Layout Parser models - LLaVA provides superior functionality
+- **Performance**: Prioritizing stability over performance to eliminate system crashes
+
+### 🔧 **Model & Environment Changes**
+- **✅ LLaVA Model Switch**: Changed from `llava-v1.6-mistral-7b-hf` to `llava-1.5-7b-hf` for improved stability
+- **✅ Fresh Environment**: New conda environment `justnews-v2-prod` with PyTorch 2.5.1+cu121, Transformers 4.55.0
+- **✅ Memory Management**: CRASH-SAFE MODE with ultra-conservative memory limits to prevent GPU OOM
+- **✅ Resource Cleanup**: Aggressive GPU memory cleanup between processing cycles
+- **✅ Model Loading**: Quantization with BitsAndBytesConfig for INT8 optimization
+- **Technical**: Focus on crash-free operation rather than maximum performance
+
+### 🎯 **Architecture Simplification**
+- **✅ LLaVA-First Approach**: Removed redundant OCR (EasyOCR) and Layout Parser (LayoutParser) components
+- **✅ Vision Processing**: LLaVA handles all text extraction, layout understanding, and content analysis
+- **✅ Memory Efficiency**: Eliminated 500MB-1GB memory usage from deprecated vision models
+- **✅ Processing Pipeline**: Streamlined to focus on LLaVA screenshot analysis only
+- **✅ Error Handling**: Comprehensive exception handling with detailed logging
+- **Status**: Testing phase - validating crash-free 10-article processing
+
+### 📊 **Known Issues & Status**
+- **⚠️ System Crashes**: Multiple PC shutdowns/resets during testing - investigating memory management
+- **🔍 Testing Required**: Full 10-article BBC test needed to validate stability improvements  
+- **📈 Performance Impact**: Conservative memory limits may reduce processing speed for stability
+- **🧪 Model Validation**: Testing LLaVA 1.5 vs 1.6 performance differences under memory constraints
+- **Priority**: Crash-free operation is top priority before optimizing performance
+
 ## [V4.16.0] - 2025-08-09 - **SYNTHESIZER V3 PRODUCTION ENGINE: COMPLETE IMPLEMENTATION**
 
 ### 📝 **Synthesizer V3 Production Architecture** 

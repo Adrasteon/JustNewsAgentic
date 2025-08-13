@@ -27,8 +27,12 @@ def utc_now() -> datetime:
 import requests
 import torch
 
+# Configure logging first
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("newsreader.v2_tools")
+
 try:
-    from newsreader_v2_true_engine import (
+    from .newsreader_v2_true_engine import (
         NewsReaderV2Engine,
         NewsReaderV2Config,
         ContentType,
@@ -38,13 +42,21 @@ try:
     )
     V2_ENGINE_AVAILABLE = True
 except ImportError:
-    logger = logging.getLogger("newsreader.v2_tools")
     logger.warning("NewsReader V2 TRUE engine not available - using fallback processing")
     V2_ENGINE_AVAILABLE = False
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("newsreader.v2_tools")
+    # Define placeholder classes for type hints when import fails
+    class NewsReaderV2Engine:
+        pass
+    class NewsReaderV2Config:
+        pass
+    class ContentType:
+        pass
+    class ProcessingMode:
+        pass
+    class ProcessingResult:
+        pass
+    def log_feedback(*args, **kwargs):
+        pass
 
 # Global engine instance
 _engine_instance: Optional[NewsReaderV2Engine] = None
