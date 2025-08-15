@@ -170,6 +170,7 @@ deep_content_analysis.py
 *_vectordb/
 memory_v2.db
 memory_v2_vectordb/
+memory_v2_vectordb/
 
 # Screenshots and Test Images
 bbc_screenshots/
@@ -181,3 +182,6 @@ screenshot_*.png
 environment-*.yml
 
 agents/reasoning/nucleoid_repo/
+
+# Cache directories
+.cache/
