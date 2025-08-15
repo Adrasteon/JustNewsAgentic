@@ -1,3 +1,6 @@
+# Dashboard logs
+dashboard_gui_error.log
+dashboard_agent.log
 # .gitignore
 
 # Python

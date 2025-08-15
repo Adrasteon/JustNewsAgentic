@@ -1,3 +1,26 @@
+# --- Related Article Search ---
+from bs4 import BeautifulSoup
+def search_related_articles(main_url: str, num_related: int = 3) -> List[str]:
+    """Live web search for related articles using Bing News Search API (example)."""
+    # Replace with your actual search API and key
+    BING_API_KEY = os.environ.get("BING_API_KEY", "demo-key")
+    BING_ENDPOINT = "https://api.bing.microsoft.com/v7.0/news/search"
+    params = {
+        "q": main_url,
+        "count": num_related,
+        "mkt": "en-US"
+    }
+    headers = {"Ocp-Apim-Subscription-Key": BING_API_KEY}
+    try:
+        resp = requests.get(BING_ENDPOINT, params=params, headers=headers, timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        urls = [a["url"] for a in data.get("value", [])][:num_related]
+        logger.info(f"Scout found {len(urls)} related articles for {main_url}")
+        return urls
+    except Exception as e:
+        logger.error(f"Scout search_related_articles failed: {e}")
+        return []
 # Model loading for Scout Agent (Llama-3-8B-Instruct)
 import os
 import logging

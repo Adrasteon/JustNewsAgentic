@@ -1,3 +1,65 @@
+# --- Web Search Balance Endpoint ---
+from fastapi import Query, FastAPI, HTTPException
+from typing import Optional, List
+import uvicorn
+import random
+
+app = FastAPI()
+
+class WebSearchBalanceRequest(BaseModel):
+    main_url: str
+    num_related: int = 3
+    batch_size: int = 4
+
+
+def scout_web_search(main_url: str, num_related: int = 3) -> List[str]:
+    """Call Scout agent for live related article search via MCP bus."""
+    try:
+        result = call_agent_tool("scout", "search_related_articles", main_url, num_related=num_related)
+        sources = result.get("sources", [])
+        # Sort sources by scout_score (descending) if available
+        sources_sorted = sorted(
+            sources,
+            key=lambda s: s.get("scout_score", 0.0),
+            reverse=True
+        )
+        return sources_sorted
+    except Exception as e:
+        logger.error(f"Balancer failed to get related sources from Scout: {e}")
+        return []
+
+@app.post("/web_search_balance")
+def web_search_balance(req: WebSearchBalanceRequest) -> Dict[str, Any]:
+    """Fetch main article, use Scout for related articles, batch fetch, and balance."""
+    try:
+        main_article = fetch_article(req.main_url)
+        sources = scout_web_search(req.main_url, req.num_related)
+        # Use top sources for alternative articles
+        alt_articles = []
+        quotes = []
+        alt_statements = []
+        for source in sources:
+            url = source.get("url", "")
+            article_text = fetch_article(url) if url else ""
+            alt_articles.append(article_text)
+            # Extract quotes and intelligence details
+            quotes.extend(extract_quotes(article_text))
+            # Add intelligence summary if available
+            scout_score = source.get("scout_score", None)
+            recommendation = source.get("scout_analysis", {}).get("recommendation", "")
+            if scout_score is not None:
+                alt_statements.append(f"[Scout Score: {scout_score:.2f}] {recommendation}")
+        balanced_article = generate_balanced_article(main_article, quotes, alt_statements)
+        logger.info("web_search_balance_completed", main_url=req.main_url, num_sources=len(sources))
+        return {
+            "status": "success",
+            "main_url": req.main_url,
+            "sources": sources,
+            "balanced_article": balanced_article
+        }
+    except Exception as e:
+        logger.error("web_search_balance_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Web search balance error: " + str(e))
 """
 Balancer Agent V1 - News Article Neutralization and Integration
 =============================================================
@@ -220,48 +282,22 @@ def main():
     print(balanced_article)
 
 
-# MCP Bus Registration and Health Check (JustNews V4 pattern)
-from fastapi import FastAPI, HTTPException, Request
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
+
+
+
+# --- Balancer Agent V1: Full Implementation ---
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-import uvicorn
+import structlog
+import time
 
-# FastAPI app initialization (must be before handlers and endpoints)
+router = APIRouter()
+logger = structlog.get_logger("balancer_agent")
 
-# FastAPI app initialization with slowapi rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app = FastAPI()
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Custom error handler for request validation
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.error("request_validation_error", error=str(exc), status="error")
-    return JSONResponse(
-        status_code=422,
-        content={
-            "error_code": "VALIDATION_ERROR",
-            "detail": exc.errors(),
-            "body": exc.body,
-        },
-    )
-
-# Custom error handler for HTTPException
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    logger.error("http_exception", error=str(exc.detail), status="error", code=exc.status_code)
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error_code": "HTTP_ERROR",
-            "detail": exc.detail,
-        },
-    )
+class BalanceRequest(BaseModel):
+    """Batch request for balancing across agents."""
+    articles: List[str]
+    batch_size: int = 16
 
 class AgentRegistration(BaseModel):
     agent_name: str
@@ -272,8 +308,72 @@ class AgentRegistration(BaseModel):
 @app.post("/register")
 def register_agent(reg: AgentRegistration) -> Dict[str, Any]:
     """Register balancer agent with MCP bus."""
-    logger.info(f"Agent registered: {reg.agent_name} v{reg.version}")
-    return {"status": "success", "agent": reg.agent_name}
+    try:
+        logger.info(
+            "agent_registered",
+            agent=reg.agent_name,
+            version=reg.version,
+            description=reg.description,
+            endpoints=reg.endpoints
+        )
+        return {"status": "success", "agent": reg.agent_name}
+    except Exception as e:
+        logger.error(
+            "agent_registration_failed",
+            agent=reg.agent_name,
+            error=str(e)
+        )
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+@app.post("/balance")
+def balance_endpoint(req: BalanceRequest) -> Dict[str, Any]:
+    """Distributes articles across agents in batches."""
+    try:
+        start_time = time.time()
+        agents = get_available_agents()
+        if not agents:
+            raise RuntimeError("No healthy agents available")
+        results = []
+        for i in range(0, len(req.articles), req.batch_size):
+            batch = req.articles[i:i+req.batch_size]
+            agent = agents[i % len(agents)]
+            for article in batch:
+                res = call_agent_tool(agent["name"], "analyze_article", article)
+                results.append(res)
+            logger.info("batch_processed", agent=agent["name"], batch_size=len(batch))
+        duration = time.time() - start_time
+        logger.info("balancer_performance", total=len(req.articles), duration_ms=round(duration*1000, 2))
+        return {"status": "success", "results": results}
+    except Exception as e:
+        logger.error("balance_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Balancer error: " + str(e))
+
+def get_available_agents() -> List[Dict[str, Any]]:
+    """Fetches healthy agents from MCP Bus."""
+    try:
+        resp = mcp_requests.get(f"{MCP_BUS_URL}/agents")
+        resp.raise_for_status()
+        agents = resp.json().get("agents", [])
+        return [a for a in agents if a.get("healthy", True)]
+    except Exception as e:
+        logger.error("agent_discovery_failed", error=str(e))
+        return []
+
+def call_agent_tool(agent: str, tool: str, *args, **kwargs) -> Any:
+    """Standard MCP agent tool call with error handling."""
+    payload = {
+        "agent": agent,
+        "tool": tool,
+        "args": list(args),
+        "kwargs": kwargs
+    }
+    try:
+        resp = mcp_requests.post(f"{MCP_BUS_URL}/call", json=payload, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        logger.error("agent_call_failed", agent=agent, tool=tool, error=str(e))
+        return {"status": "error", "error": str(e)}
 
 @app.get("/health")
 def health_check() -> Dict[str, str]:
@@ -344,4 +444,4 @@ def resource_status() -> Dict[str, Any]:
 
 if __name__ == "__main__":
     # Start FastAPI app for MCP bus integration
-    uvicorn.run(app, host="0.0.0.0", port=8009)
+    uvicorn.run(app, host="0.0.0.0", port=8010)

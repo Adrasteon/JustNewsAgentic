@@ -7,10 +7,15 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import requests
 from contextlib import asynccontextmanager
-from config import load_config, save_config
+from .config import load_config, save_config
+import uvicorn
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    filename="dashboard_agent.log",
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(name)s %(message)s',
+)
 logger = logging.getLogger("dashboard_agent")
 
 # Load configuration
@@ -32,7 +37,7 @@ class MCPBusClient:
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
+            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}", exc_info=True)
             raise
 
 @asynccontextmanager
@@ -47,12 +52,23 @@ async def lifespan(app: FastAPI):
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
-        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.", exc_info=True)
     yield
     logger.info("Dashboard agent is shutting down.")
     save_config(config)
 
+    if __name__ == "__main__":
+        import os
+        port = int(os.environ.get("DASHBOARD_AGENT_PORT", config.get("dashboard_port", 8011)))
+        uvicorn.run("agents.dashboard.main:app", host="0.0.0.0", port=port, reload=False)
+
 app = FastAPI(lifespan=lifespan)
+
+# Health endpoint for dashboard agent status
+@app.get("/health")
+def health():
+    """Health check endpoint for dashboard agent."""
+    return {"status": "ok"}
 
 class ToolCall(BaseModel):
     args: list
@@ -66,7 +82,7 @@ def get_status():
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        logger.error(f"An error occurred while fetching agent status: {e}")
+        logger.error(f"An error occurred while fetching agent status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/send_command")
@@ -77,5 +93,5 @@ def send_command(call: ToolCall):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        logger.error(f"An error occurred while sending a command: {e}")
+        logger.error(f"An error occurred while sending a command: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

@@ -12,15 +12,21 @@ class DashboardGUI(QMainWindow):
         super().__init__()
         self.setWindowTitle("Dashboard Agent GUI")
         self.setGeometry(100, 100, 800, 600)
+        self.setMinimumSize(800, 600)
 
         # Robust error logging setup
         import logging
         self.logger = logging.getLogger("DashboardGUI")
-        handler = logging.FileHandler("dashboard_gui_error.log", encoding="utf-8")
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.INFO)
+    # Use global logger only; do not add handlers or set level here
+    def __init__(self):
+        super().__init__()
+        self.logger = logging.getLogger("DashboardGUI")
+        # ...existing code...
+
+    def log_exception(self, exc: Exception):
+        import traceback
+        self.logger.error(f"Exception: {exc}", exc_info=True)
+        self.logger.debug(traceback.format_exc())
 
         # Monitor thread control flag
         self.monitor_thread_running = True
@@ -56,10 +62,11 @@ class DashboardGUI(QMainWindow):
 
     def print_monitor_status_update(self):
         import time
-        agent_ports = [8000, 8001, 8002, 8003, 8004, 8005, 8006, 8007, 8008, 8009]
+        agent_ports = [8000, 8001, 8002, 8003, 8004, 8005, 8006, 8007, 8008, 8009, 8010, 8011]
         agent_names = [
             "MCP Bus", "Chief Editor Agent", "Scout Agent", "Fact Checker Agent", "Analyst Agent",
-            "Synthesizer Agent", "Critic Agent", "Memory Agent", "Reasoning Agent", "NewsReader Agent"
+            "Synthesizer Agent", "Critic Agent", "Memory Agent", "Reasoning Agent", "NewsReader Agent",
+            "Balancer Agent", "Dashboard Agent"
         ]
         lines = []
         for name, port in zip(agent_names, agent_ports):
@@ -72,11 +79,27 @@ class DashboardGUI(QMainWindow):
                     status = "Running"
                 else:
                     status = "Stopped"
-            except Exception:
+            except Exception as exc:
                 status = "Stopped"
+                self.log_exception(exc)
             ts = time.strftime("%Y-%m-%d %H:%M:%S")
             lines.append(f"[{ts}] {name} (port {port}): {status}")
         self.append_monitor_output("\n".join(lines))
+    def start_agent(self, agent_name):
+        try:
+            # ...existing code...
+            self.logger.info(f"Starting agent: {agent_name}")
+        except Exception as exc:
+            self.log_exception(exc)
+            QMessageBox.critical(self, "Error", f"Failed to start agent {agent_name}: {exc}")
+
+    def stop_agent(self, agent_name):
+        try:
+            # ...existing code...
+            self.logger.info(f"Stopping agent: {agent_name}")
+        except Exception as exc:
+            self.log_exception(exc)
+            QMessageBox.critical(self, "Error", f"Failed to stop agent {agent_name}: {exc}")
     def create_web_crawl_tab(self):
         from PyQt5.QtWidgets import QCheckBox
         tab = QWidget()
@@ -127,8 +150,7 @@ class DashboardGUI(QMainWindow):
         self.crawl_status_label.setStyleSheet("color: #fff; margin-top: 8px;")
         layout.addWidget(self.crawl_status_label)
 
-        # Spacer
-        layout.addStretch()
+    # Remove excessive vertical stretch to prevent window from filling screen
 
         tab.setLayout(layout)
         return tab
@@ -291,15 +313,22 @@ class DashboardGUI(QMainWindow):
             ("Memory Agent", 8007),
             ("Reasoning Agent", 8008),
             ("NewsReader Agent", 8009),
+            ("Balancer Agent", 8010),
+            ("Dashboard Agent", 8011),
         ]
 
         self.agent_buttons = {}
+        self.agent_activity = {}  # name: (activity_label, last_activity_label)
         self.all_status_label = all_status
 
         for name, port in self.agent_info:
             row = QHBoxLayout()
             label = QLabel(f"{name} (port {port})")
             status_label = QLabel("Checking...")
+            activity_label = QLabel("●")
+            activity_label.setStyleSheet("color: #888; font-size: 18px; margin-left: 8px;")
+            last_activity_label = QLabel("")
+            last_activity_label.setStyleSheet("color: #aaa; font-size: 11px; margin-left: 8px;")
             start_btn = QPushButton("Start")
             stop_btn = QPushButton("Stop")
             start_btn.setFixedWidth(60)
@@ -308,37 +337,13 @@ class DashboardGUI(QMainWindow):
             stop_btn.clicked.connect(lambda _, n=name: self.stop_agent(n))
             row.addWidget(label)
             row.addWidget(status_label)
+            row.addWidget(activity_label)
+            row.addWidget(last_activity_label)
             row.addWidget(start_btn)
             row.addWidget(stop_btn)
             layout.addLayout(row)
             self.agent_buttons[name] = (status_label, start_btn, stop_btn, port)
-
-            from PyQt5.QtWidgets import QProgressBar
-            self.agent_activity = {}  # name: (activity_label, last_activity_label)
-
-            for name, port in self.agent_info:
-                row = QHBoxLayout()
-                label = QLabel(f"{name} (port {port})")
-                status_label = QLabel("Checking...")
-                activity_label = QLabel("●")
-                activity_label.setStyleSheet("color: #888; font-size: 18px; margin-left: 8px;")
-                last_activity_label = QLabel("")
-                last_activity_label.setStyleSheet("color: #aaa; font-size: 11px; margin-left: 8px;")
-                start_btn = QPushButton("Start")
-                stop_btn = QPushButton("Stop")
-                start_btn.setFixedWidth(60)
-                stop_btn.setFixedWidth(60)
-                start_btn.clicked.connect(lambda _, n=name: self.start_agent(n))
-                stop_btn.clicked.connect(lambda _, n=name: self.stop_agent(n))
-                row.addWidget(label)
-                row.addWidget(status_label)
-                row.addWidget(activity_label)
-                row.addWidget(last_activity_label)
-                row.addWidget(start_btn)
-                row.addWidget(stop_btn)
-                layout.addLayout(row)
-                self.agent_buttons[name] = (status_label, start_btn, stop_btn, port)
-                self.agent_activity[name] = (activity_label, last_activity_label)
+            self.agent_activity[name] = (activity_label, last_activity_label)
         # Initial status check
         threading.Thread(target=self.update_all_status, daemon=True).start()
 
@@ -365,6 +370,8 @@ class DashboardGUI(QMainWindow):
         self.all_status_label.setText("Stopping...")
         self.all_status_label.setStyleSheet("color: orange;")
         for name in self.agent_buttons:
+            if name == "Dashboard Agent":
+                continue  # Do not stop the GUI itself
             status_label, start_btn, stop_btn, _ = self.agent_buttons[name]
             status_label.setText("Stopping...")
             status_label.setStyleSheet("color: orange;")
@@ -373,7 +380,26 @@ class DashboardGUI(QMainWindow):
         threading.Thread(target=self._stop_all_agents_thread, daemon=True).start()
 
     def _stop_all_agents_thread(self):
-        subprocess.call(["/bin/bash", "./stop_services.sh"])
+        # Stop all agents except dashboard agent
+        for name in self.agent_buttons:
+            if name == "Dashboard Agent":
+                continue
+            agent_map = {
+                "MCP Bus": "mcp_bus",
+                "Chief Editor Agent": "chief_editor",
+                "Scout Agent": "scout",
+                "Fact Checker Agent": "fact_checker",
+                "Analyst Agent": "analyst",
+                "Synthesizer Agent": "synthesizer",
+                "Critic Agent": "critic",
+                "Memory Agent": "memory",
+                "Reasoning Agent": "reasoning",
+                "NewsReader Agent": "newsreader",
+                "Balancer Agent": "balancer",
+            }
+            script_arg = agent_map.get(name)
+            if script_arg:
+                subprocess.call(["/bin/bash", "./stop_services.sh", script_arg])
         self.update_all_status()
         self.all_status_label.setText("")
 
@@ -500,10 +526,11 @@ class DashboardGUI(QMainWindow):
 
     def update_monitor_output(self):
         import time
-        agent_ports = [8000, 8001, 8002, 8003, 8004, 8005, 8006, 8007, 8008, 8009]
+        agent_ports = [8000, 8001, 8002, 8003, 8004, 8005, 8006, 8007, 8008, 8009, 8010, 8011]
         agent_names = [
             "MCP Bus", "Chief Editor Agent", "Scout Agent", "Fact Checker Agent", "Analyst Agent",
-            "Synthesizer Agent", "Critic Agent", "Memory Agent", "Reasoning Agent", "NewsReader Agent"
+            "Synthesizer Agent", "Critic Agent", "Memory Agent", "Reasoning Agent", "NewsReader Agent",
+            "Balancer Agent", "Dashboard Agent"
         ]
         last_status = {}
         try:
@@ -600,7 +627,16 @@ class DashboardGUI(QMainWindow):
         return tab
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    gui = DashboardGUI()
-    gui.show()
-    sys.exit(app.exec_())
+    import logging
+    logging.basicConfig(
+        filename="dashboard_gui_error.log",
+        level=logging.DEBUG,
+        format='%(asctime)s %(levelname)s %(name)s %(message)s',
+    )
+    try:
+        app = QApplication(sys.argv)
+        gui = DashboardGUI()
+        gui.show()
+        sys.exit(app.exec_())
+    except Exception as exc:
+        logging.error(f"GUI startup exception: {exc}", exc_info=True)
