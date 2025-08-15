@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>JustNews Workflow Viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>body { margin: 0; padding: 12px; background: #fff; } .mermaid { width: 100%; }</style>
+</head>
+<body>
+  <div class="mermaid" id="diagram">
+    %% Include the diagram source from the file next to this viewer
+  </div>
+  <script>
+    async function loadDiagram(){
+      const resp = await fetch('JUSTNEWS_WORKFLOW.mmd');
+      const txt = await resp.text();
+      document.getElementById('diagram').textContent = txt;
+      mermaid.initialize({startOnLoad:true, theme: 'default'});
+      mermaid.init(undefined, document.getElementById('diagram'));
+    }
+    loadDiagram();
+  </script>
+</body>
+</html>

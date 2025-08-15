@@ -1,0 +1,127 @@
+%% JustNews V4 — System Workflow
+%% Diagram mapping agents, MCP Bus, Training System, Memory DB and model components
+%% Generated: 2025-08-15
+
+%%{init: {'flowchart': {'nodeSpacing': 50, 'rankSpacing': 50, 'curve': 'basis'}}}%%
+
+flowchart LR
+  %% Central bus and infra
+  subgraph infra[Infrastructure]
+    direction TB
+    MCP[MCP Bus\n(Registry & RPC)"/call", "/register"]
+    POSTGRES[(Postgres + Vector DB)]
+    TRAINING[Training System\n(On-the-fly / EWC, log endpoint)]
+    DASH[Dashboard / Orchestration]
+  end
+
+  %% Agents cluster
+  subgraph agents[Agents & Services]
+    direction LR
+    SCOUT[Scout\n(Sources, Crawling, Discovery)]
+    NEWS[NewsReader\n(Extract + LLava image OCR)]
+    BAL[Balancer\n(Batch delegation, dual-analysis)]
+    ANALYST[Analyst\n(Entities, Stats, Metrics)]
+    FACT[Fact-Checker\n(Verify claims, GPU endpoints)]
+    SYN[Synthesizer\n(Clustering, Synthesis, Neutralization)]
+    CRITIC[Critic\n(Quality & Neutrality checks)]
+    EDITOR[Chief Editor\n(Orchestration, publish)]
+    MEMORY[Memory Agent\n(Storage, embeddings, vector-search)]
+    REASON[Reasoning\n(Symbolic checks, explain)]
+  end
+
+  %% Models (logical grouping)
+  subgraph models[AI Models & Accelerators]
+    direction TB
+    LLMs[LLMs / Transformers\n(BART, FLAN-T5, Mistral, BERT variants)]
+    EMB[Embeddings\n(SentenceTransformers)]
+    TRT[TensorRT / GPU Engines]
+  end
+
+  %% Registration & RPC patterns
+  SCOUT -- registers --> MCP
+  NEWS -- registers --> MCP
+  BAL -- registers --> MCP
+  ANALYST -- registers --> MCP
+  FACT -- registers --> MCP
+  SYN -- registers --> MCP
+  CRITIC -- registers --> MCP
+  EDITOR -- registers --> MCP
+  MEMORY -- registers --> MCP
+  REASON -- registers --> MCP
+
+  %% Primary data flows (discovery -> analysis -> synthesis -> publish)
+  SCOUT -->|discover / crawl| MEMORY
+  SCOUT -->|related_sources| BAL
+  NEWS -->|extract_article| MEMORY
+  NEWS -->|extracted_content| ANALYST
+
+  BAL -->|delegates analyze_article via MCP| ANALYST
+  BAL -->|delegates analyze_article via MCP| FACT
+  BAL -->|delegates synth/neutralize via MCP| SYN
+
+  ANALYST -->|entities / metrics| FACT
+  ANALYST -->|insights| SYN
+
+  FACT -->|verification results| SYN
+  FACT -->|facts / validated_claims| REASON
+  REASON -->|explain / contradiction_check| FACT
+
+  SYN -->|synthesized article| CRITIC
+  CRITIC -->|critique / quality score| SYN
+  SYN -->|final draft| EDITOR
+  EDITOR -->|save/publish| MEMORY
+  EDITOR -->|orchestration| DASH
+
+  %% Memory and vector search connections
+  MEMORY -->|vector_search / retrieve| SYN
+  MEMORY -->|save_article| TRAINING
+  SYN -->|ask embeddings| EMB
+  MEMORY -->|provide embeddings| EMB
+
+  %% Training system closed-loop
+  BAL -->|log_training_example| TRAINING
+  ANALYST -->|log_feedback| TRAINING
+  FACT -->|log_feedback| TRAINING
+  CRITIC -->|log_feedback| TRAINING
+  SYN -->|log_feedback| TRAINING
+
+  TRAINING -->|model_updates (push)|(MCP) MCP
+  MCP -->|notify| ANALYST
+  MCP -->|notify| SYN
+  MCP -->|notify| FACT
+  MCP -->|notify| SCOUT
+
+  %% Models / GPU usage
+  ANALYST -->|uses| LLMs
+  SYN -->|uses| LLMs
+  FACT -->|uses| LLMs
+  BAL -->|uses| LLMs
+  CRITIC -->|uses| LLMs
+  LLMs -->|accel| TRT
+  TRT -->|reports perf| DASH
+
+  %% Dashboard & Monitoring
+  DASH -->|control commands| MCP
+  DASH -->|health/ready polls| MCP
+  MCP -->|health queries| SCOUT
+  MCP -->|health queries| ANALYST
+  MCP -->|health queries| FACT
+  MCP -->|health queries| SYN
+
+  %% External integrations (optional)
+  ext[External Sources\n(RSS, Web, APIs)]
+  ext --> SCOUT
+  ext --> NEWS
+
+  classDef infra fill:#f8f9fa,stroke:#333,stroke-width:1px
+  classDef agents fill:#eef6ff,stroke:#1f6feb,stroke-width:1px
+  classDef models fill:#fff4e6,stroke:#ff8c00,stroke-width:1px
+  class MCP,POSTGRES,TRAINING,DASH infra
+  class SCOUT,NEWS,BAL,ANALYST,FACT,SYN,CRITIC,EDITOR,MEMORY,REASON agents
+  class LLMs,EMB,TRT models
+
+  %% Legend
+  subgraph legend[Legend]
+    direction LR
+    A1[-> data flow] --- A2[Register & RPC via MCP /call]
+  end
