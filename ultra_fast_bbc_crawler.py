@@ -18,9 +18,8 @@ import time
 import re
 from datetime import datetime
 from playwright.async_api import async_playwright
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ultra_fast_bbc")
@@ -323,7 +322,7 @@ class UltraFastBBCCrawler:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
         
-        logger.info(f"🎉 Ultra-Fast Crawl Complete!")
+        logger.info("🎉 Ultra-Fast Crawl Complete!")
         logger.info(f"📊 {len(results)} articles in {total_time:.1f}s")
         logger.info(f"⚡ Rate: {len(results) / total_time:.2f} articles/second")
         logger.info(f"📈 Daily capacity: {(len(results) / total_time) * 86400:.0f} articles/day")

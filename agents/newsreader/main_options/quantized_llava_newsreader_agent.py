@@ -6,18 +6,21 @@ Eliminates need for complex on-demand loading patterns
 
 import asyncio
 import logging
-import os
 import time
-import torch
 from contextlib import asynccontextmanager
-from playwright.async_api import async_playwright
-from PIL import Image
-from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration, BitsAndBytesConfig
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import uvicorn
-import json
 from typing import Dict, Optional
+
+import torch
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from PIL import Image
+from playwright.async_api import async_playwright
+from pydantic import BaseModel
+from transformers import (
+    BitsAndBytesConfig,
+    LlavaNextForConditionalGeneration,
+    LlavaNextProcessor,
+)
 
 # Enable CUDA optimizations for maximum performance
 torch.backends.cudnn.benchmark = True
@@ -92,7 +95,7 @@ class QuantizedLlavaNewsReaderAgent:
             current_usage = torch.cuda.memory_allocated(0) / 1e9
             logger.info(f"GPU memory available: {gpu_memory:.1f}GB")
             logger.info(f"Current GPU usage: {current_usage:.1f}GB")
-            logger.info(f"Expected memory saving: ~3.5GB vs FP16 implementation")
+            logger.info("Expected memory saving: ~3.5GB vs FP16 implementation")
 
     async def capture_screenshot(self, url: str, screenshot_path: str = "page_quantized.png") -> str:
         """Optimized webpage screenshot capture"""
@@ -354,7 +357,7 @@ async def main():
         print("Memory Usage Report:")
         print(f"Current: {torch.cuda.memory_allocated(0) / 1e9:.1f}GB")
         print(f"Peak: {torch.cuda.max_memory_allocated(0) / 1e9:.1f}GB")
-        print(f"Target: ~3.5GB")
+        print("Target: ~3.5GB")
         print("="*60)
 
 if __name__ == "__main__":

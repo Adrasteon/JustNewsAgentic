@@ -1,14 +1,15 @@
 """
 Main file for the Chief Editor Agent.
 """
+
 # main.py for Chief Editor Agent
 import logging
-from fastapi import FastAPI, HTTPException
-from contextlib import asynccontextmanager
-from pydantic import BaseModel
-from datetime import datetime
 import os
+from contextlib import asynccontextmanager
+
 import requests
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +21,7 @@ ready = False
 CHIEF_EDITOR_AGENT_PORT = int(os.environ.get("CHIEF_EDITOR_AGENT_PORT", 8001))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
@@ -30,12 +32,15 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
+
 
 # Define the lifespan context manager
 @asynccontextmanager
@@ -54,29 +59,35 @@ async def lifespan(app: FastAPI):
     global ready
     ready = True
     yield
-    
+
     logger.info("Chief Editor agent is shutting down.")
+
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(title="Chief Editor Agent", lifespan=lifespan)
+
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+
 @app.get("/ready")
 def ready_endpoint():
     return {"ready": ready}
+
 
 # Pydantic models
 class ToolCall(BaseModel):
     args: list
     kwargs: dict
 
+
 class StoryBrief(BaseModel):
     topic: str
     deadline: str
     priority: str
+
 
 @app.post("/request_story_brief")
 def request_story_brief(call: ToolCall):
@@ -89,6 +100,7 @@ def request_story_brief(call: ToolCall):
         logger.error(f"Error requesting story brief: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/publish_story")
 def publish_story(call: ToolCall):
     """Publish a finalized story"""
@@ -99,6 +111,7 @@ def publish_story(call: ToolCall):
     except Exception as e:
         logger.error(f"Error publishing story: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/coordinate_editorial_workflow")
 def coordinate_editorial_workflow(call: ToolCall):
@@ -111,6 +124,7 @@ def coordinate_editorial_workflow(call: ToolCall):
         logger.error(f"Error coordinating workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/manage_content_lifecycle")
 def manage_content_lifecycle(call: ToolCall):
     """Manage the lifecycle of content through the system"""
@@ -122,6 +136,8 @@ def manage_content_lifecycle(call: ToolCall):
         logger.error(f"Error managing content lifecycle: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=CHIEF_EDITOR_AGENT_PORT)

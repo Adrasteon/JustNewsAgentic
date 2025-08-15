@@ -4,10 +4,10 @@ Native TensorRT Analyst Agent Startup Script
 Starts the FastAPI agent server with native TensorRT acceleration
 """
 
-import os
-import sys
 import logging
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 # Setup logging

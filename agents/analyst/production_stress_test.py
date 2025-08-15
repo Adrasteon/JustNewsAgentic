@@ -4,14 +4,15 @@ Production Stress Test for Native TensorRT Analyst Agent
 Tests with realistic article volumes and sizes (1000 articles × 2000 chars each)
 """
 
-import sys
-import os
-import logging
-import time
-import requests
 import json
+import logging
+import os
 import random
-from typing import List, Dict
+import sys
+import time
+from typing import Dict, List
+
+import requests
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

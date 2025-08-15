@@ -8,23 +8,23 @@ than complex dynamic loading. This implements a practical approach.
 Key Insight: Use smaller, quantizable models instead of forcing large models to fit.
 """
 
-import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Dict, Any, Optional
-import torch
-from transformers import (
-    LlavaProcessor, 
-    LlavaForConditionalGeneration,
-    BitsAndBytesConfig,
-    Blip2Processor,
-    Blip2ForConditionalGeneration
-)
-from PIL import Image
+from typing import Any, Dict
+
 import requests
+import torch
 from fastapi import FastAPI
+from PIL import Image
 from pydantic import BaseModel
+from transformers import (
+    BitsAndBytesConfig,
+    Blip2ForConditionalGeneration,
+    Blip2Processor,
+    LlavaForConditionalGeneration,
+    LlavaProcessor,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -3,8 +3,8 @@
 Simple test of native TensorRT analyst functions
 """
 
-import sys
 import logging
+import sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ def test_direct_functions():
     
     try:
         # Import the functions
-        from tensorrt_tools import score_sentiment, score_bias
+        from tensorrt_tools import score_bias, score_sentiment
         logger.info("✅ Successfully imported TensorRT tools")
         
         # Test sentiment scoring

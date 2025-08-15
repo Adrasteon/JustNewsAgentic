@@ -3,16 +3,16 @@ MCP Bus Integration for LLaVA NewsReader Agent
 Integrates with JustNews V4 MCP Bus system
 """
 
-from fastapi import FastAPI
-import asyncio
-import uvicorn
-import requests
 import logging
-from contextlib import asynccontextmanager
-from pydantic import BaseModel
-from typing import Dict, Any, List
-import sys
 import os
+import sys
+from contextlib import asynccontextmanager
+from typing import Any, Dict, List
+
+import requests
+import uvicorn
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +24,7 @@ ready = False
 NEWSREADER_AGENT_PORT = int(os.environ.get("NEWSREADER_AGENT_PORT", 8009))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
@@ -34,20 +35,24 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
 
+
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from newsreader_agent import PracticalNewsReader, ToolCall as NewsExtractionRequest
+from newsreader_agent import PracticalNewsReader
 
 # Global agent instance
 agent = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,71 +62,81 @@ async def lifespan(app: FastAPI):
     logger.info("NewsReader agent is starting up.")
     agent = PracticalNewsReader()
     logger.info("NewsReader Agent initialized")
-    
+
     # Register with MCP Bus
     mcp_bus_client = MCPBusClient()
     try:
         mcp_bus_client.register_agent(
             agent_name="newsreader",
             agent_address=f"http://localhost:{NEWSREADER_AGENT_PORT}",
-            tools=["extract_news_content", "capture_screenshot", "analyze_image"]
+            tools=["extract_news_content", "capture_screenshot", "analyze_image"],
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-    
+
     global ready
     ready = True
     yield
-    
+
     # Shutdown
     logger.info("NewsReader Agent shutdown")
     # Cleanup if needed
     logger.info("NewsReader Agent shutdown complete")
 
+
 app = FastAPI(
-    title="NewsReader Agent", 
+    title="NewsReader Agent",
     description="LLaVA-based news content extraction",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
+
 
 class ToolCall(BaseModel):
     args: List[Any]
     kwargs: Dict[str, Any]
+
 
 @app.post("/extract_news_content")
 async def extract_news_content_endpoint(call: ToolCall):
     """Extract news content from URL - MCP Bus compatible"""
     return await extract_news_content(*call.args, **call.kwargs)
 
+
 @app.post("/capture_screenshot")
 async def capture_screenshot(call: ToolCall):
     """Capture webpage screenshot - MCP Bus compatible"""
     if not agent:
         return {"error": "Agent not initialized"}
-    
+
     url = call.args[0] if call.args else call.kwargs.get("url")
-    screenshot_path = call.args[1] if len(call.args) > 1 else call.kwargs.get("screenshot_path", "page_llava.png")
-    
+    screenshot_path = (
+        call.args[1]
+        if len(call.args) > 1
+        else call.kwargs.get("screenshot_path", "page_llava.png")
+    )
+
     try:
         result_path = await agent.capture_screenshot(url, screenshot_path)
         return {"screenshot_path": result_path, "success": True}
     except Exception as e:
         return {"error": str(e), "success": False}
 
+
 @app.post("/analyze_screenshot")
 async def analyze_screenshot(call: ToolCall):
     """Analyze screenshot with LLaVA - MCP Bus compatible"""
     if not agent:
         return {"error": "Agent not initialized"}
-    
+
     image_path = call.args[0] if call.args else call.kwargs.get("image_path")
-    
+
     try:
         result = agent.extract_content_with_llava(image_path)
         return result
     except Exception as e:
         return {"error": str(e), "success": False}
+
 
 @app.get("/health")
 def health():
@@ -131,12 +146,14 @@ def health():
         "agent": "newsreader",
         "model": "llava-v1.6-mistral-7b-optimized",
         "environment": "rapids-25.06",
-        "lifespan": "modern"
+        "lifespan": "modern",
     }
+
 
 @app.get("/ready")
 def ready_endpoint():
     return {"ready": ready}
+
 
 # Tool functions for direct import
 async def extract_news_content(url: str, screenshot_path: str = None) -> Dict[str, Any]:
@@ -144,25 +161,30 @@ async def extract_news_content(url: str, screenshot_path: str = None) -> Dict[st
     global agent
     if not agent:
         agent = PracticalNewsReader()
-    
+
     result = await agent.process_news_url(url, screenshot_path)
     return result.dict()
 
-async def capture_webpage_screenshot(url: str, output_path: str = "page_llava.png") -> str:
+
+async def capture_webpage_screenshot(
+    url: str, output_path: str = "page_llava.png"
+) -> str:
     """Capture webpage screenshot"""
     global agent
     if not agent:
         agent = PracticalNewsReader()
-    
+
     return await agent.capture_screenshot(url, output_path)
+
 
 def analyze_image_content(image_path: str) -> Dict[str, str]:
     """Analyze image content with LLaVA"""
     global agent
     if not agent:
         agent = PracticalNewsReader()
-    
+
     return agent.extract_content_with_llava(image_path)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8009)

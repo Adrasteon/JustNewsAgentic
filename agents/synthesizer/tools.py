@@ -1,14 +1,15 @@
-# Optimized Synthesizer Configuration  
+# Optimized Synthesizer Configuration
 # Phase 1 Memory Optimization: Context reduction + Lightweight embeddings
 
-import os
 import logging
-from typing import List, Dict, Optional, Any
+import os
 from datetime import datetime
+from typing import Any, Dict, List
 
 # Import Synthesizer V2 Engine
 try:
     from agents.synthesizer.synthesizer_v2_engine import SynthesizerV2Engine
+
     SYNTHESIZER_V2_AVAILABLE = True
 except ImportError as e:
     SYNTHESIZER_V2_AVAILABLE = False
@@ -16,7 +17,10 @@ except ImportError as e:
 
 # Import Synthesizer V3 Production Engine
 try:
-    from agents.synthesizer.synthesizer_v3_production_engine import SynthesizerV3ProductionEngine
+    from agents.synthesizer.synthesizer_v3_production_engine import (
+        SynthesizerV3ProductionEngine,
+    )
+
     SYNTHESIZER_V3_AVAILABLE = True
 except ImportError as e:
     SYNTHESIZER_V3_AVAILABLE = False
@@ -52,9 +56,13 @@ except ImportError:
 # PHASE 1 OPTIMIZATIONS APPLIED
 MODEL_NAME = "microsoft/DialoGPT-medium"
 MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
-EMBEDDING_MODEL = os.environ.get("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")  # Lightweight embeddings
-OPTIMIZED_MAX_LENGTH = 1024  # Reduced from 2048 (clustering tasks don't need full context)
-OPTIMIZED_BATCH_SIZE = 4     # Memory-efficient for embeddings processing
+EMBEDDING_MODEL = os.environ.get(
+    "SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2"
+)  # Lightweight embeddings
+OPTIMIZED_MAX_LENGTH = (
+    1024  # Reduced from 2048 (clustering tasks don't need full context)
+)
+OPTIMIZED_BATCH_SIZE = 4  # Memory-efficient for embeddings processing
 
 FEEDBACK_LOG = os.environ.get("SYNTHESIZER_FEEDBACK_LOG", "./feedback_synthesizer.log")
 
@@ -64,15 +72,20 @@ logger = logging.getLogger("synthesizer.tools")
 # Online Training Integration
 try:
     from training_system import (
-        initialize_online_training, get_training_coordinator,
-        add_training_feedback, add_user_correction
+        add_training_feedback,
+        add_user_correction,
+        get_training_coordinator,
+        initialize_online_training,
     )
+
     ONLINE_TRAINING_AVAILABLE = True
-    
+
     # Initialize online training for Synthesizer with 40-example threshold
-    initialize_online_training(update_threshold=40)  # Update after 40 examples for synthesis tasks
+    initialize_online_training(
+        update_threshold=40
+    )  # Update after 40 examples for synthesis tasks
     logger.info("🎓 Online Training enabled for Synthesizer V2")
-    
+
 except ImportError:
     ONLINE_TRAINING_AVAILABLE = False
     logger.warning("⚠️ Online Training not available for Synthesizer")
@@ -89,7 +102,7 @@ if SYNTHESIZER_V2_AVAILABLE:
         status = synthesizer_v2_engine.get_model_status()
         logger.info(f"📊 Model Status: {status['total_models']}/5 models loaded")
         for model, loaded in status.items():
-            if model != 'total_models':
+            if model != "total_models":
                 logger.info(f"   {'✅' if loaded else '❌'} {model}")
     except Exception as e:
         logger.error(f"❌ Failed to initialize Synthesizer V2 Engine: {e}")
@@ -103,19 +116,22 @@ if SYNTHESIZER_V3_AVAILABLE:
         status = synthesizer_v3_engine.get_model_status()
         logger.info(f"📊 V3 Production Status: {status['total_models']} models loaded")
         for model, loaded in status.items():
-            if model != 'total_models' and isinstance(loaded, bool):
+            if model != "total_models" and isinstance(loaded, bool):
                 logger.info(f"   {'✅' if loaded else '❌'} {model}")
     except Exception as e:
         logger.error(f"❌ Failed to initialize Synthesizer V3 Production Engine: {e}")
         synthesizer_v3_engine = None
 
+
 def get_synthesizer_v2_engine():
     """Get V2 engine instance"""
     return synthesizer_v2_engine
 
+
 def get_synthesizer_v3_engine():
     """Get V3 production engine instance"""
     return synthesizer_v3_engine
+
 
 def get_dialog_model():
     """Load optimized DialoGPT-medium model with memory-efficient configuration."""
@@ -131,16 +147,19 @@ def get_dialog_model():
         tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
     return model, tokenizer
 
+
 def get_embedding_model():
     """Load lightweight embedding model optimized for clustering."""
     if SentenceTransformer is None:
         raise ImportError("sentence-transformers library is not installed.")
     return SentenceTransformer(EMBEDDING_MODEL)
 
+
 def log_feedback(event: str, details: dict):
     """Log feedback for continual learning and retraining."""
     with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
         f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
+
 
 def cluster_articles(article_texts: List[str], n_clusters: int = 2) -> List[List[int]]:
     """Cluster articles using optimized embedding configuration."""
@@ -181,82 +200,101 @@ def cluster_articles(article_texts: List[str], n_clusters: int = 2) -> List[List
             clusters = [[] for _ in range(n_clusters)]
             for idx, label in enumerate(labels):
                 clusters[label].append(idx)
-        log_feedback("cluster_articles", {"method": method, "n_clusters": len(clusters), "clusters": clusters})
+        log_feedback(
+            "cluster_articles",
+            {"method": method, "n_clusters": len(clusters), "clusters": clusters},
+        )
         return clusters
     except Exception as e:
         logger.error(f"Error in cluster_articles: {e}")
         log_feedback("cluster_articles_error", {"error": str(e), "method": method})
         return []
 
+
 def neutralize_text(text: str) -> str:
     """Use optimized model to neutralize text with reduced memory usage."""
     model, tokenizer = get_dialog_model()
     if pipeline is None:
         raise ImportError("transformers pipeline is not available.")
-    
+
     # Use optimized pipeline configuration
     pipe = pipeline(
-        "text2text-generation", 
-        model=model, 
+        "text2text-generation",
+        model=model,
         tokenizer=tokenizer,
         max_length=OPTIMIZED_MAX_LENGTH,
-        batch_size=OPTIMIZED_BATCH_SIZE
+        batch_size=OPTIMIZED_BATCH_SIZE,
     )
-    
+
     prompt = f"Neutralize the following text for bias and strong language: {text}"
     result = pipe(prompt, max_new_tokens=256)[0]["generated_text"]
     log_feedback("neutralize_text", {"input": text, "output": result})
     return result
+
 
 def aggregate_cluster(article_texts: List[str]) -> str:
     """Use optimized model to summarize article clusters efficiently."""
     model, tokenizer = get_dialog_model()
     if pipeline is None:
         raise ImportError("transformers pipeline is not available.")
-    
+
     # Use optimized pipeline configuration
     pipe = pipeline(
-        "text2text-generation", 
-        model=model, 
+        "text2text-generation",
+        model=model,
         tokenizer=tokenizer,
         max_length=OPTIMIZED_MAX_LENGTH,
-        batch_size=OPTIMIZED_BATCH_SIZE
+        batch_size=OPTIMIZED_BATCH_SIZE,
     )
-    
+
     joined = "\n".join(article_texts)
-    prompt = f"Summarize the following articles into a neutral, concise summary: {joined}"
+    prompt = (
+        f"Summarize the following articles into a neutral, concise summary: {joined}"
+    )
     result = pipe(prompt, max_new_tokens=512)[0]["generated_text"]
     log_feedback("aggregate_cluster", {"input": article_texts, "output": result})
     return result
 
+
 # ==================== SYNTHESIZER V2 TRAINING-INTEGRATED METHODS ====================
 
-def synthesize_content_v2(article_texts: List[str], synthesis_type: str = "aggregate") -> Dict[str, Any]:
+
+def synthesize_content_v2(
+    article_texts: List[str], synthesis_type: str = "aggregate"
+) -> Dict[str, Any]:
     """
     V2 Content synthesis with training integration using 5-model architecture
-    
+
     Args:
         article_texts: List of article texts to synthesize
         synthesis_type: Type of synthesis ('aggregate', 'summarize', 'neutralize', 'refine')
-    
+
     Returns:
         Dict with synthesized content and metadata
     """
     if not synthesizer_v2_engine:
         logger.warning("⚠️ Synthesizer V2 Engine not available, falling back to legacy")
-        return {"content": aggregate_cluster(article_texts), "method": "legacy", "confidence": 0.5}
-    
+        return {
+            "content": aggregate_cluster(article_texts),
+            "method": "legacy",
+            "confidence": 0.5,
+        }
+
     try:
         start_time = datetime.utcnow()
-        result = {"method": "synthesizer_v2", "synthesis_type": synthesis_type, "input_count": len(article_texts)}
-        
+        result = {
+            "method": "synthesizer_v2",
+            "synthesis_type": synthesis_type,
+            "input_count": len(article_texts),
+        }
+
         if synthesis_type == "aggregate":
             # Use V2 engine content aggregation
             aggregated = synthesizer_v2_engine.aggregate_cluster_content(article_texts)
             result["content"] = aggregated.get("best_result", "")
             result["all_results"] = aggregated
             result["confidence"] = 0.9
-            
+
         elif synthesis_type == "summarize":
             # Use BART summarization for each text then aggregate
             summaries = []
@@ -266,7 +304,7 @@ def synthesize_content_v2(article_texts: List[str], synthesis_type: str = "aggre
             result["content"] = " ".join(summaries)
             result["individual_summaries"] = summaries
             result["confidence"] = 0.8
-            
+
         elif synthesis_type == "neutralize":
             # Use T5 neutralization
             neutralized_texts = []
@@ -276,7 +314,7 @@ def synthesize_content_v2(article_texts: List[str], synthesis_type: str = "aggre
             result["content"] = " ".join(neutralized_texts)
             result["individual_neutralized"] = neutralized_texts
             result["confidence"] = 0.85
-            
+
         elif synthesis_type == "refine":
             # Use DialoGPT refinement
             refined_texts = []
@@ -286,27 +324,30 @@ def synthesize_content_v2(article_texts: List[str], synthesis_type: str = "aggre
             result["content"] = " ".join(refined_texts)
             result["individual_refined"] = refined_texts
             result["confidence"] = 0.75
-            
+
         else:
             # Default to aggregation
             aggregated = synthesizer_v2_engine.aggregate_cluster_content(article_texts)
             result["content"] = aggregated.get("best_result", "")
             result["confidence"] = 0.7
-        
+
         # Add performance metrics
         end_time = datetime.utcnow()
         result["processing_time"] = (end_time - start_time).total_seconds()
         result["timestamp"] = end_time.isoformat()
-        
+
         # Log feedback for training
-        log_feedback("synthesize_content_v2", {
-            "synthesis_type": synthesis_type,
-            "input_count": len(article_texts),
-            "output_length": len(result["content"]),
-            "confidence": result["confidence"],
-            "processing_time": result["processing_time"]
-        })
-        
+        log_feedback(
+            "synthesize_content_v2",
+            {
+                "synthesis_type": synthesis_type,
+                "input_count": len(article_texts),
+                "output_length": len(result["content"]),
+                "confidence": result["confidence"],
+                "processing_time": result["processing_time"],
+            },
+        )
+
         # Add training feedback if available
         if ONLINE_TRAINING_AVAILABLE:
             try:
@@ -316,13 +357,13 @@ def synthesize_content_v2(article_texts: List[str], synthesis_type: str = "aggre
                     input_text=str(article_texts),
                     predicted_output=result["content"],
                     actual_output=result["content"],  # For unsupervised learning
-                    confidence=result["confidence"]
+                    confidence=result["confidence"],
                 )
             except Exception as e:
                 logger.warning(f"⚠️ Training feedback failed: {e}")
-        
+
         return result
-        
+
     except Exception as e:
         logger.error(f"❌ Synthesizer V2 synthesis failed: {e}")
         # Fallback to legacy method
@@ -330,48 +371,57 @@ def synthesize_content_v2(article_texts: List[str], synthesis_type: str = "aggre
             "content": aggregate_cluster(article_texts),
             "method": "fallback",
             "error": str(e),
-            "confidence": 0.3
+            "confidence": 0.3,
         }
 
-def cluster_and_synthesize_v2(article_texts: List[str], n_clusters: int = 2) -> Dict[str, Any]:
+
+def cluster_and_synthesize_v2(
+    article_texts: List[str], n_clusters: int = 2
+) -> Dict[str, Any]:
     """
     V2 Advanced clustering and synthesis with training integration
-    
+
     Args:
         article_texts: List of article texts to cluster and synthesize
         n_clusters: Number of clusters to create
-    
+
     Returns:
         Dict with clustered and synthesized content
     """
     if not synthesizer_v2_engine:
         logger.warning("⚠️ Synthesizer V2 Engine not available")
         return {"error": "V2 engine not available"}
-    
+
     try:
         start_time = datetime.utcnow()
-        
+
         # Advanced clustering with V2 engine
-        clustering_result = synthesizer_v2_engine.cluster_articles_advanced(article_texts)
+        clustering_result = synthesizer_v2_engine.cluster_articles_advanced(
+            article_texts
+        )
         clusters = clustering_result.get("clusters", [])
-        
+
         # Synthesize content for each cluster
         synthesized_clusters = []
         for i, cluster_indices in enumerate(clusters):
             if not cluster_indices:
                 continue
-                
+
             cluster_texts = [article_texts[idx] for idx in cluster_indices]
-            cluster_synthesis = synthesize_content_v2(cluster_texts, synthesis_type="aggregate")
-            
-            synthesized_clusters.append({
-                "cluster_id": i,
-                "article_indices": cluster_indices,
-                "article_count": len(cluster_indices),
-                "synthesized_content": cluster_synthesis["content"],
-                "confidence": cluster_synthesis["confidence"]
-            })
-        
+            cluster_synthesis = synthesize_content_v2(
+                cluster_texts, synthesis_type="aggregate"
+            )
+
+            synthesized_clusters.append(
+                {
+                    "cluster_id": i,
+                    "article_indices": cluster_indices,
+                    "article_count": len(cluster_indices),
+                    "synthesized_content": cluster_synthesis["content"],
+                    "confidence": cluster_synthesis["confidence"],
+                }
+            )
+
         end_time = datetime.utcnow()
         result = {
             "method": "synthesizer_v2_clustering",
@@ -380,45 +430,53 @@ def cluster_and_synthesize_v2(article_texts: List[str], n_clusters: int = 2) -> 
             "synthesized_clusters": synthesized_clusters,
             "clustering_metadata": clustering_result,
             "processing_time": (end_time - start_time).total_seconds(),
-            "timestamp": end_time.isoformat()
+            "timestamp": end_time.isoformat(),
         }
-        
+
         # Training feedback
         if ONLINE_TRAINING_AVAILABLE:
             try:
                 from numpy import mean
+
                 add_training_feedback(
                     agent_name="synthesizer",
                     task_type="cluster_synthesis",
                     input_text=str(article_texts),
                     predicted_output=str(result),
                     actual_output=str(result),  # For unsupervised learning
-                    confidence=mean([c["confidence"] for c in synthesized_clusters]) if synthesized_clusters else 0.5
+                    confidence=(
+                        mean([c["confidence"] for c in synthesized_clusters])
+                        if synthesized_clusters
+                        else 0.5
+                    ),
                 )
             except Exception as e:
                 logger.warning(f"⚠️ Training feedback failed: {e}")
-        
+
         return result
-        
+
     except Exception as e:
         logger.error(f"❌ Cluster and synthesis V2 failed: {e}")
         return {"error": str(e), "method": "failed"}
 
-def add_synthesis_correction(original_input: str, expected_output: str, synthesis_type: str = "aggregate") -> Dict[str, Any]:
+
+def add_synthesis_correction(
+    original_input: str, expected_output: str, synthesis_type: str = "aggregate"
+) -> Dict[str, Any]:
     """
     Add user correction for synthesis training
-    
+
     Args:
         original_input: Original input text
-        expected_output: Expected synthesis output  
+        expected_output: Expected synthesis output
         synthesis_type: Type of synthesis task
-    
+
     Returns:
         Dict with correction status
     """
     if not ONLINE_TRAINING_AVAILABLE:
         return {"status": "error", "message": "Online training not available"}
-    
+
     try:
         add_user_correction(
             agent_name="synthesizer",
@@ -426,56 +484,64 @@ def add_synthesis_correction(original_input: str, expected_output: str, synthesi
             input_text=original_input,
             incorrect_output="",  # We don't have the incorrect output
             correct_output=expected_output,
-            priority=2  # High priority for synthesis corrections
+            priority=2,  # High priority for synthesis corrections
         )
-        
+
         logger.info(f"✅ Synthesis correction added: {synthesis_type}")
         return {"status": "success", "message": "Correction added successfully"}
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to add synthesis correction: {e}")
         return {"status": "error", "message": str(e)}
+
 
 # ==================== END SYNTHESIZER V2 METHODS ====================
 
 # ==================== SYNTHESIZER V3 PRODUCTION METHODS ====================
 
-def synthesize_content_v3(article_texts: List[str], context: str = "news analysis") -> Dict[str, Any]:
+
+def synthesize_content_v3(
+    article_texts: List[str], context: str = "news analysis"
+) -> Dict[str, Any]:
     """
     V3 Production content synthesis with training integration using 4-model architecture
-    
+
     Features:
     - BERTopic clustering with proper UMAP parameters
-    - BART summarization with minimum text validation  
+    - BART summarization with minimum text validation
     - FLAN-T5 neutralization and refinement (DialoGPT replacement)
     - SentenceTransformers embeddings
     - Training system integration with feedback collection
     - Comprehensive error handling and fallbacks
-    
+
     Args:
         article_texts: List of article texts to synthesize
         context: Context for synthesis (default: "news analysis")
-    
+
     Returns:
         Dict with synthesis results and metadata
     """
     if not SYNTHESIZER_V3_AVAILABLE:
         logger.warning("V3 engine not available, falling back to V2")
         return synthesize_content_v2(article_texts, context)
-    
+
     engine = get_synthesizer_v3_engine()
     if engine is None:
         logger.warning("V3 engine not initialized, falling back to V2")
         return synthesize_content_v2(article_texts, context)
-    
+
     try:
-        logger.info(f"🧠 V3 Production synthesis starting: {len(article_texts)} articles")
-        
+        logger.info(
+            f"🧠 V3 Production synthesis starting: {len(article_texts)} articles"
+        )
+
         # Use V3 cluster and synthesize method
         result = engine.cluster_and_synthesize(article_texts)
-        
-        if not result.get('success', False):
-            logger.warning("V3 cluster and synthesize failed, using content aggregation")
+
+        if not result.get("success", False):
+            logger.warning(
+                "V3 cluster and synthesize failed, using content aggregation"
+            )
             # Fallback to direct content aggregation
             aggregated = engine.aggregate_cluster_content(article_texts)
             result = {
@@ -485,32 +551,37 @@ def synthesize_content_v3(article_texts: List[str], context: str = "news analysi
                 "articles_processed": len(article_texts),
                 "success": True,
                 "fallback_used": True,
-                "aggregation_details": aggregated
+                "aggregation_details": aggregated,
             }
-        
+
         # Add V3-specific metadata
-        result.update({
-            "engine": "v3_production",
-            "method": "cluster_and_synthesize_v3",
-            "context": context,
-            "timestamp": datetime.utcnow().isoformat(),
-            "model_info": {
-                "bertopic": "clustering",
-                "bart": "summarization", 
-                "flan_t5": "neutralization_refinement",
-                "embeddings": "semantic_analysis"
+        result.update(
+            {
+                "engine": "v3_production",
+                "method": "cluster_and_synthesize_v3",
+                "context": context,
+                "timestamp": datetime.utcnow().isoformat(),
+                "model_info": {
+                    "bertopic": "clustering",
+                    "bart": "summarization",
+                    "flan_t5": "neutralization_refinement",
+                    "embeddings": "semantic_analysis",
+                },
             }
-        })
-        
+        )
+
         # Log feedback for training
-        log_feedback("synthesize_content_v3", {
-            "articles_processed": len(article_texts),
-            "clusters_found": result.get('n_clusters', 1),
-            "synthesis_length": len(result.get('synthesis', '')),
-            "success": result.get('success', False),
-            "context": context
-        })
-        
+        log_feedback(
+            "synthesize_content_v3",
+            {
+                "articles_processed": len(article_texts),
+                "clusters_found": result.get("n_clusters", 1),
+                "synthesis_length": len(result.get("synthesis", "")),
+                "success": result.get("success", False),
+                "context": context,
+            },
+        )
+
         # Add training feedback if available
         if ONLINE_TRAINING_AVAILABLE:
             try:
@@ -518,16 +589,18 @@ def synthesize_content_v3(article_texts: List[str], context: str = "news analysi
                     agent_name="synthesizer",
                     task_type=f"synthesis_v3_{context}",
                     input_text=str(article_texts),  # Convert to string format
-                    predicted_output=result.get('synthesis', ''),
-                    actual_output=result.get('synthesis', ''),  # No ground truth yet
-                    confidence=result.get('confidence', 0.8)
+                    predicted_output=result.get("synthesis", ""),
+                    actual_output=result.get("synthesis", ""),  # No ground truth yet
+                    confidence=result.get("confidence", 0.8),
                 )
             except Exception as e:
                 logger.warning(f"⚠️ V3 Training feedback failed: {e}")
-        
-        logger.info(f"✅ V3 Production synthesis completed: {len(result.get('synthesis', ''))} chars")
+
+        logger.info(
+            f"✅ V3 Production synthesis completed: {len(result.get('synthesis', ''))} chars"
+        )
         return result
-        
+
     except Exception as e:
         logger.error(f"❌ V3 Production synthesis failed: {e}")
         # Fallback to V2 if available
@@ -535,44 +608,52 @@ def synthesize_content_v3(article_texts: List[str], context: str = "news analysi
             logger.info("🔄 Falling back to V2 synthesis")
             return synthesize_content_v2(article_texts, context)
         else:
-            return {"error": str(e), "method": "v3_failed_no_fallback", "success": False}
+            return {
+                "error": str(e),
+                "method": "v3_failed_no_fallback",
+                "success": False,
+            }
 
 
-def cluster_and_synthesize_v3(article_texts: List[str], max_clusters: int = 5, context: str = "news analysis") -> Dict[str, Any]:
+def cluster_and_synthesize_v3(
+    article_texts: List[str], max_clusters: int = 5, context: str = "news analysis"
+) -> Dict[str, Any]:
     """
     V3 Production advanced clustering and synthesis with training integration
-    
+
     Features:
     - Advanced BERTopic clustering with proper UMAP configuration
     - Per-cluster BART summarization
     - FLAN-T5 cross-cluster synthesis and refinement
     - Training feedback collection
     - Robust error handling with V2 fallback
-    
+
     Args:
         article_texts: List of article texts to cluster and synthesize
         max_clusters: Maximum number of clusters to create
         context: Context for synthesis
-    
+
     Returns:
         Dict with clustering results and synthesized content
     """
     if not SYNTHESIZER_V3_AVAILABLE:
         logger.warning("V3 engine not available, falling back to V2")
         return cluster_and_synthesize_v2(article_texts, max_clusters, context)
-    
+
     engine = get_synthesizer_v3_engine()
     if engine is None:
         logger.warning("V3 engine not initialized, falling back to V2")
         return cluster_and_synthesize_v2(article_texts, max_clusters, context)
-    
+
     try:
-        logger.info(f"🎯 V3 Production clustering starting: {len(article_texts)} articles, max {max_clusters} clusters")
-        
+        logger.info(
+            f"🎯 V3 Production clustering starting: {len(article_texts)} articles, max {max_clusters} clusters"
+        )
+
         # Step 1: Advanced clustering
         cluster_results = engine.cluster_articles_advanced(article_texts)
-        
-        if not cluster_results.get('success', False):
+
+        if not cluster_results.get("success", False):
             logger.warning("V3 clustering failed, using fallback approach")
             # Fallback: treat all as one cluster
             result = {
@@ -582,43 +663,53 @@ def cluster_and_synthesize_v3(article_texts: List[str], max_clusters: int = 5, c
                 "synthesis": "",
                 "articles_processed": len(article_texts),
                 "success": False,
-                "fallback_used": True
+                "fallback_used": True,
             }
         else:
             result = cluster_results.copy()
-        
+
         # Step 2: Synthesize content for each cluster
         cluster_syntheses = []
-        clusters = result.get('clusters', [[i for i in range(len(article_texts))]])
-        
+        clusters = result.get("clusters", [[i for i in range(len(article_texts))]])
+
         for i, cluster_indices in enumerate(clusters):
             if not cluster_indices:
                 continue
-                
-            cluster_articles = [article_texts[idx] for idx in cluster_indices if idx < len(article_texts)]
+
+            cluster_articles = [
+                article_texts[idx]
+                for idx in cluster_indices
+                if idx < len(article_texts)
+            ]
             if not cluster_articles:
                 continue
-                
-            logger.info(f"🔄 Processing cluster {i+1}: {len(cluster_articles)} articles")
-            
+
+            logger.info(
+                f"🔄 Processing cluster {i+1}: {len(cluster_articles)} articles"
+            )
+
             # Use V3 content aggregation for this cluster
             cluster_synthesis = engine.aggregate_cluster_content(cluster_articles)
-            cluster_syntheses.append({
-                "cluster_id": i,
-                "cluster_size": len(cluster_articles),
-                "synthesis": cluster_synthesis.get("best_result", ""),
-                "synthesis_details": cluster_synthesis
-            })
-        
+            cluster_syntheses.append(
+                {
+                    "cluster_id": i,
+                    "cluster_size": len(cluster_articles),
+                    "synthesis": cluster_synthesis.get("best_result", ""),
+                    "synthesis_details": cluster_synthesis,
+                }
+            )
+
         # Step 3: Final cross-cluster synthesis using FLAN-T5
         if cluster_syntheses:
-            all_cluster_syntheses = [cs["synthesis"] for cs in cluster_syntheses if cs["synthesis"]]
+            all_cluster_syntheses = [
+                cs["synthesis"] for cs in cluster_syntheses if cs["synthesis"]
+            ]
             if all_cluster_syntheses:
                 try:
                     # Use FLAN-T5 for final refinement
                     final_synthesis = engine.refine_content_flan_t5(
-                        " ".join(all_cluster_syntheses), 
-                        context=f"multi-cluster {context}"
+                        " ".join(all_cluster_syntheses),
+                        context=f"multi-cluster {context}",
                     )
                     result["synthesis"] = final_synthesis
                 except Exception as e:
@@ -628,44 +719,51 @@ def cluster_and_synthesize_v3(article_texts: List[str], max_clusters: int = 5, c
                 result["synthesis"] = ""
         else:
             result["synthesis"] = ""
-        
+
         # Add V3-specific metadata
-        result.update({
-            "engine": "v3_production",
-            "method": "cluster_and_synthesize_v3",
-            "context": context,
-            "max_clusters": max_clusters,
-            "cluster_syntheses": cluster_syntheses,
-            "timestamp": datetime.utcnow().isoformat(),
-            "success": len(result.get("synthesis", "")) > 0
-        })
-        
+        result.update(
+            {
+                "engine": "v3_production",
+                "method": "cluster_and_synthesize_v3",
+                "context": context,
+                "max_clusters": max_clusters,
+                "cluster_syntheses": cluster_syntheses,
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": len(result.get("synthesis", "")) > 0,
+            }
+        )
+
         # Training feedback
-        log_feedback("cluster_and_synthesize_v3", {
-            "articles_processed": len(article_texts),
-            "clusters_found": result.get('n_clusters', 1),
-            "synthesis_length": len(result.get('synthesis', '')),
-            "max_clusters": max_clusters,
-            "success": result.get('success', False),
-            "context": context
-        })
-        
+        log_feedback(
+            "cluster_and_synthesize_v3",
+            {
+                "articles_processed": len(article_texts),
+                "clusters_found": result.get("n_clusters", 1),
+                "synthesis_length": len(result.get("synthesis", "")),
+                "max_clusters": max_clusters,
+                "success": result.get("success", False),
+                "context": context,
+            },
+        )
+
         if ONLINE_TRAINING_AVAILABLE:
             try:
                 add_training_feedback(
                     agent_name="synthesizer",
                     task_type=f"clustering_v3_{context}",
                     input_text=str(article_texts),  # Convert to string format
-                    predicted_output=result.get('synthesis', ''),
-                    actual_output=result.get('synthesis', ''),  # No ground truth yet
-                    confidence=result.get('confidence', 0.8)
+                    predicted_output=result.get("synthesis", ""),
+                    actual_output=result.get("synthesis", ""),  # No ground truth yet
+                    confidence=result.get("confidence", 0.8),
                 )
             except Exception as e:
                 logger.warning(f"⚠️ V3 Clustering training feedback failed: {e}")
-        
-        logger.info(f"✅ V3 Production clustering completed: {result.get('n_clusters', 1)} clusters, {len(result.get('synthesis', ''))} chars")
+
+        logger.info(
+            f"✅ V3 Production clustering completed: {result.get('n_clusters', 1)} clusters, {len(result.get('synthesis', ''))} chars"
+        )
         return result
-        
+
     except Exception as e:
         logger.error(f"❌ V3 Production clustering failed: {e}")
         # Fallback to V2 if available
@@ -676,21 +774,23 @@ def cluster_and_synthesize_v3(article_texts: List[str], max_clusters: int = 5, c
             return {"error": str(e), "method": "v3_clustering_failed", "success": False}
 
 
-def add_synthesis_correction_v3(original_input: str, expected_output: str, synthesis_type: str = "aggregate") -> Dict[str, Any]:
+def add_synthesis_correction_v3(
+    original_input: str, expected_output: str, synthesis_type: str = "aggregate"
+) -> Dict[str, Any]:
     """
     Add user correction for V3 synthesis training
-    
+
     Args:
         original_input: Original input text
-        expected_output: Expected synthesis output  
+        expected_output: Expected synthesis output
         synthesis_type: Type of synthesis task
-    
+
     Returns:
         Dict with correction status
     """
     if not ONLINE_TRAINING_AVAILABLE:
         return {"status": "error", "message": "Online training not available"}
-    
+
     try:
         add_user_correction(
             agent_name="synthesizer",
@@ -698,12 +798,16 @@ def add_synthesis_correction_v3(original_input: str, expected_output: str, synth
             input_text=original_input,
             incorrect_output="",  # We don't have the incorrect output
             correct_output=expected_output,
-            priority=2  # High priority for synthesis corrections
+            priority=2,  # High priority for synthesis corrections
         )
-        
+
         logger.info(f"✅ V3 Synthesis correction added: {synthesis_type}")
-        return {"status": "success", "message": "V3 correction added successfully", "engine": "v3_production"}
-        
+        return {
+            "status": "success",
+            "message": "V3 correction added successfully",
+            "engine": "v3_production",
+        }
+
     except Exception as e:
         logger.error(f"❌ Failed to add V3 synthesis correction: {e}")
         return {"status": "error", "message": str(e), "engine": "v3_production"}
@@ -712,7 +816,7 @@ def add_synthesis_correction_v3(original_input: str, expected_output: str, synth
 def get_synthesizer_status() -> Dict[str, Any]:
     """
     Get comprehensive status of both V2 and V3 synthesizer engines
-    
+
     Returns:
         Dict with status of all available engines
     """
@@ -721,9 +825,9 @@ def get_synthesizer_status() -> Dict[str, Any]:
         "v2_available": SYNTHESIZER_V2_AVAILABLE,
         "v3_available": SYNTHESIZER_V3_AVAILABLE,
         "training_available": ONLINE_TRAINING_AVAILABLE,
-        "engines": {}
+        "engines": {},
     }
-    
+
     # V2 Status
     if SYNTHESIZER_V2_AVAILABLE and synthesizer_v2_engine:
         try:
@@ -731,27 +835,27 @@ def get_synthesizer_status() -> Dict[str, Any]:
             status["engines"]["v2"] = {
                 "initialized": True,
                 "models": v2_status,
-                "architecture": "5_model_legacy"
+                "architecture": "5_model_legacy",
             }
         except Exception as e:
             status["engines"]["v2"] = {"initialized": False, "error": str(e)}
     elif SYNTHESIZER_V2_AVAILABLE:
         status["engines"]["v2"] = {"initialized": False, "available": True}
-    
-    # V3 Status  
+
+    # V3 Status
     if SYNTHESIZER_V3_AVAILABLE and synthesizer_v3_engine:
         try:
             v3_status = synthesizer_v3_engine.get_model_status()
             status["engines"]["v3"] = {
                 "initialized": True,
                 "models": v3_status,
-                "architecture": "4_model_production"
+                "architecture": "4_model_production",
             }
         except Exception as e:
             status["engines"]["v3"] = {"initialized": False, "error": str(e)}
     elif SYNTHESIZER_V3_AVAILABLE:
         status["engines"]["v3"] = {"initialized": False, "available": True}
-    
+
     # Recommend primary engine
     if SYNTHESIZER_V3_AVAILABLE and synthesizer_v3_engine:
         status["recommended_engine"] = "v3_production"
@@ -759,7 +863,8 @@ def get_synthesizer_status() -> Dict[str, Any]:
         status["recommended_engine"] = "v2_legacy"
     else:
         status["recommended_engine"] = "none_available"
-    
+
     return status
+
 
 # ==================== END SYNTHESIZER V3 PRODUCTION METHODS ====================

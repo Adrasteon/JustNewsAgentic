@@ -8,7 +8,6 @@ from datetime import datetime
 
 import psycopg2
 import requests
-from psycopg2.extras import RealDictCursor
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -27,6 +26,7 @@ POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("memory.tools")
 
+
 def get_db_connection():
     """Establishes a connection to the PostgreSQL database."""
     try:
@@ -34,23 +34,26 @@ def get_db_connection():
             host=POSTGRES_HOST,
             database=POSTGRES_DB,
             user=POSTGRES_USER,
-            password=POSTGRES_PASSWORD
+            password=POSTGRES_PASSWORD,
         )
         return conn
     except psycopg2.OperationalError as e:
         logger.error(f"Could not connect to PostgreSQL database: {e}")
         return None
 
+
 def log_feedback(event: str, details: dict):
     """Logs feedback to a file."""
     with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
         f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
+
 
 def get_embedding_model():
     """Returns the sentence-transformer model."""
     if SentenceTransformer is None:
         raise ImportError("sentence-transformers is not installed.")
     return SentenceTransformer(EMBEDDING_MODEL_NAME)
+
 
 def save_article(content: str, metadata: dict) -> dict:
     """Saves an article to the database and generates an embedding for the content."""
@@ -61,11 +64,11 @@ def save_article(content: str, metadata: dict) -> dict:
         with conn.cursor() as cur:
             embedding_model = get_embedding_model()
             embedding = embedding_model.encode(content)
-            
+
             # Get the next available ID (simple approach without sequence)
             cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM articles")
             next_id = cur.fetchone()[0]
-            
+
             # Insert with explicit ID
             cur.execute(
                 "INSERT INTO articles (id, content, metadata, embedding) VALUES (%s, %s, %s, %s)",
@@ -81,11 +84,15 @@ def save_article(content: str, metadata: dict) -> dict:
     finally:
         conn.close()
 
+
 def get_article(article_id: int) -> dict:
     """Retrieves an article from the memory agent."""
-    response = requests.get(f"http://localhost:{MEMORY_AGENT_PORT}/get_article/{article_id}")
+    response = requests.get(
+        f"http://localhost:{MEMORY_AGENT_PORT}/get_article/{article_id}"
+    )
     response.raise_for_status()
     return response.json()
+
 
 def vector_search_articles(query: str, top_k: int = 5) -> list:
     """Performs a vector search for articles using the memory agent."""
@@ -95,6 +102,7 @@ def vector_search_articles(query: str, top_k: int = 5) -> list:
     )
     response.raise_for_status()
     return response.json()
+
 
 def log_training_example(task: str, input: dict, output: dict, critique: str) -> dict:
     """Logs a training example using the memory agent."""

@@ -4,12 +4,12 @@ Ultra-Safe TensorRT Test with Proper Context Management
 Final validation for completely clean, warning-free operation
 """
 
-import sys
-import os
-import logging
-import time
-from typing import List, Optional, Dict, Any
 import json
+import logging
+import os
+import sys
+import time
+from typing import Any, Dict, List, Optional
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,7 +19,7 @@ def safe_gpu_init():
     """Safely initialize GPU with proper CUDA context management"""
     try:
         import pycuda.driver as cuda
-        
+
         # Initialize CUDA driver
         cuda.init()
         logger.info("✅ CUDA driver initialized")

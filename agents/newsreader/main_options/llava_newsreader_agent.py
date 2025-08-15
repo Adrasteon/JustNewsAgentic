@@ -7,18 +7,17 @@ GPU Memory: 15.1GB (60% utilization on RTX 3090)
 
 import asyncio
 import logging
-import os
 import time
-import torch
 from contextlib import asynccontextmanager
-from playwright.async_api import async_playwright
-from PIL import Image
-from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import uvicorn
-import json
 from typing import Dict, Optional
+
+import torch
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from PIL import Image
+from playwright.async_api import async_playwright
+from pydantic import BaseModel
+from transformers import LlavaNextForConditionalGeneration, LlavaNextProcessor
 
 # Enable CUDA optimizations for maximum performance
 torch.backends.cudnn.benchmark = True

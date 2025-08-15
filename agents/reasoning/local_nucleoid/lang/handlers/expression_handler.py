@@ -1,5 +1,7 @@
 import ast
+
 from nucleoid.state import variable_state
+
 
 def expression_handler(node):
     """
@@ -54,6 +56,8 @@ def expression_handler(node):
             return left >= right
         # Add more comparison operators as needed
         else:
-            raise NotImplementedError(f"Comparison operator {node.ops[0]} not supported")
+            raise NotImplementedError(
+                f"Comparison operator {node.ops[0]} not supported"
+            )
     else:
         raise NotImplementedError(f"Node type {type(node)} not supported")

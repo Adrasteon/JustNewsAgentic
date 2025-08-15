@@ -4,10 +4,10 @@
 Start Scout agent natively with BestFirstCrawlingStrategy integration
 """
 
-import os
-import sys
-import subprocess
 import logging
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 # Set up logging

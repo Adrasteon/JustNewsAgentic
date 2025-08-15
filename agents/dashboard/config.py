@@ -8,6 +8,7 @@ import os
 
 CONFIG_FILE_PATH = "dashboard_config.json"
 
+
 def load_config():
     """Load the configuration from a JSON file."""
     if os.path.exists(CONFIG_FILE_PATH):
@@ -16,8 +17,9 @@ def load_config():
     return {
         "dashboard_port": 8010,
         "mcp_bus_url": "http://localhost:8000",
-        "log_level": "INFO"
+        "log_level": "INFO",
     }
+
 
 def save_config(config):
     """Save the configuration to a JSON file."""

@@ -12,7 +12,6 @@ After a PC crash, run this script to analyze what happened:
 import json
 import glob
 import os
-from datetime import datetime
 
 def analyze_crash_recovery():
     """Analyze crash recovery data"""
@@ -79,7 +78,7 @@ def analyze_crash_recovery():
     
     # Memory analysis
     if len(memory_progression) >= 2:
-        print(f"\n📈 MEMORY TREND:")
+        print("\n📈 MEMORY TREND:")
         start_mem = memory_progression[0]['memory_mb']
         end_mem = memory_progression[-1]['memory_mb']
         total_growth = end_mem - start_mem
@@ -89,7 +88,7 @@ def analyze_crash_recovery():
         print(f"  Total Growth: {total_growth:+.1f}MB")
         
         if total_growth > 500:  # 500MB growth
-            print(f"  ⚠️ EXCESSIVE MEMORY GROWTH DETECTED!")
+            print("  ⚠️ EXCESSIVE MEMORY GROWTH DETECTED!")
         
         # Check for memory leaks (consistent positive deltas)
         positive_deltas = [m['delta'] for m in memory_progression if m['delta'] > 10]
@@ -100,7 +99,7 @@ def analyze_crash_recovery():
     print("\n🔍 CRASH INVESTIGATION SUMMARY:")
     print(f"  - Last successful analysis: {progress_files[-1] if progress_files else 'none'}")
     print(f"  - Total analyses before crash: {len(progress_files)}")
-    print(f"  - Check crash_test.log for detailed logs")
+    print("  - Check crash_test.log for detailed logs")
 
 if __name__ == "__main__":
     analyze_crash_recovery()

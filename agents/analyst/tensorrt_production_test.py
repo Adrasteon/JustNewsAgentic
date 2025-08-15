@@ -11,11 +11,11 @@ Performance Targets:
 """
 
 import logging
-import time
-import statistics
-from typing import List, Dict, Any
-import sys
 import os
+import statistics
+import sys
+import time
+from typing import Any, Dict, List
 
 # Add parent directory for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

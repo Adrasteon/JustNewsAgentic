@@ -3,8 +3,10 @@
 Quick API test for the running analyst agent
 """
 
-import requests
 import json
+
+import requests
+
 
 def test_agent_api():
     """Test the analyst agent API endpoints"""

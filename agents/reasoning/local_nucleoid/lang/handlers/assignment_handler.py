@@ -1,6 +1,8 @@
-from nucleoid.state import variable_state
-from nucleoid.graph import maingraph
 import ast
+
+from nucleoid.graph import maingraph
+from nucleoid.state import variable_state
+
 
 def assignment_handler(node):
     # Extract the variable name from the target
@@ -10,8 +12,8 @@ def assignment_handler(node):
         # Extract the value
         if isinstance(node.value, ast.Constant):
             var_value = node.value.value
-        #THIS NEXT LINE IS FOR DEPENDENCY HANDLING
-        #elif isinstance(node.value, ast.Name):
+        # THIS NEXT LINE IS FOR DEPENDENCY HANDLING
+        # elif isinstance(node.value, ast.Name):
         #    var_value = variable_state.get(node.value.id, None)
         else:
             var_value = None  # Handle other types if necessary

@@ -11,7 +11,7 @@ Key Components:
 
 Future Expansion:
 - sites/cnn_crawler.py: CNN news crawling
-- sites/reuters_crawler.py: Reuters news crawling  
+- sites/reuters_crawler.py: Reuters news crawling
 - sites/guardian_crawler.py: Guardian news crawling
 - sites/nytimes_crawler.py: New York Times crawling
 

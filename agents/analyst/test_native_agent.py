@@ -4,13 +4,14 @@ Test script for the Native TensorRT Analyst Agent
 Validates the updated FastAPI endpoints with native TensorRT implementation
 """
 
-import sys
-import os
-import logging
-import time
-import requests
 import json
-from typing import List, Dict
+import logging
+import os
+import sys
+import time
+from typing import Dict, List
+
+import requests
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

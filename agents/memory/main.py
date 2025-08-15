@@ -1,20 +1,23 @@
 """
 Main file for the Memory Agent.
 """
+
 import json
 import logging
 import os
-import requests
 from contextlib import asynccontextmanager
-from datetime import datetime
 
 import psycopg2
+import requests
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
+from pydantic import BaseModel
 
-from agents.memory.tools import (get_embedding_model, log_feedback,
-                   log_training_example, save_article, vector_search_articles)
+from agents.memory.tools import (
+    log_training_example,
+    save_article,
+    vector_search_articles,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,10 +34,12 @@ POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
 MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+
 # Pydantic models
 class Article(BaseModel):
     content: str
     metadata: dict
+
 
 class TrainingExample(BaseModel):
     task: str
@@ -42,13 +47,16 @@ class TrainingExample(BaseModel):
     output: dict
     critique: str
 
+
 class VectorSearch(BaseModel):
     query: str
     top_k: int = 5
 
+
 class ToolCall(BaseModel):
     args: list
     kwargs: dict
+
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -60,12 +68,15 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
+
 
 # Use connection pooling for database connections
 def get_db_connection():
@@ -76,13 +87,14 @@ def get_db_connection():
             database=POSTGRES_DB,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
-            options='-c search_path=public'
+            options="-c search_path=public",
         )
         logger.info("Database connection established successfully.")
         return conn
     except psycopg2.OperationalError as e:
         logger.error(f"Could not connect to PostgreSQL database: {e}")
         raise HTTPException(status_code=500, detail="Database connection error")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -110,17 +122,21 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Memory agent is shutting down.")
 
+
 app = FastAPI(lifespan=lifespan)
+
 
 @app.get("/health")
 def health():
     """Health check endpoint."""
     return {"status": "ok"}
 
+
 @app.get("/ready")
 def ready_endpoint():
     """Readiness endpoint for startup gating."""
     return {"ready": ready}
+
 
 @app.post("/save_article")
 def save_article_endpoint(request: dict):
@@ -132,15 +148,16 @@ def save_article_endpoint(request: dict):
                 article_data = request["args"][0]
             else:
                 article_data = request["kwargs"]
-        else:  
+        else:
             # Direct call format
             article_data = request
-        
+
         # Create Article object from the data
         article = Article(**article_data)
         return save_article(article.content, article.metadata)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error saving article: {str(e)}")
+
 
 @app.get("/get_article/{article_id}")
 def get_article_endpoint(article_id: int):
@@ -156,6 +173,7 @@ def get_article_endpoint(article_id: int):
     finally:
         conn.close()
 
+
 @app.post("/vector_search_articles")
 def vector_search_articles_endpoint(request: dict):
     """Performs a vector search for articles. Handles both direct calls and MCP Bus format."""
@@ -167,14 +185,17 @@ def vector_search_articles_endpoint(request: dict):
             else:
                 search_data = request["kwargs"]
         else:
-            # Direct call format  
+            # Direct call format
             search_data = request
-        
+
         # Create VectorSearch object from the data
         search = VectorSearch(**search_data)
         return vector_search_articles(search.query, search.top_k)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error searching articles: {str(e)}")
+        raise HTTPException(
+            status_code=400, detail=f"Error searching articles: {str(e)}"
+        )
+
 
 @app.post("/log_training_example")
 def log_training_example_endpoint(example: TrainingExample):
@@ -182,6 +203,7 @@ def log_training_example_endpoint(example: TrainingExample):
     return log_training_example(
         example.task, example.input, example.output, example.critique
     )
+
 
 # Improved error handling and logging
 @app.post("/store_article")
