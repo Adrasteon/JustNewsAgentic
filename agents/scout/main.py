@@ -1,22 +1,3 @@
-@app.post("/search_related_articles")
-def search_related_articles_endpoint(call: ToolCall):
-    try:
-        from agents.scout.tools import intelligent_source_discovery
-
-        main_url = call.args[0] if call.args else ""
-        num_related = call.kwargs.get("num_related", 3)
-        logger.info(
-            f"Calling intelligent_source_discovery with query: {main_url}, max_sources: {num_related}"
-        )
-        sources = intelligent_source_discovery(query=main_url, max_sources=num_related)
-        # Return only URLs for compatibility with previous API
-        urls = [s.get("url") for s in sources if "url" in s]
-        return {"urls": urls, "sources": sources}
-    except Exception as e:
-        logger.error(f"An error occurred in intelligent_source_discovery: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 """
 Main file for the Scout Agent.
 """
