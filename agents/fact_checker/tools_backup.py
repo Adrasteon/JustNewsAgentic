@@ -21,7 +21,6 @@ from datetime import datetime
 # Import V2 Engine
 try:
     from agents.fact_checker.fact_checker_v2_engine import (
-        get_fact_checker_engine,
         initialize_fact_checker_v2,
     )
 
@@ -42,6 +41,12 @@ except ImportError:
 FEEDBACK_LOG = os.environ.get(
     "FACT_CHECKER_FEEDBACK_LOG", "./feedback_fact_checker.log"
 )
+
+# Model/config defaults (safe fallbacks to avoid undefined names during linting/tests)
+MODEL_PATH = os.environ.get("FACT_CHECKER_MODEL_PATH", os.environ.get("MODEL_PATH", "./model_cache/fact_checker"))
+MODEL_NAME = os.environ.get("FACT_CHECKER_MODEL_NAME", os.environ.get("MODEL_NAME", "distilgpt2"))
+OPTIMIZED_MAX_LENGTH = int(os.environ.get("FACT_CHECKER_OPTIMIZED_MAX_LENGTH", "128"))
+OPTIMIZED_BATCH_SIZE = int(os.environ.get("FACT_CHECKER_OPTIMIZED_BATCH_SIZE", "8"))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("fact_checker.tools")
