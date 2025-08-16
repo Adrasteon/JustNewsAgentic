@@ -173,7 +173,7 @@ class ProductionBBCNewsReaderCrawler:
                 if await cookie_button.count() > 0:
                     await cookie_button.first.click()
                     await asyncio.sleep(1)
-            except:
+            except Exception:
                 pass  # Cookie handling is optional
             
             # Capture screenshot

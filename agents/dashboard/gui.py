@@ -29,10 +29,6 @@ class DashboardGUI(QMainWindow):
         self.logger = logging.getLogger("DashboardGUI")
 
     # Use global logger only; do not add handlers or set level here
-    def __init__(self):
-        super().__init__()
-        self.logger = logging.getLogger("DashboardGUI")
-        # ...existing code...
 
     def log_exception(self, exc: Exception):
         import traceback
@@ -123,25 +119,7 @@ class DashboardGUI(QMainWindow):
             lines.append(f"[{ts}] {name} (port {port}): {status}")
         self.append_monitor_output("\n".join(lines))
 
-    def start_agent(self, agent_name):
-        try:
-            # ...existing code...
-            self.logger.info(f"Starting agent: {agent_name}")
-        except Exception as exc:
-            self.log_exception(exc)
-            QMessageBox.critical(
-                self, "Error", f"Failed to start agent {agent_name}: {exc}"
-            )
 
-    def stop_agent(self, agent_name):
-        try:
-            # ...existing code...
-            self.logger.info(f"Stopping agent: {agent_name}")
-        except Exception as exc:
-            self.log_exception(exc)
-            QMessageBox.critical(
-                self, "Error", f"Failed to stop agent {agent_name}: {exc}"
-            )
 
     def create_web_crawl_tab(self):
         from PyQt5.QtWidgets import QCheckBox

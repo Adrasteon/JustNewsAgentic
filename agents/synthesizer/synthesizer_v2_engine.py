@@ -29,14 +29,12 @@ import torch
 try:
     from transformers import (
         AutoModelForCausalLM,
-        AutoModelForSeq2SeqLM,
-        AutoTokenizer,
+    AutoTokenizer,
         BartForConditionalGeneration,
         BartTokenizer,
-        GenerationConfig,
         T5ForConditionalGeneration,
         T5Tokenizer,
-        pipeline,
+    pipeline,
     )
 
     TRANSFORMERS_AVAILABLE = True
@@ -55,7 +53,6 @@ except ImportError:
 try:
     from bertopic import BERTopic
     from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance
-    from bertopic.vectorizers import ClassTfidfTransformer
 
     BERTOPIC_AVAILABLE = True
 except ImportError:
@@ -64,7 +61,6 @@ except ImportError:
 
 try:
     from sklearn.cluster import KMeans
-    from sklearn.feature_extraction.text import TfidfVectorizer
 
     SKLEARN_AVAILABLE = True
 except ImportError:

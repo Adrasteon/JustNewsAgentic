@@ -48,7 +48,7 @@ class MCPBusClient:
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from newsreader_agent import PracticalNewsReader
+from newsreader_agent import PracticalNewsReader  # noqa: E402 (sys.path modified above intentionally)
 
 # Global agent instance
 agent = None

@@ -10,6 +10,7 @@ This implements native TensorRT acceleration with validated performance:
 """
 
 import logging
+import atexit
 from datetime import datetime
 from typing import List, Optional
 
@@ -62,8 +63,6 @@ def cleanup_tensorrt_engine():
 
 
 # Register cleanup at module exit to prevent context stack errors
-import atexit
-
 atexit.register(cleanup_tensorrt_engine)
 
 # Feedback logging

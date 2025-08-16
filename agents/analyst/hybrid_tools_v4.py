@@ -655,7 +655,7 @@ def score_bias(text: str) -> float:
                         if score > 1.0:
                             score = score / 10.0  # Assume they meant 0.X
                         score = max(0.0, min(1.0, score))
-                    except:
+                    except Exception:
                         score = 0.5  # Default to neutral
                 else:
                     score = 0.5  # Default to neutral if no valid score found
@@ -741,7 +741,7 @@ def score_sentiment(text: str) -> float:
                         if score > 1.0:
                             score = score / 10.0  # Assume they meant 0.X
                         score = max(0.0, min(1.0, score))
-                    except:
+                    except Exception:
                         score = 0.5  # Default to neutral
                 else:
                     score = 0.5  # Default to neutral if no valid score found
@@ -1084,7 +1084,8 @@ if __name__ == "__main__":
 
 # V4 RTX Integration Module
 try:
-    from .rtx_manager import get_rtx_manager, query_rtx_model
+    # Only import the used symbol to avoid unused-import lint warnings
+    from .rtx_manager import query_rtx_model
 
     RTX_AVAILABLE = True
     logger.info("✅ V4 RTX Manager integration available")
@@ -1145,7 +1146,8 @@ def query_hybrid_model_enhanced(
 
     # Check if we're in an async context
     try:
-        loop = asyncio.get_running_loop()
+        # We only need to check if a running loop exists; avoid unused assignment
+        _ = asyncio.get_running_loop()
         # We're in an async context, create a task for V4
         task = asyncio.create_task(
             query_hybrid_model_v4(prompt, max_tokens, temperature)

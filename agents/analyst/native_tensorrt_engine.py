@@ -434,7 +434,7 @@ class NativeTensorRTInferenceEngine:
         try:
             import pycuda.driver as cuda
 
-            engine = self.engines[task]
+            # Use engines/context/tokenizers/metadata directly to avoid unused local
             context = self.contexts[task]
             tokenizer = self.tokenizers[task]
             metadata = self.engine_metadata[task]
@@ -521,7 +521,7 @@ class NativeTensorRTInferenceEngine:
             if batch_size == 0:
                 return []
 
-            engine = self.engines[task]
+            # Use engines/context/tokenizers/metadata directly to avoid unused local
             context = self.contexts[task]
             tokenizer = self.tokenizers[task]
             metadata = self.engine_metadata[task]
@@ -787,8 +787,9 @@ class NativeTensorRTInferenceEngine:
         """Destructor to ensure cleanup"""
         try:
             self.cleanup()
-        except:
-            pass  # Ignore errors during destruction
+        except Exception:
+            # Ignore errors during destruction (avoid catching BaseException)
+            pass
 
 
 # Global native engine instance

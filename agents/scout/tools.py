@@ -1,3 +1,19 @@
+import os
+import re
+import time
+import logging
+from datetime import datetime
+from typing import List
+
+import requests
+import traceback
+
+# Configuration and logging for Scout tools
+FEEDBACK_LOG = os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("scout.tools")
+
+
 # --- Related Article Search ---
 def search_related_articles(main_url: str, num_related: int = 3) -> List[str]:
     """Live web search for related articles using Bing News Search API (example)."""
@@ -10,42 +26,21 @@ def search_related_articles(main_url: str, num_related: int = 3) -> List[str]:
         resp = requests.get(BING_ENDPOINT, params=params, headers=headers, timeout=5)
         resp.raise_for_status()
         data = resp.json()
-        urls = [a["url"] for a in data.get("value", [])][:num_related]
+        urls = [a.get("url") for a in data.get("value", [])][:num_related]
         logger.info(f"Scout found {len(urls)} related articles for {main_url}")
         return urls
     except Exception as e:
         logger.error(f"Scout search_related_articles failed: {e}")
         return []
 
-
-import logging
-
-# Model loading for Scout Agent (Llama-3-8B-Instruct)
-import os
-import time
-from datetime import datetime
-
-import requests
-
-FEEDBACK_LOG = os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log")
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("scout.tools")
-
 # Online Training Integration
 try:
-    from training_system import (
-        add_training_feedback,
-        get_training_coordinator,
-        initialize_online_training,
-    )
+    from training_system import initialize_online_training
 
     ONLINE_TRAINING_AVAILABLE = True
 
     # Initialize online training for Scout with 40-example threshold
-    initialize_online_training(
-        update_threshold=40
-    )  # Update after 40 examples for Scout
+    initialize_online_training(update_threshold=40)
     logger.info("🎓 Online Training enabled for Scout V2")
 
 except ImportError:
@@ -54,16 +49,7 @@ except ImportError:
 
 # Import Crawl4AI components for advanced deep crawling
 try:
-    from crawl4ai import (
-        AsyncWebCrawler,
-        BestFirstCrawlingStrategy,
-        CompositeScorer,
-        ContentTypeFilter,
-        DomainFilter,
-        FilterChain,
-        KeywordRelevanceScorer,
-        PathDepthScorer,
-    )
+    from crawl4ai import AsyncWebCrawler, BestFirstCrawlingStrategy
 
     CRAWL4AI_NATIVE_AVAILABLE = True
     logger.info("✅ Native Crawl4AI components loaded for advanced deep crawling")
@@ -72,7 +58,7 @@ except ImportError as e:
     logger.warning(f"⚠️ Native Crawl4AI not available: {e}. Using Docker fallback.")
 
 # Import for HTML text extraction
-import re
+# (re already imported above)
 
 # Global Scout Intelligence Engine
 scout_engine = None
@@ -820,155 +806,7 @@ async def enhanced_deep_crawl_site(*args, **kwargs):
         return deep_crawl_site(*args, **kwargs)
 
 
-def discover_sources(*args, **kwargs):
-    """
-    Discover sources for a given query using the crawl4ai Docker container.
-    """
-    logger.info(f"[ScoutAgent] Discovering sources with args: {args}, kwargs: {kwargs}")
-    try:
-        # Call the running crawl4ai container
-        response = requests.post(
-            "http://localhost:32768/discover_sources",
-            json={"args": args, "kwargs": kwargs},
-        )
-        response.raise_for_status()
-        links = response.json()
-        log_feedback("discover_sources", {"args": args, "results": links})
-        return links
-    except Exception as e:
-        logger.error(f"An error occurred during web search: {e}")
-        log_feedback("discover_sources_error", {"args": args, "error": str(e)})
-        return []
-
-
-def crawl_url(*args, **kwargs):
-    """
-    Enhanced URL crawling with NewsReader screenshot and image interpretation.
-    This combines Crawl4AI text extraction with LLaVA visual analysis for comprehensive content understanding.
-    """
-    logger.info(
-        f"[ScoutAgent] Enhanced crawling URL with args: {args}, kwargs: {kwargs}"
-    )
-
-    url = kwargs.get("url", args[0] if args else "")
-    use_newsreader = kwargs.get("use_newsreader", True)  # Default to using NewsReader
-
-    if not url:
-        logger.error("No URL provided for crawling")
-        return {"error": "No URL provided"}
-
-    try:
-        # Step 1: Get standard text content using native Crawl4AI
-        text_content = None
-        if CRAWL4AI_NATIVE_AVAILABLE:
-            import asyncio
-
-            async def native_crawl():
-                async with AsyncWebCrawler(verbose=False) as crawler:
-                    result = await crawler.arun(
-                        url=url,
-                        extraction_strategy="LLMExtractionStrategy",
-                        css_selector="main, article, .content, .story-body, [role='main']",
-                        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-                    )
-
-                    return {
-                        "content": result.cleaned_html
-                        or result.markdown
-                        or result.extracted_content
-                        or "",
-                        "extracted_content": result.extracted_content or "",
-                        "markdown": result.markdown or "",
-                        "title": getattr(result, "title", ""),
-                        "description": getattr(result, "description", ""),
-                        "method": "native_crawl4ai",
-                    }
-
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
-            text_content = loop.run_until_complete(native_crawl())
-            logger.info(f"✅ Text extraction successful for {url}")
-
-        # Step 2: Enhanced analysis with NewsReader if enabled
-        enhanced_analysis = None
-        if use_newsreader and text_content:
-            try:
-                # Call NewsReader agent via MCP Bus for screenshot and visual analysis
-                import requests
-
-                newsreader_payload = {
-                    "args": [url],
-                    "kwargs": {"text_content": text_content.get("content", "")},
-                }
-
-                response = requests.post(
-                    "http://localhost:8009/extract_news_from_url",
-                    json=newsreader_payload,
-                    timeout=30,
-                )
-
-                if response.status_code == 200:
-                    newsreader_result = response.json()
-                    enhanced_analysis = newsreader_result
-                    logger.info(f"✅ NewsReader visual analysis successful for {url}")
-                else:
-                    logger.warning(
-                        f"⚠️ NewsReader analysis failed with status {response.status_code}"
-                    )
-
-            except Exception as e:
-                logger.warning(
-                    f"⚠️ NewsReader integration failed: {e}. Continuing with text-only analysis."
-                )
-
-        # Step 3: Combined result with both text and visual analysis
-        combined_result = {
-            "url": url,
-            "content": text_content.get("content", "") if text_content else "",
-            "extracted_content": (
-                text_content.get("extracted_content", "") if text_content else ""
-            ),
-            "markdown": text_content.get("markdown", "") if text_content else "",
-            "metadata": {
-                "title": text_content.get("title", "") if text_content else "",
-                "description": (
-                    text_content.get("description", "") if text_content else ""
-                ),
-                "status": "success",
-                "method": (
-                    "enhanced_crawl4ai_newsreader"
-                    if enhanced_analysis
-                    else text_content.get("method", "text_only")
-                ),
-            },
-        }
-
-        # Add NewsReader analysis if available
-        if enhanced_analysis:
-            combined_result["visual_analysis"] = enhanced_analysis
-            combined_result["headline"] = enhanced_analysis.get("headline", "")
-            combined_result["article"] = enhanced_analysis.get("article", "")
-            combined_result["processing_method"] = enhanced_analysis.get(
-                "method", "unknown"
-            )
-
-            # Enhance content with visual insights
-            if enhanced_analysis.get("article") and len(
-                enhanced_analysis["article"]
-            ) > len(combined_result["content"]):
-                combined_result["content"] = enhanced_analysis["article"]
-                combined_result["metadata"]["enhanced_by_vision"] = True
-
-        return combined_result
-
-    except Exception as e:
-        logger.error(f"An error occurred during enhanced crawling: {e}")
-        log_feedback("enhanced_crawl_url_error", {"args": args, "error": str(e)})
-        return {"url": url, "error": str(e), "metadata": {"status": "error"}}
+    
 
 
 def enhanced_newsreader_crawl(*args, **kwargs):
@@ -981,9 +819,6 @@ def enhanced_newsreader_crawl(*args, **kwargs):
     )
 
     url = kwargs.get("url", args[0] if args else "")
-    force_visual = kwargs.get(
-        "force_visual", False
-    )  # Force visual analysis even for text-rich content
 
     if not url:
         logger.error("No URL provided for enhanced crawling")
@@ -1109,32 +944,12 @@ def enhanced_newsreader_crawl(*args, **kwargs):
         return {"url": url, "error": str(e), "metadata": {"status": "error"}}
 
 
-def deep_crawl_site(*args, **kwargs):
-    """
-    Perform a deep crawl on a specific website for given keywords. Interacts with crawl4ai Docker container.
-    """
-    logger.info(f"[ScoutAgent] Deep crawling site with args: {args}, kwargs: {kwargs}")
-    try:
-        # Call the running crawl4ai container
-        response = requests.post(
-            "http://localhost:32768/deep_crawl_site",
-            json={"args": args, "kwargs": kwargs},
-        )
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logger.error(f"An error occurred during deep crawl: {e}")
-        log_feedback("deep_crawl_site_error", {"args": args, "error": str(e)})
-        return []
-
-
 # =============================================================================
 # PRODUCTION CRAWLERS - High-Speed News Gathering
 # =============================================================================
 
 
 # Initialize production crawlers with robust error handling
-import traceback
 
 production_crawler = None
 PRODUCTION_CRAWLERS_AVAILABLE = False

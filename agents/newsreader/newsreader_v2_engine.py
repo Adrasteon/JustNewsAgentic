@@ -34,11 +34,10 @@ logger = logging.getLogger("newsreader.v2_engine")
 # Model availability checks
 try:
     from transformers import (
-        AutoModelForCausalLM,
-        AutoTokenizer,
-        CLIPModel,
-        CLIPProcessor,
-        pipeline,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    CLIPModel,
+    CLIPProcessor,
     )
 
     TRANSFORMERS_AVAILABLE = True

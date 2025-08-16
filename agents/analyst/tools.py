@@ -31,11 +31,8 @@ logger = logging.getLogger("analyst.tools")
 
 # Online Training Integration
 try:
-    from training_system import (
-        add_training_feedback,
-        get_training_coordinator,
-        initialize_online_training,
-    )
+    # Only import the function we use to initialize online training.
+    from training_system import initialize_online_training
 
     ONLINE_TRAINING_AVAILABLE = True
 
@@ -56,7 +53,6 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
 # Import specialized NLP dependencies with fallback handling
 try:
     import spacy
-    from spacy import displacy
 
     HAS_SPACY = True
     logger.info("✅ spaCy available for specialized NER")

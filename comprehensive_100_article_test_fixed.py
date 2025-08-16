@@ -229,7 +229,7 @@ class ComprehensivePipelineTest:
             try:
                 response = requests.get(url, timeout=5)
                 health_status[agent] = response.status_code == 200
-            except:
+            except Exception:
                 health_status[agent] = False
                 
         return health_status

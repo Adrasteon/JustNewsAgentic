@@ -197,7 +197,7 @@ Focus on the primary news story, ignore navigation and ads."""
             
             # Fallback parsing
             if not headline and not article:
-                significant_lines = [l.strip() for l in lines if len(l.strip()) > 10]
+                significant_lines = [line.strip() for line in lines if len(line.strip()) > 10]
                 if significant_lines:
                     headline = significant_lines[0][:100]
                     article = " ".join(significant_lines[1:2]) if len(significant_lines) > 1 else ""

@@ -16,14 +16,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
+import torch
+
 
 # Modern datetime utility to replace deprecated utcnow()
 def utc_now() -> datetime:
     """Get current UTC datetime using timezone-aware approach"""
     return datetime.now(timezone.utc)
-
-
-import torch
 
 # Configure logging first
 logging.basicConfig(level=logging.INFO)

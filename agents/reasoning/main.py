@@ -114,7 +114,7 @@ class SimpleNucleoidImplementation:
                         result = self._evaluate_expression(right_side)
                         if result is not None:
                             return result
-                    except:
+                    except Exception:
                         pass
 
             return {"success": False, "message": f"Unknown variable: {statement}"}
@@ -123,7 +123,7 @@ class SimpleNucleoidImplementation:
         if any(op in statement for op in ["==", "!=", ">", "<", ">=", "<="]):
             try:
                 return self._evaluate_boolean(statement)
-            except:
+            except Exception:
                 return {
                     "success": False,
                     "message": "Could not evaluate boolean expression",
@@ -141,7 +141,7 @@ class SimpleNucleoidImplementation:
             # Simple evaluation (be careful in production!)
             result = eval(expression)
             return result
-        except:
+        except Exception:
             return None
 
     def _evaluate_boolean(self, statement):
@@ -157,7 +157,7 @@ class SimpleNucleoidImplementation:
             # Evaluate the boolean expression
             result = eval(statement)
             return result
-        except:
+        except Exception:
             return False
 
     def run(self, statement):
@@ -406,7 +406,7 @@ class NucleoidEngine:
                                     "conflict": "boolean_contradiction",
                                 }
                             )
-                    except:
+                    except Exception:
                         pass  # Skip if can't parse
 
             return {
@@ -813,8 +813,7 @@ def validate_claim(call: ToolCall):
         if not claim:
             raise ValueError("Claim cannot be empty")
 
-        # Add claim as temporary fact and check for contradictions
-        temp_fact = {"statement": claim, "type": "claim", "context": context}
+    # Add claim as temporary fact and check for contradictions
 
         # Get existing statements
         existing_statements = []

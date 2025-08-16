@@ -11,3 +11,11 @@ extend-exclude = [
 
 # We prefer to keep the full rule set enabled and apply per-file noqa where necessary.
 # Top rules observed in agents/ (from a recent run): F401, E722, F841, E402, F811
+
+# Per-file ignores to reduce noise for modules that intentionally do runtime imports
+[lint.per-file-ignores]
+"agents/critic/critic_v2_engine.py" = ["F401", "E402"]
+"agents/memory/memory_v2_engine.py" = ["F401", "E402"]
+"agents/chief_editor/chief_editor_v2_engine.py" = ["F401", "E402"]
+"agents/analyst/tensorrt_acceleration.py" = ["F401", "E402"]
+"agents/analyst/native_tensorrt_engine.py" = ["F401", "E402"]

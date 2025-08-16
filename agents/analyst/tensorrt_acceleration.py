@@ -383,7 +383,7 @@ class TensorRTAnalyst:
             logger.error(f"❌ TensorRT inference failed for {task_type}: {e}")
             return None
 
-    def _softmax(self, x) -> "np.ndarray":
+    def _softmax(self, x) -> Any:
         """Apply softmax to convert logits to probabilities"""
         import numpy as np
 

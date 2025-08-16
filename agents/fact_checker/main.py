@@ -121,9 +121,9 @@ def validate_claims_endpoint(request: dict):
     try:
         # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
         if "args" in request and len(request["args"]) > 0:
-            content = request["args"][0]
+            _content = request["args"][0]
         elif "kwargs" in request and "content" in request["kwargs"]:
-            content = request["kwargs"]["content"]
+            _content = request["kwargs"]["content"]
         else:
             raise ValueError("Missing 'content' in request")
 

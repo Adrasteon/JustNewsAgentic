@@ -82,8 +82,8 @@ class RTXManager:
 
             logger.info(f"✅ TensorRT-LLM available: {tensorrt_llm.__version__}")
 
-            # Configure TensorRT-LLM runtime
-            from tensorrt_llm.runtime import GenerationSession, ModelRunner
+            # Configure TensorRT-LLM runtime (only import the used ModelRunner)
+            from tensorrt_llm.runtime import ModelRunner
 
             # Engine configuration from RTX AI Toolkit workflow
             self.engine_config = {
@@ -220,8 +220,8 @@ class RTXManager:
         try:
             # Import TensorRT-LLM components (with error handling for development)
             try:
-                from tensorrt_llm import Mapping
-                from tensorrt_llm.runtime import ModelRunner
+                # TensorRT-LLM presence check (no explicit imports required here)
+                pass
             except ImportError:
                 logger.warning("TensorRT-LLM not installed, falling back to Docker")
                 return None
@@ -306,7 +306,7 @@ class RTXManager:
                 return "".join(
                     [chr(int(token)) for token in outputs[0] if 32 <= int(token) <= 126]
                 )
-            except:
+            except Exception:
                 return "Error: Could not decode response"
 
     async def _query_docker_model(

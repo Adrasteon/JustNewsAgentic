@@ -302,7 +302,7 @@ class NativeTensorRTCompiler:
 
             # Get actual input shapes from the ONNX model
             input0 = network.get_input(0)  # input_ids
-            input1 = network.get_input(1)  # attention_mask
+            _input1 = network.get_input(1)  # attention_mask (unused variable renamed to avoid F841)
 
             # Determine sequence length from the ONNX model
             actual_seq_len = input0.shape[1]

@@ -49,9 +49,24 @@ ORCHESTRATION_RULES = [
     "if (multiple_agents_disagree == true) then require_chief_editor_review = true"
 ]
 
+class _NucleoidPlaceholder:
+    """Minimal placeholder for NucleoidEngine used in environments without the real engine."""
+    def __init__(self):
+        self._facts = {}
+    def add_rule(self, rule: str):
+        # Placeholder: do nothing
+        return
+    def add_fact(self, fact: str):
+        # Very small parser: store fact string
+        key = fact.split('=')[0].strip()
+        self._facts[key] = fact
+    def query(self, key: str):
+        return self._facts.get(key, None)
+
 class EnhancedReasoningEngine:
     def __init__(self):
-        self.nucleoid = NucleoidEngine()
+        # Use real NucleoidEngine if available, otherwise the placeholder
+        self.nucleoid = globals().get('NucleoidEngine', _NucleoidPlaceholder)()
         self._load_news_domain_rules()
     
     def _load_news_domain_rules(self):

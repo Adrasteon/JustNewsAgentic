@@ -32,7 +32,8 @@ from typing import Any, Dict, List
 # GPU and ML imports (graceful fallback if not available)
 try:
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+    # Only import the pipeline helper here; specific model classes aren't used at module level
+    from transformers import pipeline
 
     GPU_AVAILABLE = torch.cuda.is_available()
 except ImportError as e:
@@ -43,7 +44,6 @@ except ImportError as e:
 # Multi-Agent GPU Manager integration
 try:
     from agents.common.gpu_manager import (
-        get_gpu_manager,
         release_agent_gpu,
         request_agent_gpu,
     )
@@ -251,8 +251,8 @@ class GPUAcceleratedCritic:
             # Test with sample critique prompt
             test_prompt = "Critique this news article: Sample article for testing GPU memory allocation."
 
-            # Generate response to test memory
-            response = self.critique_pipeline(
+            # Generate response to test memory (assign to '_' because we don't use it)
+            _ = self.critique_pipeline(
                 test_prompt,
                 max_length=50,
                 num_return_sequences=1,

@@ -27,10 +27,8 @@ from typing import Any, Dict, List
 try:
     import numpy as np
     import torch
-    import torch.nn.functional as F
     from sentence_transformers import SentenceTransformer
     from sklearn.cluster import KMeans
-    from sklearn.decomposition import PCA
     from sklearn.metrics.pairwise import cosine_similarity
 
     GPU_AVAILABLE = torch.cuda.is_available()
@@ -43,7 +41,6 @@ except ImportError as e:
 # Multi-Agent GPU Manager integration
 try:
     from agents.common.gpu_manager import (
-        get_gpu_manager,
         release_agent_gpu,
         request_agent_gpu,
     )
@@ -240,7 +237,7 @@ class GPUAcceleratedSynthesizer:
             ]
 
             # Generate embeddings to test memory
-            embeddings = self.sentence_model.encode(
+            _embeddings = self.sentence_model.encode(
                 test_articles, batch_size=self.batch_size
             )
 

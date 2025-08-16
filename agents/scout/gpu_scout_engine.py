@@ -101,7 +101,7 @@ Respond with JSON format:
 
                 requests.get("https://huggingface.co", timeout=5)
                 use_offline = False
-            except:
+            except Exception:
                 logger.warning("No internet connection - using offline mode")
                 use_offline = True
                 os.environ["TRANSFORMERS_OFFLINE"] = "1"

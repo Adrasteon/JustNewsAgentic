@@ -183,7 +183,7 @@ Focus on the primary news story, ignore navigation and ads."""
             # Fallback: if structured parsing fails, use heuristics
             if not headline and not article:
                 # Simple fallback - first significant line as headline
-                significant_lines = [l.strip() for l in lines if len(l.strip()) > 10]
+                significant_lines = [line.strip() for line in lines if len(line.strip()) > 10]
                 if significant_lines:
                     headline = significant_lines[0][:100]  # First line as headline
                     article = " ".join(significant_lines[1:3]) if len(significant_lines) > 1 else ""

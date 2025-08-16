@@ -74,7 +74,6 @@ try:
     from training_system import (
         add_training_feedback,
         add_user_correction,
-        get_training_coordinator,
         initialize_online_training,
     )
 

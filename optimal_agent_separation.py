@@ -92,10 +92,20 @@ class OptimalNewsValidationPipeline:
     
     def comprehensive_validation(self, article_text: str, metadata: dict):
         # Stage 1: Neural Assessment
-        neural_results = fact_checker.process_article(article_text, metadata["source_url"])
+        # Use local placeholders if global agents are not available in this module
+        # Use globals lookup to avoid NameError at import/compile time if agents are not injected
+        fc = globals().get("fact_checker")
+        if fc is not None:
+            neural_results = fc.process_article(article_text, metadata["source_url"])
+        else:
+            neural_results = {"neural_assessment": {}, "processing_metadata": {"confidence": 0.0}}
         
         # Stage 2: Logic Validation  
-        logic_results = reasoning_agent.validate_with_logic(neural_results, metadata)
+        ra = globals().get("reasoning_agent")
+        if ra is not None:
+            logic_results = ra.validate_with_logic(neural_results, metadata)
+        else:
+            logic_results = {"logical_validation": {}, "orchestration_decision": {"consensus_confidence": 0.0, "recommended_action": "unknown"}, "explainability": {"reasoning_steps": []}}
         
         # Stage 3: Integrated Decision
         final_decision = {
