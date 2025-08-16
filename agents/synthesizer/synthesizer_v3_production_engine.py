@@ -27,12 +27,10 @@ import torch
 
 # Core ML Libraries
 try:
+    # Import only the transformers symbols actually used at runtime
     from transformers import (
-        AutoModelForSeq2SeqLM,
-        AutoTokenizer,
         BartForConditionalGeneration,
         BartTokenizer,
-        GenerationConfig,
         T5ForConditionalGeneration,
         T5Tokenizer,
         pipeline,
@@ -53,7 +51,11 @@ except ImportError:
 
 try:
     from bertopic import BERTopic
-    from bertopic.representation import KeyBERTInspired
+    # Optional: KeyBERTInspired is not always required; import lazily when used
+    try:
+        from bertopic.representation import KeyBERTInspired
+    except Exception:
+        KeyBERTInspired = None
 
     BERTOPIC_AVAILABLE = True
 except ImportError:
@@ -62,7 +64,11 @@ except ImportError:
 
 try:
     from sklearn.cluster import KMeans
-    from sklearn.feature_extraction.text import TfidfVectorizer
+    # TfidfVectorizer is optional and only used in some pipelines; import lazily when needed
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+    except Exception:
+        TfidfVectorizer = None
 
     SKLEARN_AVAILABLE = True
 except ImportError:
