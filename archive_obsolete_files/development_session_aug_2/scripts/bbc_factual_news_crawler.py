@@ -2,7 +2,7 @@ import asyncio
 import csv
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
 from crawl4ai.deep_crawling import BestFirstCrawlingStrategy
 from crawl4ai.deep_crawling.filters import FilterChain, DomainFilter, URLPatternFilter

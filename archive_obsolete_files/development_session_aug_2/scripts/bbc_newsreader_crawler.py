@@ -14,13 +14,10 @@ Key Insight: Screenshots capture fully rendered content including JavaScript-loa
 import asyncio
 import csv
 import random
-import time
-import re
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Any, Optional
 import aiohttp
-from urllib.parse import urljoin, urlparse
 from playwright.async_api import async_playwright
 
 # Import our validated NewsReader for screenshot analysis
@@ -164,7 +161,7 @@ class BBCScreenshotCrawler:
             
             # Phase 2: If we need more articles, check regional England sections
             if len(discovered_urls) < MAX_PAGES and len(discovered_urls) < 15:
-                print(f"\n📍 Exploring regional England sections for more articles...")
+                print("\n📍 Exploring regional England sections for more articles...")
                 
                 for section_url in fallback_sections:
                     if len(discovered_urls) >= MAX_PAGES:
@@ -355,7 +352,7 @@ class BBCScreenshotCrawler:
                 # Clean up screenshot
                 try:
                     os.remove(screenshot_path)
-                except:
+                except Exception:
                     pass
                 return None
             
@@ -387,7 +384,7 @@ class BBCScreenshotCrawler:
     async def crawl_bbc_with_screenshots(self):
         """Main crawling function using screenshot-based analysis."""
         
-        print(f"🕷️ Starting BBC crawl with screenshot analysis...")
+        print("🕷️ Starting BBC crawl with screenshot analysis...")
         print(f"📊 Target: {MAX_PAGES} pages")
         
         # Step 1: Discover BBC news URLs
@@ -438,7 +435,7 @@ class BBCScreenshotCrawler:
                 writer.writerow(row)
         
         print(f"💾 Results saved to {OUTPUT_CSV}")
-        print(f"📊 Summary:")
+        print("📊 Summary:")
         print(f"   Total articles: {len(self.results)}")
         print(f"   Average news score: {sum(r['news_score'] for r in self.results) / len(self.results):.2f}")
         print(f"   Screenshot-based extractions: {len(self.results)}")

@@ -1,14 +1,25 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.pythonProjects": [],
-    "python-envs.defaultPackageManager": "ms-python.python:conda",
-    "python.testing.unittestArgs": [
-        "-v",
-        "-s",
-        "./tests",
-        "-p",
-        "*test*.py"
-    ],
-    "python.testing.pytestEnabled": false,
-    "python.testing.unittestEnabled": true
+  "files.associations": {
+    "*.mmd": "mermaid",
+    "*.mermaid": "mermaid"
+  },
+  "editor.wordWrap": "on",
+  "editor.formatOnSave": false,
+  "mermaid.previewTheme": "default",
+  "mermaid.previewFontSize": 12,
+  "python-envs.defaultEnvManager": "ms-python.python:conda",
+  "python-envs.pythonProjects": [],
+  "python-envs.defaultPackageManager": "ms-python.python:conda",
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "./tests",
+    "-p",
+    "*test*.py"
+  ],
+  "python.testing.pytestEnabled": false,
+"python.testing.unittestEnabled": true,
+"workbench.editor.enablePreviewFromCodeNavigation": true,
+"workbench.editor.enablePreviewFromQuickOpen": true,
+"makefile.configureOnOpen": false
 }

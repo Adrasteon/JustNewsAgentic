@@ -5,7 +5,6 @@ Protected version that handles GPU memory cleanup properly to prevent core dumps
 """
 
 import sys
-import os
 import atexit
 import gc
 sys.path.insert(0, '/home/adra/JustNewsAgentic')
@@ -37,12 +36,11 @@ def test_online_training_system_safe():
         # Test 1: Core Training Coordinator (Safe Mode)
         print("📦 Testing Core Training Coordinator (Safe Mode)...")
         from training_system import (
-            initialize_online_training, get_training_coordinator,
-            add_training_feedback, add_user_correction, get_online_training_status
+            initialize_online_training
         )
         
         # Initialize training coordinator with low threshold for testing
-        coordinator = initialize_online_training(update_threshold=5)
+        _coordinator = initialize_online_training(update_threshold=5)
         print("✅ Training coordinator initialized safely")
         print()
         
@@ -50,10 +48,10 @@ def test_online_training_system_safe():
         print("🎯 Testing System-Wide Training Manager (Safe Mode)...")
         from training_system import (
             get_system_training_manager, collect_prediction,
-            submit_correction, get_training_dashboard, force_update
+            submit_correction, get_training_dashboard
         )
         
-        manager = get_system_training_manager()
+        _manager = get_system_training_manager()
         print("✅ System-wide training manager initialized safely")
         print()
         
@@ -71,7 +69,7 @@ def test_online_training_system_safe():
         print("✅ Prediction collection working")
         
         # Test user corrections
-        result = submit_correction(
+        _result = submit_correction(
             agent_name="fact_checker",
             task_type="fact_verification",
             input_text="Test claim",
@@ -82,7 +80,7 @@ def test_online_training_system_safe():
         print("✅ User correction system working")
         
         # Test dashboard
-        dashboard = get_training_dashboard()
+        _dashboard = get_training_dashboard()
         print("✅ Training dashboard functional")
         print()
         

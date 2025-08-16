@@ -52,12 +52,13 @@ try:
     
     _imports_available = True
     
-except ImportError as e:
+except ImportError:
     # Fallback for environments where dependencies aren't available
     _imports_available = False
     
     def _not_available(*args, **kwargs):
-        raise ImportError(f"Training system not available: {e}")
+        # Re-raise a clear ImportError without referencing an undefined variable
+        raise ImportError("Training system not available: required dependencies are missing")
     
     # Create placeholder functions
     OnTheFlyTrainingCoordinator = _not_available

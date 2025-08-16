@@ -16,7 +16,6 @@ Features:
 import asyncio
 import json
 import logging
-from pathlib import Path
 from typing import List, Dict, Optional
 import time
 from datetime import datetime
@@ -25,7 +24,7 @@ from datetime import datetime
 import sys
 sys.path.append('/home/adra/JustNewsAgentic')
 from crash_safe_newsreader import CrashSafeNewsReader
-from playwright.async_api import async_playwright, Page, Browser
+from playwright.async_api import async_playwright
 from PIL import Image
 import io
 
@@ -135,7 +134,7 @@ class BBCEnglandProductionCrawler:
                                 if len(urls) >= target_count:
                                     break
                                     
-                        except Exception as e:
+                        except Exception:
                             continue  # Skip individual link errors
                             
                     if len(urls) >= target_count:
@@ -203,7 +202,7 @@ class BBCEnglandProductionCrawler:
                         await cookie_button.first.click()
                         await asyncio.sleep(1)
                         break
-            except:
+            except Exception:
                 pass  # Cookie handling is optional
             
             # Capture full-page screenshot
@@ -495,7 +494,7 @@ async def main():
         print(f"🤖 Model: {results.get('newsreader_model', 'unknown')}")
         
         # Display extracted content samples
-        print(f"\n📰 EXTRACTED NEWS CONTENT SAMPLES:")
+        print("\n📰 EXTRACTED NEWS CONTENT SAMPLES:")
         print("-" * 90)
         
         for i, article in enumerate(results.get('extracted_articles', [])[:5], 1):

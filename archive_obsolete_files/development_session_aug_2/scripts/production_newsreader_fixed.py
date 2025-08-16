@@ -5,9 +5,7 @@ from transformers import LlavaProcessor, LlavaForConditionalGeneration
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
 from transformers import BitsAndBytesConfig
 from PIL import Image
-import numpy as np
-from typing import Optional, Dict, Any
-import warnings
+from typing import Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -114,7 +112,7 @@ class ProductionNewsReader:
                 # Log memory usage
                 if torch.cuda.is_available():
                     memory_gb = round(torch.cuda.memory_allocated() / 1024**3, 1)
-                    max_memory_gb = round(torch.cuda.max_memory_allocated() / 1024**3, 1)
+                    _max_memory_gb = round(torch.cuda.max_memory_allocated() / 1024**3, 1)
                     utilization = round((torch.cuda.memory_allocated() / torch.cuda.max_memory_allocated() * 100), 1) if torch.cuda.max_memory_allocated() > 0 else 0
                     
                     logger.info(f"💾 Memory: {memory_gb}GB allocated")

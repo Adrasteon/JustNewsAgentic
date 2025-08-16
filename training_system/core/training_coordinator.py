@@ -21,16 +21,13 @@ import json
 import logging
 import threading
 import time
-import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from collections import deque
-import numpy as np
 import torch
 from transformers import Trainer, TrainingArguments
 import psycopg2
-from psycopg2.extras import RealDictCursor
 
 # Import feedback logging utility
 try:
@@ -178,7 +175,7 @@ class OnTheFlyTrainingCoordinator:
             
             # Trigger immediate update for high-priority corrections
             if correction_priority >= 2:  # High or critical priority
-                logger.info(f"🚨 High-priority correction detected - triggering immediate update")
+                logger.info("🚨 High-priority correction detected - triggering immediate update")
                 self._schedule_immediate_update(agent_name)
     
     def add_prediction_feedback(self,
@@ -503,7 +500,7 @@ class OnTheFlyTrainingCoordinator:
                         }
                     )
             
-            logger.info(f"✅ NewsReader V2 training examples processed successfully")
+            logger.info("✅ NewsReader V2 training examples processed successfully")
             return update_success
             
         except Exception as e:
