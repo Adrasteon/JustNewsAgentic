@@ -159,6 +159,13 @@ def get_llama_model():
     """Return (model, tokenizer) or (None, None) for test environments."""
     return (None, None)
 
+# Expose a pipeline symbol for test monkeypatching (if transformers not loaded)
+try:
+    from transformers import pipeline as _pipeline
+    pipeline = _pipeline
+except Exception:
+    pipeline = None
+
 
 # =============================================================================
 # ESSENTIAL HELPER FUNCTIONS

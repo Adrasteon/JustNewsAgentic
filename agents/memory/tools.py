@@ -52,8 +52,12 @@ def get_db_connection():
 
 def log_feedback(event: str, details: dict):
     """Logs feedback to a file."""
-    with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
-        f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
+    try:
+        with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
+            f.write(f"{datetime.utcnow().isoformat()}\t{event}\t{details}\n")
+    except PermissionError:
+        # CI environments may restrict writing to repository root; silently skip
+        logger.debug("Skipping feedback log write due to permission error")
 
 
 def get_embedding_model():

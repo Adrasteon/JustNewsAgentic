@@ -436,6 +436,16 @@ def analyze_text_statistics(text: str) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+    # Compatibility shim used by tests: allow monkeypatching in test suites.
+    def get_mistral_model():
+        """Return a (model, tokenizer) tuple or (None, None) when not available.
+
+        Tests monkeypatch this symbol; exposing a simple stub keeps tests stable
+        when heavyweight models aren't available in the environment.
+        """
+        return (None, None)
+
+
 def extract_key_metrics(text: str, url: str = None) -> Dict[str, Any]:
     """
     Extract key numerical and statistical metrics from news text.
