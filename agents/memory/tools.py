@@ -6,7 +6,10 @@ import logging
 import os
 from datetime import datetime
 
-import psycopg2
+try:
+    import psycopg2
+except ImportError:  # pragma: no cover - optional dependency in test envs
+    psycopg2 = None
 import requests
 
 try:
@@ -29,6 +32,10 @@ logger = logging.getLogger("memory.tools")
 
 def get_db_connection():
     """Establishes a connection to the PostgreSQL database."""
+    if psycopg2 is None:
+        logger.warning("psycopg2 is not installed; database features are disabled in this environment")
+        return None
+
     try:
         conn = psycopg2.connect(
             host=POSTGRES_HOST,
@@ -37,7 +44,8 @@ def get_db_connection():
             password=POSTGRES_PASSWORD,
         )
         return conn
-    except psycopg2.OperationalError as e:
+    except Exception as e:
+        # psycopg2 may raise OperationalError or other subclasses; log and return None
         logger.error(f"Could not connect to PostgreSQL database: {e}")
         return None
 
@@ -60,6 +68,7 @@ def save_article(content: str, metadata: dict) -> dict:
     conn = get_db_connection()
     if not conn:
         return {"error": "Database connection failed"}
+
     try:
         with conn.cursor() as cur:
             embedding_model = get_embedding_model()
@@ -79,10 +88,19 @@ def save_article(content: str, metadata: dict) -> dict:
             return {"status": "success", "article_id": next_id}
     except Exception as e:
         logger.error(f"Error saving article: {e}")
-        conn.rollback()
+        try:
+            if conn is not None:
+                conn.rollback()
+        except Exception:
+            # Ignore rollback errors during cleanup
+            pass
         return {"error": str(e)}
     finally:
-        conn.close()
+        try:
+            if conn is not None:
+                conn.close()
+        except Exception:
+            pass
 
 
 def get_article(article_id: int) -> dict:
