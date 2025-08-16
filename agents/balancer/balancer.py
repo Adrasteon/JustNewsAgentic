@@ -1,8 +1,18 @@
 # --- Web Search Balance Endpoint ---
-from typing import List
+from typing import List, Any, Dict
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+import requests
+import requests as mcp_requests
+import structlog
+import torch
+from bs4 import BeautifulSoup
+import time
+import psutil
+from fastapi import APIRouter
 
 app = FastAPI()
 
@@ -111,17 +121,6 @@ Models:
 Status: V1 Prototype - MCP bus ready
 """
 
-from typing import Any, Dict, List
-
-# MCP Bus Integration
-import requests
-import requests as mcp_requests
-import structlog
-import torch
-from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer
-from transformers import pipeline
-
 MCP_BUS_URL = "http://localhost:8000"  # Update as needed
 
 logger = structlog.get_logger("balancer_agent")
@@ -134,7 +133,14 @@ def get_device() -> int:
 # Model initialization (JustNews conventions)
 def get_sentiment_pipeline():
     try:
-        return pipeline(
+        # lazy import to avoid heavy imports during module import
+        try:
+            from transformers import pipeline as _pipeline
+        except Exception as e:
+            logger.error("model_import_error", model="sentiment", error=str(e))
+            raise RuntimeError(f"transformers library not available: {e}")
+
+        return _pipeline(
             "sentiment-analysis",
             model="cardiffnlp/twitter-roberta-base-sentiment-latest",
             device=get_device(),
@@ -148,7 +154,13 @@ def get_sentiment_pipeline():
 
 def get_bias_pipeline():
     try:
-        return pipeline(
+        try:
+            from transformers import pipeline as _pipeline
+        except Exception as e:
+            logger.error("model_import_error", model="bias", error=str(e))
+            raise RuntimeError(f"transformers library not available: {e}")
+
+        return _pipeline(
             "text-classification",
             model="martin-ha/toxic-comment-model",
             device=get_device(),
@@ -160,23 +172,36 @@ def get_bias_pipeline():
 
 def get_fact_checker_pipelines():
     try:
-        return {
-            "distilbert": pipeline(
-                "text-classification",
-                model="distilbert-base-uncased",
-                device=get_device(),
+        # Lazy import heavy libraries
+        try:
+            from transformers import pipeline as _pipeline
+        except Exception as e:
+            logger.error("model_import_error", model="fact_checker", error=str(e))
+            raise RuntimeError(f"transformers library not available: {e}")
+
+        try:
+            from sentence_transformers import SentenceTransformer as _SentenceTransformer
+        except Exception:
+            _SentenceTransformer = None
+
+        pipelines = {
+            "distilbert": _pipeline(
+                "text-classification", model="distilbert-base-uncased", device=get_device()
             ),
-            "roberta": pipeline(
+            "roberta": _pipeline(
                 "text-classification", model="roberta-base", device=get_device()
             ),
-            "bert_large": pipeline(
+            "bert_large": _pipeline(
                 "text-classification", model="bert-large-uncased", device=get_device()
             ),
-            "sentence_transformer": SentenceTransformer(
-                "all-MiniLM-L6-v2", device=get_device()
+            "sentence_transformer": (
+                _SentenceTransformer("all-MiniLM-L6-v2", device=get_device())
+                if _SentenceTransformer is not None
+                else None
             ),
             # spaCy NER would be loaded separately if needed
         }
+        return pipelines
     except Exception as e:
         logger.error(
             "model_load_error", model="fact_checker", error=str(e), status="error"
@@ -186,7 +211,13 @@ def get_fact_checker_pipelines():
 
 def get_summarization_pipeline():
     try:
-        return pipeline(
+        try:
+            from transformers import pipeline as _pipeline
+        except Exception as e:
+            logger.error("model_import_error", model="summarization", error=str(e))
+            raise RuntimeError(f"transformers library not available: {e}")
+
+        return _pipeline(
             "summarization", model="facebook/bart-large-cnn", device=get_device()
         )
     except Exception as e:
@@ -198,7 +229,13 @@ def get_summarization_pipeline():
 
 def get_neutralization_pipeline():
     try:
-        return pipeline(
+        try:
+            from transformers import pipeline as _pipeline
+        except Exception as e:
+            logger.error("model_import_error", model="neutralization", error=str(e))
+            raise RuntimeError(f"transformers library not available: {e}")
+
+        return _pipeline(
             "text2text-generation", model="google/flan-t5-base", device=get_device()
         )
     except Exception as e:
@@ -210,7 +247,13 @@ def get_neutralization_pipeline():
 
 def get_quote_extraction_pipeline():
     try:
-        return pipeline(
+        try:
+            from transformers import pipeline as _pipeline
+        except Exception as e:
+            logger.error("model_import_error", model="quote_extraction", error=str(e))
+            raise RuntimeError(f"transformers library not available: {e}")
+
+        return _pipeline(
             "token-classification",
             model="Jean-Baptiste/roberta-large-ner-quotations",
             device=get_device(),
@@ -236,11 +279,7 @@ def fetch_article(url: str) -> str:
         return ""
 
 
-def call_agent_tool(agent: str, tool: str, *args, **kwargs) -> Any:
-    payload = {"agent": agent, "tool": tool, "args": list(args), "kwargs": kwargs}
-    response = mcp_requests.post(f"{MCP_BUS_URL}/call", json=payload)
-    response.raise_for_status()
-    return response.json()
+# Note: `call_agent_tool` implemented later with robust error handling and timeouts.
 
 
 # --- Multi-Agent Delegation ---
@@ -367,7 +406,6 @@ def main():
         "https://www.elystandard.co.uk/news/25387266.cambridgeshire-mayor-gets-funding-village-bus-routes/",
     ]
     main_article = fetch_article(main_url)
-    analysis = analyze_article(main_article)
     alt_articles = batch_fetch_articles(alt_urls)
     quotes = []
     for alt in alt_articles:
@@ -376,16 +414,7 @@ def main():
     print(balanced_article)
 
 
-import time
-
-import structlog
-
-# --- Balancer Agent V1: Full Implementation ---
-from fastapi import APIRouter
-from pydantic import BaseModel
-
 router = APIRouter()
-logger = structlog.get_logger("balancer_agent")
 
 
 class BalanceRequest(BaseModel):
@@ -518,10 +547,6 @@ def status_endpoint() -> Dict[str, Any]:
     mcp_status = check_mcp_bus_health()
     model_status = get_model_status()
     return {"agent": "balancer", "mcp_bus": mcp_status, "models": model_status}
-
-
-# --- Resource Monitoring Endpoint ---
-import psutil
 
 
 @app.get("/resource_status")
