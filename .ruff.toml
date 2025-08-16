@@ -7,6 +7,8 @@ extend-exclude = [
   "**/models/**",
   "**/model_store/**",
   "**/__pycache__/**",
+  "docs/archive/**",
+  "archive_obsolete_files/**",
 ]
 
 # We prefer to keep the full rule set enabled and apply per-file noqa where necessary.
