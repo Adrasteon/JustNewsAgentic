@@ -154,6 +154,12 @@ def assess_source_credibility(text: str, url: str = None) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+# Compatibility shim for tests that monkeypatch model getters
+def get_llama_model():
+    """Return (model, tokenizer) or (None, None) for test environments."""
+    return (None, None)
+
+
 # =============================================================================
 # ESSENTIAL HELPER FUNCTIONS
 # =============================================================================
