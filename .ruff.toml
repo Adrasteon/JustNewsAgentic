@@ -1,0 +1,13 @@
+# Ruff configuration for JustNewsAgentic
+# Conservative baseline: match Black's line length and exclude large model/cache folders.
+
+line-length = 88
+extend-exclude = [
+  "**/model_cache/**",
+  "**/models/**",
+  "**/model_store/**",
+  "**/__pycache__/**",
+]
+
+# We prefer to keep the full rule set enabled and apply per-file noqa where necessary.
+# Top rules observed in agents/ (from a recent run): F401, E722, F841, E402, F811
