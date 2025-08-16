@@ -20,10 +20,6 @@ import asyncio
 import logging
 import os
 import warnings
-
-# Suppress transformers warnings about slow processors
-warnings.filterwarnings("ignore", message=".*use_fast.*slow processor.*")
-warnings.filterwarnings("ignore", message=".*slow image processor.*")
 import json
 import time
 from dataclasses import dataclass
@@ -34,6 +30,11 @@ from typing import Any, Dict, List, Optional
 import torch
 from PIL import Image
 from playwright.async_api import async_playwright
+import gc
+
+# Suppress transformers warnings about slow processors
+warnings.filterwarnings("ignore", message=".*use_fast.*slow processor.*")
+warnings.filterwarnings("ignore", message=".*slow image processor.*")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +47,18 @@ try:
         LlavaOnevisionForConditionalGeneration,  # Updated for OneVision model
     )
     from transformers import LlavaOnevisionProcessor  # Updated for OneVision model
-    from transformers import CLIPModel, CLIPProcessor
+    # Import CLIP components only if available to avoid heavy optional imports
+    import importlib
+
+    CLIPModel = None
+    CLIPProcessor = None
+    if importlib.util.find_spec("transformers"):
+        try:
+            from transformers import CLIPModel, CLIPProcessor
+        except Exception:
+            # If CLIP components aren't available or fail to import, keep them as None
+            CLIPModel = None
+            CLIPProcessor = None
 
     LLAVA_AVAILABLE = True
 except ImportError:
@@ -150,13 +162,7 @@ class NewsReaderV2Engine:
     - V2 standards compliance (5+ models, zero warnings)
     """
 
-    def __enter__(self):
-        """Context manager entry"""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - ensure GPU memory cleanup"""
-        self.cleanup_gpu_memory()
+    
 
     def cleanup_gpu_memory(self):
         """AGGRESSIVE GPU memory cleanup to prevent crashes"""
@@ -195,9 +201,7 @@ class NewsReaderV2Engine:
 
         # Step 3: Aggressive CUDA cleanup
         if torch.cuda.is_available():
-            # Force garbage collection
-            import gc
-
+            # Force garbage collection (module-level import used)
             gc.collect()
 
             # Clear CUDA cache multiple times for stubborn memory
@@ -269,8 +273,7 @@ class NewsReaderV2Engine:
     def cleanup_memory(self):
         """Clean up GPU memory to prevent accumulation"""
         if self.device.type == "cuda":
-            import gc
-
+            # Use module-level gc import
             gc.collect()
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
@@ -279,7 +282,7 @@ class NewsReaderV2Engine:
         """Proper cleanup when engine is destroyed"""
         try:
             self.cleanup_memory()
-        except:
+        except Exception:
             pass  # Ignore errors during cleanup
 
     def _setup_device(self) -> torch.device:
