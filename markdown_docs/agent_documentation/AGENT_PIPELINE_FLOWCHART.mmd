@@ -1,0 +1,41 @@
+%%{init: {'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'curve': 'basis'}}}%%
+graph TD
+    A[Scout: /search_related_articles, /discover_sources] -->|URLs, sources| B[Balancer: /web_search_balance]
+    B -->|Batch delegation| C[Analyst: /analyze_text_statistics, /identify_entities]
+    B -->|Batch delegation| D[Fact Checker: /verify_facts, /validate_sources]
+    C -->|Entities, stats| D
+    D -->|Verified claims| E[Synthesizer: /cluster_articles, /synthesize_news_articles_gpu]
+    E -->|Synthesized output| F[Critic: /critique_synthesis, /critique_neutrality]
+    F -->|Critique| G[Chief Editor: /request_story_brief, /publish_story]
+    G -->|Story| H[Memory: /save_article, /vector_search_articles]
+    H -->|Stored articles| I[Reasoning: /add_fact, /validate_fact]
+    subgraph "Monitoring & Control"
+        J[Dashboard: /get_status, /send_command, /receive_logs]
+        J --> A
+        J --> B
+        J --> C
+        J --> D
+        J --> E
+        J --> F
+        J --> G
+        J --> H
+        J --> I
+    end
+    A -->|Crawled content| C
+    A -->|Crawled content| D
+    C -->|Analysis| E
+    D -->|Validation| E
+    E -->|Synthesis| F
+    F -->|Critique| G
+    G -->|Orchestration| H
+    H -->|Memory| I
+    I -->|Reasoning| J
+    J -->|Control| A
+    J -->|Control| B
+    J -->|Control| C
+    J -->|Control| D
+    J -->|Control| E
+    J -->|Control| F
+    J -->|Control| G
+    J -->|Control| H
+    J -->|Control| I
