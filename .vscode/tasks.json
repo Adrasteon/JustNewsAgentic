@@ -1,15 +1,38 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"command": "docker-compose up",
-			"label": "Build and Run Project",
-			"type": "shell",
-			"group": "build",
-			"isBackground": true,
-			"problemMatcher": [
-				"$docker-compose"
-			]
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run tests (justnews-v2-prod)",
+      "type": "shell",
+      "command": "conda run --name justnews-v2-prod pytest -q",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Run balancer (uvicorn)",
+      "type": "shell",
+      "command": "conda run --name justnews-v2-prod uvicorn agents.balancer.main:app --reload --port 8009",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "command": "docker-compose up",
+      "label": "Build and Run Project",
+      "type": "shell",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": [
+        "$docker-compose"
+      ]
+    }
+  ]
 }
