@@ -211,6 +211,21 @@ pre-commit install
 pytest tests/
 ```
 
+### Development environment (recommended)
+
+We maintain a pinned conda environment for development and testing named `justnews-v2-prod`.
+
+Create the environment from the provided YAML file:
+
+```bash
+conda env create -f environment-justnews-v2-prod.yml
+conda activate justnews-v2-prod
+# To update an existing environment:
+conda env update -n justnews-v2-prod -f environment-justnews-v2-prod.yml
+```
+
+This environment contains the test and dev dependencies used in the repository (pytest, ruff, FastAPI stack via pip, etc.). Use this env when running tests or starting local agents.
+
 ### Code Standards
 
 - **Python**: Follow PEP 8 style guidelines

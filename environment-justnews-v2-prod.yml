@@ -1,0 +1,26 @@
+# Conda environment for dev/test (pinned to project Python runtime)
+# Usage:
+#   conda env create -f environment-justnews-v2-prod.yml
+#   conda activate justnews-v2-prod
+# To update an existing env:
+#   conda env update -n justnews-v2-prod -f environment-justnews-v2-prod.yml
+name: justnews-v2-prod
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11.13
+  - pip
+  - ruff
+  - pytest
+  - pytest-asyncio
+  - requests
+  - httpx
+  # Include FastAPI stack and pydantic via pip to ensure latest compatible wheels
+  - pip:
+    - fastapi==0.95.2
+    - uvicorn[standard]==0.22.0
+    - pydantic==2.10.3
+    - pydantic-core==2.27.1
+    - pytest-cov==4.1.0
+    - types-requests==2.28.11.3
