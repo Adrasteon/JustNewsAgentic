@@ -19,19 +19,17 @@ import os
 import json
 import logging
 import time
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, TYPE_CHECKING
 from datetime import datetime
 import uuid
+from pathlib import Path
 
 # GPU and ML imports (graceful fallback if not available)
 try:
     import torch
     import numpy as np
-    from sentence_transformers import SentenceTransformer
     from sklearn.cluster import KMeans
-    from sklearn.decomposition import PCA
     from sklearn.metrics.pairwise import cosine_similarity
-    import torch.nn.functional as F
     GPU_AVAILABLE = torch.cuda.is_available()
 except ImportError as e:
     print(f"⚠️ GPU/ML libraries not available: {e}")
@@ -39,9 +37,13 @@ except ImportError as e:
     torch = None
     np = None
 
+# For type-only imports (numpy) avoid importing at runtime when unavailable
+if TYPE_CHECKING:
+    import numpy as np
+
 # Multi-Agent GPU Manager integration
 try:
-    from agents.common.gpu_manager import request_agent_gpu, release_agent_gpu, get_gpu_manager
+    from agents.common.gpu_manager import request_agent_gpu, release_agent_gpu
     GPU_MANAGER_AVAILABLE = True
 except ImportError:
     print("⚠️ GPU Manager not available - using standalone mode")
@@ -161,10 +163,32 @@ class GPUAcceleratedSynthesizer:
             logger.info("📦 Loading GPU-optimized models...")
             
             # Load sentence transformer for semantic analysis
-            self.sentence_model = SentenceTransformer(
-                'sentence-transformers/all-MiniLM-L6-v2',
-                device=f'cuda:{self.gpu_device}' if self.gpu_device >= 0 else 'cpu'
-            )
+            try:
+                from agents.common.embedding import get_shared_embedding_model
+                agent_cache = os.environ.get('SYNTHESIZER_GPU_CACHE') or str(Path('./agents/synthesizer/models').resolve())
+                self.sentence_model = get_shared_embedding_model(
+                    'sentence-transformers/all-MiniLM-L6-v2',
+                    cache_folder=agent_cache,
+                    device=f'cuda:{self.gpu_device}' if self.gpu_device >= 0 else 'cpu'
+                )
+            except Exception:
+                agent_cache = os.environ.get('SYNTHESIZER_GPU_CACHE') or str(Path('./agents/synthesizer/models').resolve())
+                try:
+                    from agents.common.embedding import ensure_agent_model_exists
+                    _ = ensure_agent_model_exists('sentence-transformers/all-MiniLM-L6-v2', agent_cache)
+                    from agents.common.embedding import get_shared_embedding_model
+                    self.sentence_model = get_shared_embedding_model(
+                        'sentence-transformers/all-MiniLM-L6-v2',
+                        cache_folder=agent_cache,
+                        device=f'cuda:{self.gpu_device}' if self.gpu_device >= 0 else 'cpu'
+                    )
+                except Exception:
+                    from agents.common.embedding import get_shared_embedding_model
+                    self.sentence_model = get_shared_embedding_model(
+                        'sentence-transformers/all-MiniLM-L6-v2',
+                        cache_folder=agent_cache,
+                        device=f'cuda:{self.gpu_device}' if self.gpu_device >= 0 else 'cpu'
+                    )
             
             # Initialize with GPU device
             if self.gpu_device >= 0:
@@ -194,11 +218,33 @@ class GPUAcceleratedSynthesizer:
         """Load models for CPU processing (fallback)"""
         try:
             logger.info("💻 Loading CPU models (fallback mode)...")
-            
-            self.sentence_model = SentenceTransformer(
-                'sentence-transformers/all-MiniLM-L6-v2',
-                device='cpu'
-            )
+            try:
+                from agents.common.embedding import get_shared_embedding_model
+                agent_cache = os.environ.get('SYNTHESIZER_GPU_CACHE', None) or str(Path('./agents/synthesizer/models').resolve())
+                self.sentence_model = get_shared_embedding_model(
+                    'sentence-transformers/all-MiniLM-L6-v2',
+                    cache_folder=agent_cache,
+                    device='cpu'
+                )
+            except Exception:
+                agent_cache = os.environ.get('SYNTHESIZER_GPU_CACHE', None) or str(Path('./agents/synthesizer/models').resolve())
+                try:
+                    from agents.common.embedding import ensure_agent_model_exists
+                    _ = ensure_agent_model_exists('sentence-transformers/all-MiniLM-L6-v2', agent_cache)
+                    from agents.common.embedding import get_shared_embedding_model
+                    self.sentence_model = get_shared_embedding_model(
+                        'sentence-transformers/all-MiniLM-L6-v2',
+                        cache_folder=agent_cache,
+                        device='cpu'
+                    )
+                except Exception:
+                    # Final fallback
+                    from agents.common.embedding import get_shared_embedding_model
+                    self.sentence_model = get_shared_embedding_model(
+                        'sentence-transformers/all-MiniLM-L6-v2',
+                        cache_folder=agent_cache,
+                        device='cpu'
+                    )
             
             self.clustering_model = KMeans(n_clusters=5, random_state=42, n_init=10)
             self.batch_size = 4  # Smaller batches for CPU
@@ -223,15 +269,15 @@ class GPUAcceleratedSynthesizer:
                 "Third article for comprehensive testing."
             ]
             
-            # Generate embeddings to test memory
-            embeddings = self.sentence_model.encode(test_articles, batch_size=self.batch_size)
+            # Generate embeddings to test memory (assignment intentionally ignored)
+            _ = self.sentence_model.encode(test_articles, batch_size=self.batch_size)
             
             # Check GPU memory usage
             if torch.cuda.is_available():
                 memory_allocated = torch.cuda.memory_allocated(self.gpu_device) / 1024**3
                 memory_cached = torch.cuda.memory_reserved(self.gpu_device) / 1024**3
                 
-                logger.info(f"✅ GPU memory test successful")
+                logger.info("✅ GPU memory test successful")
                 logger.info(f"   Allocated: {memory_allocated:.2f}GB")
                 logger.info(f"   Cached: {memory_cached:.2f}GB")
                 
@@ -364,7 +410,7 @@ class GPUAcceleratedSynthesizer:
                 "performance": {"processing_time": processing_time, "articles_processed": 0}
             }
     
-    def _generate_embeddings_batch(self, texts: List[str]) -> np.ndarray:
+    def _generate_embeddings_batch(self, texts: List[str]) -> Any:
         """Generate semantic embeddings with optimal batch processing"""
         try:
             if self.gpu_allocated:
@@ -391,7 +437,7 @@ class GPUAcceleratedSynthesizer:
             logger.error(f"❌ Embedding generation failed: {e}")
             raise
     
-    def _identify_themes(self, embeddings: np.ndarray, texts: List[str], metadata: List[Dict]) -> List[Dict[str, Any]]:
+    def _identify_themes(self, embeddings: Any, texts: List[str], metadata: List[Dict]) -> List[Dict[str, Any]]:
         """Identify themes through clustering analysis"""
         try:
             if len(embeddings) < 2:

@@ -10,10 +10,8 @@ This implements native TensorRT acceleration with validated performance:
 """
 
 import logging
-import os
 from datetime import datetime
 from typing import Optional, List
-from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

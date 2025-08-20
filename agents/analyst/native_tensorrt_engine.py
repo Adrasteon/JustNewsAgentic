@@ -16,7 +16,7 @@ import logging
 import time
 import numpy as np
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any
 import json
 import os
 import sys
@@ -124,7 +124,7 @@ class NativeTensorRTInferenceEngine:
                 self.contexts['sentiment'] = context
                 self.engine_metadata['sentiment'] = metadata
                 
-                logger.info(f"✅ sentiment native engine loaded:")
+                logger.info("✅ sentiment native engine loaded:")
                 logger.info(f"   Max Batch Size: {metadata.get('max_batch_size', 'N/A')}")
                 logger.info(f"   Precision: {metadata.get('precision', 'N/A').upper()}")
             
@@ -147,7 +147,7 @@ class NativeTensorRTInferenceEngine:
                 self.contexts['bias'] = context
                 self.engine_metadata['bias'] = metadata
                 
-                logger.info(f"✅ bias native engine loaded:")
+                logger.info("✅ bias native engine loaded:")
                 logger.info(f"   Max Batch Size: {metadata.get('max_batch_size', 'N/A')}")
                 logger.info(f"   Precision: {metadata.get('precision', 'N/A').upper()}")
             
@@ -774,7 +774,7 @@ if __name__ == "__main__":
     
     # Show engine info
     engine_info = engine.get_engine_info()
-    print(f"\n📊 Engine Status:")
+    print("\n📊 Engine Status:")
     for task, info in engine_info.items():
         status = "✅ LOADED" if info['loaded'] else "❌ NOT FOUND"
         print(f"  {task.capitalize()}: {status}")
@@ -798,11 +798,11 @@ if __name__ == "__main__":
     batch_sentiments = engine.score_sentiment_batch_native(test_batch)
     batch_bias = engine.score_bias_batch_native(test_batch)
     
-    print(f"✅ Batch completed successfully")
+    print("✅ Batch completed successfully")
     
     # Performance stats
     stats = engine.get_performance_stats()
-    print(f"\n📈 Performance Stats:")
+    print("\n📈 Performance Stats:")
     print(f"  Native Requests: {stats.get('native_requests', 0)}")
     print(f"  Fallback Requests: {stats.get('fallback_requests', 0)}")
     

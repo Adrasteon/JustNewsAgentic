@@ -22,12 +22,13 @@ import torch
 import json
 import pickle
 import numpy as np
-from typing import List, Dict, Optional, Tuple, Any, Union
+from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 import hashlib
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
 import sqlite3
+from pathlib import Path
 
 # Core ML Libraries
 try:
@@ -87,7 +88,11 @@ VECTOR_DB_PATH = os.environ.get("MEMORY_V2_VECTOR_DB", "./memory_v2_vectordb")
 POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "localhost")
 POSTGRES_DB = os.environ.get("POSTGRES_DB", "justnews")
 POSTGRES_USER = os.environ.get("POSTGRES_USER", "justnews_user")
-POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "")
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "your_password")
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+# Default to enforcing Postgres in production; operator can set MEMORY_V2_FORCE_POSTGRES=false for dev
+FORCE_POSTGRES = os.environ.get("MEMORY_V2_FORCE_POSTGRES", "true").lower() in ("1", "true", "yes")
 
 SQLITE_DB_PATH = os.environ.get("MEMORY_V2_SQLITE", "./memory_v2.db")
 
@@ -281,15 +286,31 @@ class MemoryV2Engine:
             if not SENTENCE_TRANSFORMERS_AVAILABLE:
                 logger.warning("SentenceTransformers not available - using basic embeddings")
                 return
-                
-            self.models['embeddings'] = SentenceTransformer(
-                self.config.embedding_model,
-                cache_folder=self.config.cache_dir
-            )
-            
-            # Move to GPU if available
-            if self.device.type == 'cuda':
-                self.models['embeddings'] = self.models['embeddings'].to(self.device)
+            # Prefer the shared embedding helper if available
+            try:
+                from agents.common.embedding import get_shared_embedding_model
+                self.models['embeddings'] = get_shared_embedding_model(
+                    self.config.embedding_model,
+                    cache_folder=self.config.cache_dir,
+                    device=self.device
+                )
+            except Exception:
+                # Fallback: use agent-local models directory
+                from agents.common.embedding import get_shared_embedding_model as _helper
+                agent_cache = str(Path("./agents/memory/models").resolve())
+                self.models['embeddings'] = _helper(
+                    self.config.embedding_model,
+                    cache_folder=agent_cache,
+                    device=self.device
+                )
+
+            # Move to GPU if available (some SentenceTransformer instances support .to())
+            try:
+                if self.device.type == 'cuda' and hasattr(self.models['embeddings'], 'to'):
+                    self.models['embeddings'] = self.models['embeddings'].to(self.device)
+            except Exception:
+                # Ignore device transfer failures and continue on CPU
+                logger.debug("Unable to move embedding model to CUDA device; continuing on CPU")
             
             # Validate embedding dimension
             test_embedding = self.models['embeddings'].encode(["test"])
@@ -355,8 +376,18 @@ class MemoryV2Engine:
     def _initialize_database(self):
         """Initialize metadata database"""
         try:
-            if self.config.use_postgresql and POSTGRESQL_AVAILABLE:
-                self._initialize_postgresql()
+            # Prefer PostgreSQL when available or explicitly forced via env
+            if (self.config.use_postgresql and POSTGRESQL_AVAILABLE) or FORCE_POSTGRES:
+                # Attempt PostgreSQL init. If FORCE_POSTGRES is set we want fail-fast
+                try:
+                    self._initialize_postgresql()
+                except Exception:
+                    if FORCE_POSTGRES:
+                        # If operator requested Postgres only, raise to surface the error
+                        raise
+                    # Otherwise fall back to SQLite
+                    logger.warning("PostgreSQL initialization failed - falling back to SQLite")
+                    self._initialize_sqlite()
             else:
                 self._initialize_sqlite()
                 
@@ -367,27 +398,30 @@ class MemoryV2Engine:
         """Initialize PostgreSQL with vector extensions"""
         try:
             if not POSTGRESQL_AVAILABLE:
-                logger.warning("psycopg2 not available - falling back to SQLite")
-                self._initialize_sqlite()
-                return
+                logger.error("psycopg2 not available - cannot initialize PostgreSQL")
+                raise RuntimeError("psycopg2 not installed; install psycopg2 to use PostgreSQL for Memory V2")
                 
             # Check if all required environment variables are set
-            if not all([POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER]):
-                logger.warning("PostgreSQL environment variables not set - falling back to SQLite")
-                self._initialize_sqlite() 
-                return
+            # Allow DATABASE_URL or individual POSTGRES_* variables
+            if not DATABASE_URL and not all([POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER]):
+                logger.error("PostgreSQL environment variables not set and DATABASE_URL not provided")
+                raise RuntimeError("PostgreSQL configuration not provided via DATABASE_URL or POSTGRES_* env vars")
                 
             # Connect to PostgreSQL using environment variables
             import psycopg2
             from psycopg2.extras import RealDictCursor
             
-            self.postgresql_conn = psycopg2.connect(
-                host=POSTGRES_HOST,
-                database=POSTGRES_DB,
-                user=POSTGRES_USER,
-                password=POSTGRES_PASSWORD,
-                cursor_factory=RealDictCursor
-            )
+            # Prefer DATABASE_URL if provided
+            if DATABASE_URL:
+                self.postgresql_conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+            else:
+                self.postgresql_conn = psycopg2.connect(
+                    host=POSTGRES_HOST,
+                    database=POSTGRES_DB,
+                    user=POSTGRES_USER,
+                    password=POSTGRES_PASSWORD,
+                    cursor_factory=RealDictCursor
+                )
             
             # Test connection
             with self.postgresql_conn.cursor() as cursor:
@@ -420,6 +454,9 @@ class MemoryV2Engine:
             
         except Exception as e:
             logger.error(f"Error connecting to PostgreSQL: {e}")
+            # When forcing Postgres, surface the error to prevent silent fallback
+            if FORCE_POSTGRES:
+                raise
             logger.info("Falling back to SQLite")
             self._initialize_sqlite()
     

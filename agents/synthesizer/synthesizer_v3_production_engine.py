@@ -18,25 +18,20 @@ Integration: V2 API compatibility with enhanced reliability
 import os
 import logging
 import torch
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Any
 from datetime import datetime
-import numpy as np
-from dataclasses import dataclass, field
-import warnings
+from dataclasses import dataclass
+from pathlib import Path
 
-import warnings
-from datetime import datetime, timezone  # FIXED: Modern timezone-aware datetime
 
 # Remove warning suppressions - we'll fix root causes instead
-import logging
 
 # Core ML Libraries
 try:
     from transformers import (
-        AutoModelForSeq2SeqLM, AutoTokenizer,
         BartForConditionalGeneration, BartTokenizer,
         T5ForConditionalGeneration, T5Tokenizer,
-        pipeline, GenerationConfig
+        pipeline
     )
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
@@ -44,15 +39,15 @@ except ImportError:
     logging.warning("transformers not available - falling back to CPU processing")
 
 try:
-    from sentence_transformers import SentenceTransformer
+    # sentence-transformers used via agents.common.embedding at runtime
     SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
+except Exception:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
     logging.warning("sentence-transformers not available")
 
 try:
     from bertopic import BERTopic
-    from bertopic.representation import KeyBERTInspired
+    # KeyBERTInspired imported dynamically where needed
     BERTOPIC_AVAILABLE = True
 except ImportError:
     BERTOPIC_AVAILABLE = False
@@ -60,7 +55,6 @@ except ImportError:
 
 try:
     from sklearn.cluster import KMeans
-    from sklearn.feature_extraction.text import TfidfVectorizer
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
@@ -140,12 +134,24 @@ class SynthesizerV3ProductionEngine:
             if not SENTENCE_TRANSFORMERS_AVAILABLE:
                 logger.warning("SentenceTransformers not available - clustering disabled")
                 return
-                
-            self.embedding_model = SentenceTransformer(
-                self.config.embedding_model,
-                cache_folder=self.config.cache_dir,
-                device=self.device
-            )
+            # Prefer the shared embedding model helper if present to avoid
+            # repeated downloads and multiple instances in the same process.
+            try:
+                from agents.common.embedding import get_shared_embedding_model
+                self.embedding_model = get_shared_embedding_model(
+                    self.config.embedding_model,
+                    cache_folder=self.config.cache_dir,
+                    device=self.device
+                )
+            except Exception:
+                # Fallback: place agent-specific model under agents/synthesizer/models
+                from agents.common.embedding import get_shared_embedding_model as _helper
+                agent_cache = str(Path("./agents/synthesizer/models").resolve())
+                self.embedding_model = _helper(
+                    self.config.embedding_model,
+                    cache_folder=agent_cache,
+                    device=self.device
+                )
             
             logger.info("✅ SentenceTransformer embedding model loaded (reusable instance)")
             

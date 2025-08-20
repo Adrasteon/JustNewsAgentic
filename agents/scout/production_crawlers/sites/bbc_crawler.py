@@ -16,11 +16,11 @@ import asyncio
 import json
 import time
 import re
+import random
 from datetime import datetime
 from playwright.async_api import async_playwright
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ultra_fast_bbc")
@@ -206,6 +206,13 @@ class UltraFastBBCCrawler:
             
             # Close immediately
             await context.close()
+
+            # Throttle per-article to reduce crawling speed: random sleep 1-3 seconds
+            try:
+                delay = random.uniform(1.0, 3.0)
+                await asyncio.sleep(delay)
+            except Exception:
+                pass
             
             # Fast news scoring
             news_score = self.calculate_news_score(content_data["title"], content_data["content"])
@@ -366,7 +373,7 @@ class UltraFastBBCCrawler:
         except Exception as e:
             logger.warning(f"Could not save results file: {e}")
         
-        logger.info(f"🎉 Ultra-Fast Crawl Complete!")
+        logger.info("🎉 Ultra-Fast Crawl Complete!")
         logger.info(f"📊 {len(results)} articles in {total_time:.1f}s")
         logger.info(f"⚡ Rate: {len(results) / total_time:.2f} articles/second")
         logger.info(f"✅ Success Rate: {len(results) / len(urls) * 100:.1f}%")

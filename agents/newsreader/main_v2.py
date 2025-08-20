@@ -14,9 +14,8 @@ V2 Features:
 import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Any, List, Dict, Union, Optional
+from typing import Any, List, Union, Optional
 import uvicorn
-import asyncio
 import requests
 import os
 from contextlib import asynccontextmanager

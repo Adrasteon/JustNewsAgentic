@@ -100,6 +100,7 @@ def validate_claims_endpoint(request: dict):
             content = request["args"][0]
         elif "kwargs" in request and "content" in request["kwargs"]:
             content = request["kwargs"]["content"]
+            logger.debug(f"validate_claims received content of length {len(content)}")
         else:
             raise ValueError("Missing 'content' in request")
 

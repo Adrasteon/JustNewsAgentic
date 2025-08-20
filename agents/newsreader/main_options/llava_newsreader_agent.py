@@ -7,7 +7,6 @@ GPU Memory: 15.1GB (60% utilization on RTX 3090)
 
 import asyncio
 import logging
-import os
 import time
 import torch
 from contextlib import asynccontextmanager
@@ -17,7 +16,6 @@ from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
-import json
 from typing import Dict, Optional
 
 # Enable CUDA optimizations for maximum performance

@@ -21,7 +21,7 @@ import re
 import statistics
 import warnings
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any
 from collections import Counter, defaultdict
 
 # Configure logging with production standards

@@ -55,9 +55,12 @@ try:
 except ImportError as e:
     # Fallback for environments where dependencies aren't available
     _imports_available = False
-    
+    _import_error_message = str(e)
+
     def _not_available(*args, **kwargs):
-        raise ImportError(f"Training system not available: {e}")
+        # Use a captured string to avoid referencing the exception object
+        # which may not be available at call-time in some import scenarios.
+        raise ImportError(f"Training system not available: {_import_error_message}")
     
     # Create placeholder functions
     OnTheFlyTrainingCoordinator = _not_available

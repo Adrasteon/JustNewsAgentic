@@ -15,19 +15,46 @@ Models:
 Status: V1 Prototype - MCP bus ready
 """
 
-import structlog
+try:
+    import structlog  # type: ignore[import]
+except Exception:
+    structlog = None
+
+import os
 from typing import List, Dict, Any
 import torch
 from transformers import pipeline
-from sentence_transformers import SentenceTransformer
-from bs4 import BeautifulSoup
-import requests
+from pathlib import Path
+import importlib
+import time
+import psutil
+try:
+    SentenceTransformer = None
+except Exception:
+    try:
+        from sentence_transformers import SentenceTransformer
+    except Exception:
+        SentenceTransformer = None
+try:
+    from bs4 import BeautifulSoup
+except Exception:
+    BeautifulSoup = None
+try:
+    import requests
+    import requests as mcp_requests
+except Exception:
+    requests = None
+    mcp_requests = None
 
-# MCP Bus Integration
-import requests as mcp_requests
 MCP_BUS_URL = "http://localhost:8000"  # Update as needed
 
-logger = structlog.get_logger("balancer_agent")
+# Fallback logger when structlog not available
+if structlog is not None:
+    logger = structlog.get_logger("balancer_agent")
+else:
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("balancer_agent")
 
 def get_device() -> int:
     return 0 if torch.cuda.is_available() else -1
@@ -49,11 +76,56 @@ def get_bias_pipeline():
 
 def get_fact_checker_pipelines():
     try:
+        # Build sentence_transformer separately so we can handle fallbacks cleanly
+        agent_cache = os.environ.get('BALANCER_MODEL_CACHE') or str(Path('./agents/balancer/models').resolve())
+        sentence_transformer = None
+        # Prefer a top-level imported helper if it exists (avoids importing inside function)
+        helper = globals().get('get_shared_embedding_model')
+        if helper is not None:
+            try:
+                sentence_transformer = helper("all-MiniLM-L6-v2", cache_folder=agent_cache, device=get_device())
+            except Exception:
+                sentence_transformer = None
+
+        if sentence_transformer is None:
+            # Try importing the helper module dynamically to avoid creating a local name
+            try:
+                emb = importlib.import_module('agents.common.embedding')
+                ensure_agent_model_exists = getattr(emb, 'ensure_agent_model_exists', None)
+                helper2 = getattr(emb, 'get_shared_embedding_model', None)
+                if ensure_agent_model_exists:
+                    try:
+                        ensure_agent_model_exists('all-MiniLM-L6-v2', agent_cache)
+                    except Exception:
+                        pass
+                if helper2 is not None:
+                    sentence_transformer = helper2('all-MiniLM-L6-v2', cache_folder=agent_cache, device=get_device())
+            except Exception:
+                sentence_transformer = None
+
+        if sentence_transformer is None:
+            # Last resort: use SentenceTransformer class if available
+            try:
+                from agents.common.embedding import ensure_agent_model_exists
+                model_dir = ensure_agent_model_exists('all-MiniLM-L6-v2', agent_cache)
+                if SentenceTransformer is not None:
+                    sentence_transformer = SentenceTransformer(str(model_dir), device=get_device())
+                else:
+                    sentence_transformer = None
+            except Exception:
+                if SentenceTransformer is not None:
+                    try:
+                        sentence_transformer = SentenceTransformer("all-MiniLM-L6-v2", cache_folder=agent_cache, device=get_device())
+                    except Exception:
+                        sentence_transformer = None
+                else:
+                    sentence_transformer = None
+
         return {
             "distilbert": pipeline("text-classification", model="distilbert-base-uncased", device=get_device()),
             "roberta": pipeline("text-classification", model="roberta-base", device=get_device()),
             "bert_large": pipeline("text-classification", model="bert-large-uncased", device=get_device()),
-            "sentence_transformer": SentenceTransformer("all-MiniLM-L6-v2", device=get_device()),
+            "sentence_transformer": sentence_transformer,
             # spaCy NER would be loaded separately if needed
         }
     except Exception as e:
@@ -211,7 +283,7 @@ def main():
         "https://www.elystandard.co.uk/news/25387266.cambridgeshire-mayor-gets-funding-village-bus-routes/"
     ]
     main_article = fetch_article(main_url)
-    analysis = analyze_article(main_article)
+    _ = analyze_article(main_article)
     alt_articles = batch_fetch_articles(alt_urls)
     quotes = []
     for alt in alt_articles:
@@ -221,14 +293,37 @@ def main():
 
 
 # MCP Bus Registration and Health Check (JustNews V4 pattern)
-from fastapi import FastAPI, HTTPException, Request
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel
-import uvicorn
+try:
+    from fastapi import FastAPI, HTTPException, Request
+    from fastapi.responses import JSONResponse
+    from fastapi.exceptions import RequestValidationError
+    from pydantic import BaseModel
+    import uvicorn
+except Exception:
+    # Provide minimal fallbacks when FastAPI stack isn't installed
+    FastAPI = None
+    HTTPException = Exception
+    Request = object
+    JSONResponse = dict
+    RequestValidationError = Exception
+    BaseModel = object
+    uvicorn = None
+
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler  # type: ignore[import]
+    from slowapi.util import get_remote_address  # type: ignore[import]
+    from slowapi.errors import RateLimitExceeded  # type: ignore[import]
+except Exception:
+    # No-op rate limiter fallbacks
+    def _rate_limit_exceeded_handler(request, exc):
+        return JSONResponse({"error": "rate_limited"})
+    def get_remote_address(request=None):
+        return "127.0.0.1"
+    class Limiter:
+        def __init__(self, key_func=None):
+            pass
+    class RateLimitExceeded(Exception):
+        pass
 
 # FastAPI app initialization (must be before handlers and endpoints)
 
@@ -240,7 +335,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Custom error handler for request validation
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(request, exc):
     logger.error("request_validation_error", error=str(exc), status="error")
     return JSONResponse(
         status_code=422,
@@ -253,7 +348,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 # Custom error handler for HTTPException
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(request, exc):
     logger.error("http_exception", error=str(exc.detail), status="error", code=exc.status_code)
     return JSONResponse(
         status_code=exc.status_code,
@@ -279,9 +374,6 @@ def register_agent(reg: AgentRegistration) -> Dict[str, Any]:
 def health_check() -> Dict[str, str]:
     """Health check endpoint for MCP bus compliance."""
     return {"status": "ok", "agent": "balancer"}
-
-# --- MCP Bus Health Check and Status Endpoint ---
-import time
 
 def check_mcp_bus_health() -> Dict[str, Any]:
     """Check MCP bus health by querying /health endpoint."""
@@ -325,7 +417,6 @@ def status_endpoint() -> Dict[str, Any]:
     }
 
 # --- Resource Monitoring Endpoint ---
-import psutil
 
 @app.get("/resource_status")
 def resource_status() -> Dict[str, Any]:

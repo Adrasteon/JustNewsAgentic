@@ -12,7 +12,7 @@ from transformers import (
     pipeline,
     BitsAndBytesConfig
 )
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Tuple
 import json
 from datetime import datetime
 import re

@@ -7,21 +7,18 @@ V4 Compliance: Designed for multi-agent orchestration, FastAPI, and MCP bus inte
 Dependencies: git, networkx, fastapi, pydantic, uvicorn
 """
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from contextlib import asynccontextmanager
 import os
 import sys
 import subprocess
-import tempfile
 import json
 import logging
-import importlib.util
 import requests
 from datetime import datetime
 from pathlib import Path
-import shutil
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -62,7 +59,7 @@ class SimpleNucleoidImplementation:
         statement = statement.strip()
         
         # Handle variable assignments (facts) - simple assignments only
-        if "=" in statement and not "==" in statement and not any(op in statement for op in ["+", "-", "*", "/", "if", "then"]):
+        if "=" in statement and "==" not in statement and not any(op in statement for op in ["+", "-", "*", "/", "if", "then"]):
             parts = statement.split("=")
             if len(parts) == 2:
                 var_name = parts[0].strip()
@@ -323,7 +320,7 @@ class NucleoidEngine:
             
             for stmt in statements:
                 # Check for direct variable assignments (x = 5, x = 10)
-                if "=" in stmt and not "==" in stmt and not any(op in stmt for op in ["+", "-", "*", "/", "if", "then", ">", "<"]):
+                if "=" in stmt and "==" not in stmt and not any(op in stmt for op in ["+", "-", "*", "/", "if", "then", ">", "<"]):
                     parts = stmt.split("=")
                     if len(parts) == 2:
                         var_name = parts[0].strip()

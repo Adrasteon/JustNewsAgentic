@@ -4,7 +4,6 @@ Integrates with JustNews V4 MCP Bus system
 """
 
 from fastapi import FastAPI
-import asyncio
 import uvicorn
 import requests
 import logging
@@ -44,7 +43,7 @@ class MCPBusClient:
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from newsreader_agent import PracticalNewsReader, ToolCall as NewsExtractionRequest
+from newsreader_agent import PracticalNewsReader
 
 # Global agent instance
 agent = None

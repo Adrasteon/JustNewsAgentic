@@ -1,5 +1,3 @@
-import subprocess
-import os
 
 # Path to the requirements file
 requirements_file = "agents/scout/requirements.txt"

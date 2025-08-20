@@ -15,15 +15,15 @@ Models:
 
 Status: V2 Production Ready - Phase 2 Implementation
 """
-
 import os
 import logging
 import torch
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 import numpy as np
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 # Core ML Libraries
 try:
@@ -181,20 +181,21 @@ class CriticV2Engine:
             if not TRANSFORMERS_AVAILABLE:
                 logger.warning("Transformers not available - skipping BERT")
                 return
-                
+
+            # Load a BERT-based sequence classification model for quality assessment
             self.models['bert'] = BertForSequenceClassification.from_pretrained(
                 self.config.bert_model,
                 cache_dir=self.config.cache_dir,
-                num_labels=5,  # Quality scores 1-5
+                num_labels=2,
                 torch_dtype=torch.float16 if self.device.type == 'cuda' else torch.float32
             ).to(self.device)
-            
+
             self.tokenizers['bert'] = BertTokenizer.from_pretrained(
                 self.config.bert_model,
                 cache_dir=self.config.cache_dir
             )
-            
-            # Create quality assessment pipeline
+
+            # Create a simple pipeline for quality scoring
             self.pipelines['bert_quality'] = pipeline(
                 "text-classification",
                 model=self.models['bert'],
@@ -202,9 +203,9 @@ class CriticV2Engine:
                 device=0 if self.device.type == 'cuda' else -1,
                 top_k=None
             )
-            
-            logger.info("✅ BERT quality assessment model loaded successfully")
-            
+
+            logger.info("✅ BERT quality model loaded successfully")
+
         except Exception as e:
             logger.error(f"Error loading BERT model: {e}")
             self.models['bert'] = None
@@ -327,15 +328,34 @@ class CriticV2Engine:
             if not SENTENCE_TRANSFORMERS_AVAILABLE:
                 logger.warning("SentenceTransformers not available - using basic similarity")
                 return
-                
-            self.models['embeddings'] = SentenceTransformer(
-                self.config.embedding_model,
-                cache_folder=self.config.cache_dir
-            )
-            
-            # Move to GPU if available
-            if self.device.type == 'cuda':
-                self.models['embeddings'] = self.models['embeddings'].to(self.device)
+            # Prefer shared helper to avoid duplicate heavy loads
+            agent_cache = os.environ.get('CRITIC_MODEL_CACHE') or str(Path('./agents/critic/models').resolve())
+            try:
+                from agents.common.embedding import get_shared_embedding_model
+                self.models['embeddings'] = get_shared_embedding_model(
+                    self.config.embedding_model,
+                    cache_folder=agent_cache,
+                    device=self.device
+                )
+            except Exception:
+                try:
+                    from agents.common.embedding import ensure_agent_model_exists, get_shared_embedding_model
+                    model_dir = ensure_agent_model_exists(self.config.embedding_model, agent_cache)
+                    self.models['embeddings'] = get_shared_embedding_model(self.config.embedding_model, cache_folder=agent_cache, device=self.device)
+                except Exception:
+                    try:
+                        from agents.common.embedding import get_shared_embedding_model
+                        self.models['embeddings'] = get_shared_embedding_model(self.config.embedding_model, cache_folder=agent_cache, device=self.device)
+                    except Exception:
+                        # Last resort: leave as None and allow higher-level fallbacks
+                        self.models['embeddings'] = None
+
+            # Attempt to move to GPU where supported
+            try:
+                if self.device.type == 'cuda' and hasattr(self.models['embeddings'], 'to'):
+                    self.models['embeddings'] = self.models['embeddings'].to(self.device)
+            except Exception:
+                logger.debug("Unable to move critic embedding model to CUDA device; continuing on CPU")
             
             logger.info("✅ SentenceTransformer similarity model loaded successfully")
             

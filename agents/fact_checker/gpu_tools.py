@@ -6,13 +6,11 @@ import os
 import logging
 import torch
 from datetime import datetime
-from typing import Dict, List, Any, Optional
-from pathlib import Path
+from typing import Dict, List, Any
 
 # GPU acceleration imports
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-    from transformers.pipelines import pipeline as transformers_pipeline
     HAS_TRANSFORMERS = True
 except ImportError as e:
     logging.warning(f"Transformers not available: {e}")
@@ -127,35 +125,33 @@ class GPUAcceleratedFactChecker:
         GPU-accelerated news validation with performance tracking
         """
         start_time = datetime.now()
-        
         try:
             if self.gpu_available and self.models_loaded:
                 # GPU-accelerated zero-shot classification
                 candidate_labels = ["news article", "opinion piece", "advertisement", "personal blog"]
                 result = self.news_validation_pipeline(content, candidate_labels)
-                
+
                 # Extract results
                 scores = {label: score for label, score in zip(result['labels'], result['scores'])}
                 is_news = result['labels'][0] == "news article" and result['scores'][0] > 0.5
                 confidence = result['scores'][0]
-                
+
                 self.performance_stats['gpu_requests'] += 1
                 method = "gpu_classification"
-                
             else:
                 # CPU fallback: keyword-based validation (original logic)
                 keywords = ["breaking", "report", "headline", "news", "according to", "sources"]
                 is_news = any(keyword in content.lower() for keyword in keywords)
                 confidence = len([k for k in keywords if k in content.lower()]) / len(keywords)
                 scores = {"keyword_match": confidence}
-                
+
                 self.performance_stats['fallback_requests'] += 1
                 method = "cpu_keywords"
-            
+
             # Performance tracking
             elapsed = (datetime.now() - start_time).total_seconds()
             self._update_performance_stats(elapsed)
-            
+
             result = {
                 "is_news": is_news,
                 "confidence": confidence,
@@ -163,15 +159,14 @@ class GPUAcceleratedFactChecker:
                 "method": method,
                 "processing_time": elapsed
             }
-            
+
             log_feedback("validate_is_news", {
                 "content_length": len(content),
                 "result": result,
                 "method": method
             })
-            
+
             return result
-            
         except Exception as e:
             logger.error(f"Error in validate_is_news: {e}")
             log_feedback("validate_is_news_error", {"error": str(e), "content_length": len(content)})
@@ -188,8 +183,7 @@ class GPUAcceleratedFactChecker:
         """
         GPU-accelerated batch claim verification with DialoGPT-large
         """
-        start_time = datetime.now()
-        
+    # top-level timing is handled within specialized methods
         try:
             if self.gpu_available and self.models_loaded:
                 return self._gpu_verify_claims(claims, sources)
@@ -286,7 +280,7 @@ class GPUAcceleratedFactChecker:
                         results[claim] = "verified"
                     else:
                         results[claim] = "not verified"
-                except:
+                except Exception:
                     results[claim] = "error"
         else:
             # Basic keyword matching fallback

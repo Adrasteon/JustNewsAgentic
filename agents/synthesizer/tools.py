@@ -3,8 +3,9 @@
 
 import os
 import logging
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 from datetime import datetime
+from pathlib import Path
 
 # Import Synthesizer V2 Engine
 try:
@@ -29,9 +30,13 @@ except ImportError:
     AutoTokenizer = None
     pipeline = None
 try:
-    from sentence_transformers import SentenceTransformer
-except ImportError:
+    # Use shared embedding helper to avoid repeated loads across agents
     SentenceTransformer = None
+except Exception:
+    try:
+        from sentence_transformers import SentenceTransformer
+    except Exception:
+        SentenceTransformer = None
 try:
     import numpy as np
 except ImportError:
@@ -64,8 +69,7 @@ logger = logging.getLogger("synthesizer.tools")
 # Online Training Integration
 try:
     from training_system import (
-        initialize_online_training, get_training_coordinator,
-        add_training_feedback, add_user_correction
+        initialize_online_training, add_training_feedback, add_user_correction
     )
     ONLINE_TRAINING_AVAILABLE = True
     
@@ -132,10 +136,31 @@ def get_dialog_model():
     return model, tokenizer
 
 def get_embedding_model():
-    """Load lightweight embedding model optimized for clustering."""
-    if SentenceTransformer is None:
-        raise ImportError("sentence-transformers library is not installed.")
-    return SentenceTransformer(EMBEDDING_MODEL)
+    """Return a shared embedding model for the synthesizer.
+
+    This uses the process-local shared instance when available to avoid
+    repeated downloads and high memory usage.
+    """
+    try:
+        # Prefer the shared helper when available
+        from agents.common.embedding import get_shared_embedding_model
+        agent_cache = os.environ.get('SYNTHESIZER_MODEL_CACHE') or str(Path('./agents/synthesizer/models').resolve())
+        return get_shared_embedding_model(EMBEDDING_MODEL, cache_folder=agent_cache)
+    except Exception:
+        if SentenceTransformer is None:
+            raise ImportError("sentence-transformers library is not installed.")
+
+        # Fallback: attempt to ensure a local copy exists then construct from the local path
+        agent_cache = os.environ.get('SYNTHESIZER_MODEL_CACHE') or str(Path('./agents/synthesizer/models').resolve())
+        try:
+            from agents.common.embedding import ensure_agent_model_exists
+            _ = ensure_agent_model_exists(EMBEDDING_MODEL, agent_cache)
+            from agents.common.embedding import get_shared_embedding_model
+            return get_shared_embedding_model(EMBEDDING_MODEL, cache_folder=agent_cache)
+        except Exception:
+            # Final fallback: use shared helper if possible
+            from agents.common.embedding import get_shared_embedding_model
+            return get_shared_embedding_model(EMBEDDING_MODEL, cache_folder=agent_cache)
 
 def log_feedback(event: str, details: dict):
     """Log feedback for continual learning and retraining."""
