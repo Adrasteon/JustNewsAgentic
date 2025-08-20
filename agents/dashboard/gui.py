@@ -2,7 +2,6 @@ import sys
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QMessageBox
 )
-from PyQt5.QtCore import Qt
 import subprocess
 import threading
 import requests
@@ -217,7 +216,6 @@ class DashboardGUI(QMainWindow):
             self.append_monitor_output(f"[Crawl] Exception crawling {url}: {e}")
 
     def poll_crawl_stats(self):
-        import threading
         import requests
         import time
         if not getattr(self, "crawl_polling", False):
@@ -313,7 +311,6 @@ class DashboardGUI(QMainWindow):
             layout.addLayout(row)
             self.agent_buttons[name] = (status_label, start_btn, stop_btn, port)
 
-            from PyQt5.QtWidgets import QProgressBar
             self.agent_activity = {}  # name: (activity_label, last_activity_label)
 
             for name, port in self.agent_info:
@@ -474,7 +471,7 @@ class DashboardGUI(QMainWindow):
         self.update_agent_status(name, self.agent_buttons[name][3])
 
     def create_monitoring_tab(self):
-        from PyQt5.QtWidgets import QTextEdit, QScrollArea
+        from PyQt5.QtWidgets import QTextEdit
         tab = QWidget()
         layout = QVBoxLayout()
 

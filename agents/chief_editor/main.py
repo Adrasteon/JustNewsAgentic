@@ -6,7 +6,6 @@ import logging
 from fastapi import FastAPI, HTTPException
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
-from datetime import datetime
 import os
 import requests
 

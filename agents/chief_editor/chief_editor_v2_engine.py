@@ -1,25 +1,9 @@
-"""
-Chief Editor V2 Engine - 5-Model AI Architecture for Editorial Workflow Orchestration
-====================================================================================
 
-Architecture: BERT + DistilBERT + RoBERTa + T5 + Workflow Embeddings
-Performance: GPU-accelerated editorial decision making and workflow management
-Integration: Complete V2 upgrade with production-ready orchestration
-
-Models:
-1. BERT: Content quality assessment and editorial scoring
-2. DistilBERT: Fast article categorization and priority routing
-3. RoBERTa: Advanced sentiment analysis for editorial decisions  
-4. T5: Editorial commentary and instruction generation
-5. SentenceTransformer: Semantic workflow embeddings and agent routing
-
-Status: V2 Production Ready - Phase 1 Implementation
-"""
 
 import os
 import logging
 import torch
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 import numpy as np
 from dataclasses import dataclass
@@ -46,6 +30,7 @@ try:
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
     logging.warning("sentence-transformers not available")
+from pathlib import Path
 
 try:
     from sklearn.metrics.pairwise import cosine_similarity
@@ -305,15 +290,40 @@ class ChiefEditorV2Engine:
             if not SENTENCE_TRANSFORMERS_AVAILABLE:
                 logger.warning("SentenceTransformers not available - using basic routing")
                 return
-                
-            self.models['embeddings'] = SentenceTransformer(
-                self.config.embedding_model,
-                cache_folder=self.config.cache_dir
-            )
-            
-            # Move to GPU if available
-            if self.device.type == 'cuda':
-                self.models['embeddings'] = self.models['embeddings'].to(self.device)
+            # Prefer shared helper to reuse process-local model
+            try:
+                from agents.common.embedding import get_shared_embedding_model
+                agent_cache = os.environ.get('CHIEF_EDITOR_MODEL_CACHE') or str(Path('./agents/chief_editor/models').resolve())
+                self.models['embeddings'] = get_shared_embedding_model(
+                    self.config.embedding_model,
+                    cache_folder=agent_cache,
+                    device=self.device
+                )
+            except Exception:
+                agent_cache = os.environ.get('CHIEF_EDITOR_MODEL_CACHE') or str(Path('./agents/chief_editor/models').resolve())
+                # Ensure local agent model dir if possible (best-effort)
+                try:
+                    from agents.common.embedding import ensure_agent_model_exists
+                    try:
+                        ensure_agent_model_exists(self.config.embedding_model, agent_cache)
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+                # Try helper once more; if it fails, leave embeddings as None to be handled upstream
+                try:
+                    from agents.common.embedding import get_shared_embedding_model
+                    self.models['embeddings'] = get_shared_embedding_model(self.config.embedding_model, cache_folder=agent_cache, device=self.device)
+                except Exception:
+                    logger.warning("ChiefEditor embedding model unavailable via helper; leaving as None")
+                    self.models['embeddings'] = None
+
+            # Move to GPU if available and supported
+            try:
+                if self.device.type == 'cuda' and hasattr(self.models['embeddings'], 'to'):
+                    self.models['embeddings'] = self.models['embeddings'].to(self.device)
+            except Exception:
+                logger.debug("Unable to move chief editor embedding model to CUDA device; continuing on CPU")
             
             logger.info("✅ SentenceTransformer workflow embedding model loaded successfully")
             
@@ -590,51 +600,13 @@ class ChiefEditorV2Engine:
                 reasoning=reasoning,
                 next_actions=next_actions,
                 agent_assignments={agent_routing['recommended_agent']: "primary"},
-                metadata={
-                    "quality_assessment": quality_assessment,
-                    "categorization": categorization,
-                    "sentiment_analysis": sentiment_analysis,
-                    "agent_routing": agent_routing,
-                    **metadata
-                }
+                metadata=metadata or {}
             )
             
-            self.log_feedback("make_editorial_decision", {
-                "priority": priority.value,
-                "stage": stage.value,
-                "confidence": overall_confidence,
-                "category": categorization['category']
-            })
-            
             return decision
-            
         except Exception as e:
             logger.error(f"Error making editorial decision: {e}")
             return self._fallback_editorial_decision(content, metadata)
-    
-    def _determine_priority(self, quality_assessment, categorization, sentiment_analysis, metadata):
-        """Determine editorial priority based on analysis results"""
-        quality_score = quality_assessment.get('overall_quality', 0.5)
-        category_confidence = categorization.get('confidence', 0.5)
-        sentiment_confidence = sentiment_analysis.get('confidence', 0.5)
-        
-        # Calculate priority score
-        priority_score = (quality_score + category_confidence + sentiment_confidence) / 3
-        
-        # Check for urgency indicators
-        urgent_keywords = ['breaking', 'urgent', 'alert', 'emergency', 'crisis']
-        content_lower = str(metadata.get('title', '') + ' ' + metadata.get('summary', '')).lower()
-        
-        if any(keyword in content_lower for keyword in urgent_keywords):
-            return EditorialPriority.URGENT
-        elif priority_score > 0.8:
-            return EditorialPriority.HIGH
-        elif priority_score > 0.6:
-            return EditorialPriority.MEDIUM
-        elif priority_score > 0.4:
-            return EditorialPriority.LOW
-        else:
-            return EditorialPriority.REVIEW
     
     def _determine_workflow_stage(self, quality_assessment, categorization, metadata):
         """Determine appropriate workflow stage"""
@@ -649,6 +621,30 @@ class ChiefEditorV2Engine:
             return WorkflowStage.REVIEW
         else:
             return WorkflowStage.ANALYSIS
+
+    def _determine_priority(self, quality_assessment, categorization, sentiment_analysis, metadata):
+        """Determine editorial priority from multiple signals"""
+        quality_score = quality_assessment.get('overall_quality', 0.5)
+        category_confidence = categorization.get('confidence', 0.5)
+        sentiment_confidence = sentiment_analysis.get('confidence', 0.5)
+
+        # Calculate priority score
+        priority_score = (quality_score + category_confidence + sentiment_confidence) / 3
+
+        # Check for urgency indicators in metadata
+        urgent_keywords = ['breaking', 'urgent', 'alert', 'emergency', 'crisis']
+        content_lower = str((metadata or {}).get('title', '') + ' ' + (metadata or {}).get('summary', '')).lower()
+
+        if any(keyword in content_lower for keyword in urgent_keywords):
+            return EditorialPriority.URGENT
+        elif priority_score > 0.8:
+            return EditorialPriority.HIGH
+        elif priority_score > 0.6:
+            return EditorialPriority.MEDIUM
+        elif priority_score > 0.4:
+            return EditorialPriority.LOW
+        else:
+            return EditorialPriority.REVIEW
     
     def _determine_next_actions(self, priority, stage, quality_assessment):
         """Determine next actions based on priority and stage"""

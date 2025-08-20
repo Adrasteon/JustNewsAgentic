@@ -3,9 +3,6 @@ import os
 import logging
 import requests
 from datetime import datetime
-from typing import List, Dict, Optional
-import asyncio
-import json
 import time
 
 FEEDBACK_LOG = os.environ.get("SCOUT_FEEDBACK_LOG", "./feedback_scout.log")

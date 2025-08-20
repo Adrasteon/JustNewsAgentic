@@ -180,6 +180,15 @@ Each agent can be configured via its `config.json` file:
 - **🤖 [Agent Guides](markdown_docs/agent_documentation/)** - Individual agent documentation
 - **🔧 [Technical Reports](markdown_docs/development_reports/)** - Analysis and validation reports
 
+### Models & Caching
+
+The repository centralizes model download, caching, and loading to avoid permission and concurrency issues across agents:
+
+- Per-agent model caches (recommended): `agents/<agent>/models`. Override with env vars like `SYNTHESIZER_MODEL_CACHE`, `SYNTHESIZER_V2_MODEL_CACHE`, `FACT_CHECKER_MODEL_PATH`.
+- Use the embedding helper: `markdown_docs/agent_documentation/EMBEDDING_HELPER.md` and `markdown_docs/agent_documentation/MODEL_USAGE.md` for design and examples.
+- The helper implements atomic install semantics and process-local caching — prefer `get_shared_embedding_model()` and `ensure_agent_model_exists()` over direct constructors.
+
+
 ### Development Resources
 - **[Development Context](markdown_docs/DEVELOPMENT_CONTEXT.md)** - Complete development history
 - **[Architecture Details](docs/)** - V4 proposals and technical specifications  

@@ -13,24 +13,17 @@ Performance: Production-ready with GPU acceleration
 """
 
 import os
-import json
 import logging
 import warnings
-from typing import Dict, List, Optional, Union, Tuple, Any
+from typing import Dict, List, Any
 from datetime import datetime
 import torch
 from transformers import (
-    AutoTokenizer, 
-    AutoModelForSequenceClassification,
-    AutoModelForCausalLM,
-    DistilBertTokenizer, 
-    DistilBertForSequenceClassification,
-    RobertaTokenizer,
-    RobertaForSequenceClassification,
     pipeline,
     logging as transformers_logging
 )
 from sentence_transformers import SentenceTransformer
+from pathlib import Path
 import numpy as np
 
 # Production-ready warning suppression
@@ -130,11 +123,49 @@ class FactCheckerV2Engine:
         try:
             model_name = "sentence-transformers/all-mpnet-base-v2"
             
-            # Simple direct loading - let SentenceTransformers handle device management
-            self.models['evidence_retrieval'] = SentenceTransformer(
-                model_name,
-                device=self.device
-            )
+            # Prefer process-local shared embedding model when available
+            agent_cache = os.environ.get('FACT_CHECKER_MODEL_CACHE') or str(Path('./agents/fact_checker/models').resolve())
+            try:
+                from agents.common.embedding import get_shared_embedding_model
+                self.models['evidence_retrieval'] = get_shared_embedding_model(
+                    model_name,
+                    cache_folder=agent_cache,
+                    device=self.device
+                )
+            except Exception:
+                try:
+                    from agents.common.embedding import ensure_agent_model_exists, get_shared_embedding_model
+                    try:
+                        ensure_agent_model_exists(model_name, agent_cache)
+                    except Exception:
+                        pass
+                    self.models['evidence_retrieval'] = get_shared_embedding_model(model_name, cache_folder=agent_cache, device=self.device)
+                except Exception:
+                    # If SentenceTransformer is available, use it; otherwise leave None
+                    try:
+                        model_dir = None
+                        try:
+                            from agents.common.embedding import ensure_agent_model_exists
+                            model_dir = ensure_agent_model_exists(model_name, agent_cache)
+                        except Exception:
+                            pass
+                        if 'SentenceTransformer' in globals() and SentenceTransformer is not None:
+                            try:
+                                if model_dir:
+                                    self.models['evidence_retrieval'] = SentenceTransformer(str(model_dir), device=self.device)
+                                else:
+                                    self.models['evidence_retrieval'] = SentenceTransformer(
+                                        model_name,
+                                        cache_folder=agent_cache,
+                                        device=self.device
+                                    )
+                            except Exception:
+                                logger.warning("Failed to initialize SentenceTransformer directly for fact checker; leaving evidence_retrieval as None")
+                                self.models['evidence_retrieval'] = None
+                        else:
+                            self.models['evidence_retrieval'] = None
+                    except Exception:
+                        self.models['evidence_retrieval'] = None
             
             logger.info("✅ Model 4: Evidence retrieval (SentenceTransformers) loaded")
             

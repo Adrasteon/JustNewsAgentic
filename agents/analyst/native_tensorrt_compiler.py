@@ -16,7 +16,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional
 
 # Core ML libraries
 import torch
@@ -241,8 +241,6 @@ class NativeTensorRTCompiler:
             logger.info(f"⚡ Building native TensorRT engine for {task_name}")
             
             import tensorrt as trt
-            import pycuda.driver as cuda
-            import pycuda.autoinit
             
             # Create TensorRT logger and builder
             TRT_LOGGER = trt.Logger(trt.Logger.INFO)
@@ -351,7 +349,7 @@ class NativeTensorRTCompiler:
             with open(metadata_path, 'w') as f:
                 json.dump(metadata, f, indent=2)
             
-            logger.info(f"✅ Native TensorRT engine compiled successfully!")
+            logger.info("✅ Native TensorRT engine compiled successfully!")
             logger.info(f"   Engine: {engine_path}")
             logger.info(f"   Metadata: {metadata_path}")
             logger.info(f"   Max Batch Size: {self.optimization_config['max_batch_size']}")
@@ -395,9 +393,9 @@ class NativeTensorRTCompiler:
             logger.info(f"  {model.capitalize()}: {status}")
         
         if successful == total:
-            logger.info(f"\n🎉 ALL MODELS COMPILED SUCCESSFULLY!")
-            logger.info(f"🚀 Ready for 2-4x performance improvement!")
-            logger.info(f"   Target: 300-600 articles/sec")
+            logger.info("\n🎉 ALL MODELS COMPILED SUCCESSFULLY!")
+            logger.info("🚀 Ready for 2-4x performance improvement!")
+            logger.info("   Target: 300-600 articles/sec")
             logger.info(f"   Engines: {list(self.compiled_engines.keys())}")
         else:
             logger.warning(f"\n⚠️  {successful}/{total} models compiled successfully")

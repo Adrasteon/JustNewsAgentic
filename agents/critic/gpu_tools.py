@@ -25,7 +25,7 @@ import os
 import json
 import logging
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from datetime import datetime
 import uuid
 
@@ -248,7 +248,7 @@ class GPUAcceleratedCritic:
                 memory_allocated = torch.cuda.memory_allocated(self.gpu_device) / 1024**3
                 memory_cached = torch.cuda.memory_reserved(self.gpu_device) / 1024**3
                 
-                logger.info(f"✅ GPU memory test successful")
+                logger.info("✅ GPU memory test successful")
                 logger.info(f"   Allocated: {memory_allocated:.2f}GB")
                 logger.info(f"   Cached: {memory_cached:.2f}GB")
                 

@@ -13,12 +13,11 @@ Features:
 """
 
 import os
-import json
 import logging
 import torch
 import warnings
 from datetime import datetime
-from typing import Dict, List, Optional, Union, Any, Tuple
+from typing import Dict, List, Optional, Union, Any
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -27,12 +26,9 @@ from transformers import (
     LlavaNextForConditionalGeneration,
     TrainingArguments,
     Trainer,
-    AutoModel,
     logging as transformers_logging
 )
-import numpy as np
 from torch.utils.data import Dataset
-from sklearn.metrics import accuracy_score, classification_report
 
 # Suppress known deprecation warnings for production
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch.nn.modules.module")

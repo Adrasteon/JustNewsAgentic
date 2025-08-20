@@ -339,7 +339,7 @@ class EnhancedAnalystWithOnlineLearning:
             ground_truth=ground_truth
         )
         
-        logger.info(f"📝 User correction processed for immediate learning")
+        logger.info("📝 User correction processed for immediate learning")
     
     def get_training_statistics(self) -> Dict[str, Any]:
         """Get comprehensive training statistics"""

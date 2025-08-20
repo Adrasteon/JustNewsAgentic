@@ -15,14 +15,11 @@ Target: 0.8+ articles/second with AI analysis
 import asyncio
 import json
 import time
-import gc
 import torch
 from datetime import datetime
 from playwright.async_api import async_playwright
 from typing import List, Dict, Optional
 import logging
-import os
-import sys
 
 # Import NewsReader from Scout agent directory
 from practical_newsreader_solution import PracticalNewsReader
@@ -356,7 +353,7 @@ class ProductionBBCCrawler:
         except Exception as e:
             logger.warning(f"Could not save results file: {e}")
         
-        logger.info(f"🎉 AI-Enhanced crawl complete!")
+        logger.info("🎉 AI-Enhanced crawl complete!")
         logger.info(f"📊 Processed {len(results)} articles in {processing_time:.1f}s")
         logger.info(f"⚡ Rate: {articles_per_second:.2f} articles/second")
         logger.info(f"✅ Success Rate: {success_rate:.1%}")

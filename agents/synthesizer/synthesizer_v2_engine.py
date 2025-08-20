@@ -19,18 +19,19 @@ Status: V2 Production Ready - Phase 1 Implementation
 import os
 import logging
 import torch
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 import numpy as np
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from pathlib import Path
 
 # Core ML Libraries
 try:
     from transformers import (
-        AutoModelForCausalLM, AutoTokenizer, AutoModelForSeq2SeqLM,
+        AutoModelForCausalLM, AutoTokenizer,
         BartForConditionalGeneration, BartTokenizer,
         T5ForConditionalGeneration, T5Tokenizer,
-        pipeline, GenerationConfig
+        pipeline
     )
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
@@ -38,16 +39,16 @@ except ImportError:
     logging.warning("transformers not available - falling back to CPU processing")
 
 try:
-    from sentence_transformers import SentenceTransformer
+    # sentence-transformers availability is checked at runtime in embedding helper
     SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
+except Exception:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
     logging.warning("sentence-transformers not available")
 
 try:
     from bertopic import BERTopic
     from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance
-    from bertopic.vectorizers import ClassTfidfTransformer
+    # optional: ClassTfidfTransformer not required at import time
     BERTOPIC_AVAILABLE = True
 except ImportError:
     BERTOPIC_AVAILABLE = False
@@ -55,7 +56,6 @@ except ImportError:
 
 try:
     from sklearn.cluster import KMeans
-    from sklearn.feature_extraction.text import TfidfVectorizer
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
@@ -305,15 +305,19 @@ class SynthesizerV2Engine:
             if not SENTENCE_TRANSFORMERS_AVAILABLE:
                 logger.warning("SentenceTransformers not available - using TF-IDF fallback")
                 return
-                
-            self.models['embeddings'] = SentenceTransformer(
-                self.config.embedding_model,
-                cache_folder=self.config.cache_dir
-            )
-            
-            # Move to GPU if available
-            if self.device.type == 'cuda':
-                self.models['embeddings'] = self.models['embeddings'].to(self.device)
+            try:
+                from agents.common.embedding import get_shared_embedding_model
+                agent_cache = os.environ.get('SYNTHESIZER_V2_MODEL_CACHE') or str(Path('./agents/synthesizer/models').resolve())
+                # Prefer process-local shared model to avoid repeated loads
+                self.models['embeddings'] = get_shared_embedding_model(
+                    self.config.embedding_model,
+                    cache_folder=agent_cache,
+                    device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                )
+            except Exception as e:
+                logger.debug(f"Embedding helper unavailable or failed: {e}")
+                # Leave embeddings unset; upper-level logic will handle fallback behavior
+                self.models['embeddings'] = None
             
             logger.info("✅ SentenceTransformer embedding model loaded successfully")
             

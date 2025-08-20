@@ -24,7 +24,7 @@ import warnings
 # Suppress transformers warnings about slow processors
 warnings.filterwarnings("ignore", message=".*use_fast.*slow processor.*")
 warnings.filterwarnings("ignore", message=".*slow image processor.*")
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 import torch
@@ -918,7 +918,7 @@ if __name__ == "__main__":
         try:
             result = await engine.process_news_url_v2(test_url)
             
-            print(f"✅ Processing Result:")
+            print("✅ Processing Result:")
             print(f"   Success: {result.confidence_score > 0}")
             print(f"   Processing Time: {result.processing_time:.2f}s")
             print(f"   Screenshot: {result.screenshot_path}")

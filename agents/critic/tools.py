@@ -15,9 +15,8 @@ Use Scout V2 for all sentiment/bias analysis.
 import logging
 import re
 import os
-from typing import Dict, List, Any, Optional, Tuple, Set
+from typing import Dict, List, Any
 from datetime import datetime
-from collections import Counter, defaultdict
 import statistics
 
 # Configure logging

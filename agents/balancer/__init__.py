@@ -1,9 +1,7 @@
 """Balancer agent package.
 
 Minimal FastAPI scaffold for MCP-style local dispatch tests.
-"""
 
-"""
 Expose submodules lazily to avoid circular import during package initialization.
 
 This allows tests to do `from agents.balancer import main` while preventing
@@ -12,7 +10,6 @@ when `main` imports other submodules (like `tools`).
 """
 
 from importlib import import_module
-from types import ModuleType
 from typing import Any
 
 __all__ = ["main", "tools"]
