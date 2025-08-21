@@ -13,8 +13,8 @@ except ImportError:
     AutoTokenizer = None
 
 # PHASE 1 OPTIMIZATIONS APPLIED
-MODEL_NAME = "microsoft/DialoGPT-medium"
-MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
+MODEL_NAME = "distilgpt2"
+MODEL_PATH = os.environ.get("MODEL_PATH", "./models/distilgpt2")
 OPTIMIZED_MAX_LENGTH = 1024  # Reduced from 2048 (orchestration tasks are brief)
 OPTIMIZED_BATCH_SIZE = 4     # Small batches for orchestration efficiency
 

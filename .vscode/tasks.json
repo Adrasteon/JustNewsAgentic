@@ -2,6 +2,17 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Run tests (wrapper)",
+      "type": "shell",
+      "command": "./scripts/run_tests.sh",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true
+      }
+    },
+    {
       "label": "Run tests (justnews-v2-prod)",
       "type": "shell",
       "command": "conda run --name justnews-v2-prod pytest -q",

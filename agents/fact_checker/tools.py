@@ -37,8 +37,8 @@ except ImportError:
     pipeline = None
 
 # Fallback configuration for legacy compatibility
-MODEL_NAME = "microsoft/DialoGPT-medium"
-MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
+MODEL_NAME = "distilgpt2"
+MODEL_PATH = os.environ.get("MODEL_PATH", "./models/distilgpt2")
 OPTIMIZED_MAX_LENGTH = 1512
 OPTIMIZED_BATCH_SIZE = 16
 

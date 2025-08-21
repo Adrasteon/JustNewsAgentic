@@ -9,14 +9,16 @@ Usage
 Preview (no changes):
 
 ```bash
-# If you omit --target, the script will use the DATA_DRIVE_TARGET env var or fall back to /media/adra/data/justnews
+# If you omit --target, the script will use the DATA_DRIVE_TARGET env var or fall back to the
+# canonical path: /media/adra/Data/justnews/agents
 python3 scripts/mirror_agent_models.py --dry-run
 ```
 
 Perform migration (destructive to local `agents/<agent>/models` — removed after copy):
 
 ```bash
-python3 scripts/mirror_agent_models.py --yes
+# Recommended: run against the canonical agents path on the shared drive
+python3 scripts/mirror_agent_models.py --target /media/adra/Data/justnews/agents --yes
 ```
 
 Per-agent migration example:
@@ -28,8 +30,9 @@ python3 scripts/mirror_agent_models.py --agent synthesizer --yes
 Using an explicit target path:
 
 ```bash
-python3 scripts/mirror_agent_models.py --target /media/adra/data/justnews --dry-run
-python3 scripts/mirror_agent_models.py --target /media/adra/data/justnews --yes
+# Prefer the canonical agents-aware path
+python3 scripts/mirror_agent_models.py --target /media/adra/Data/justnews/agents --dry-run
+python3 scripts/mirror_agent_models.py --target /media/adra/Data/justnews/agents --yes
 ```
 
 Environment variable:
@@ -37,7 +40,7 @@ Environment variable:
 - You can set DATA_DRIVE_TARGET to point to another location (for example in your shell profile):
 
 ```bash
-export DATA_DRIVE_TARGET=/media/adra/data/justnews
+export DATA_DRIVE_TARGET=/media/adra/Data/justnews/agents
 ```
 
 Notes and safety

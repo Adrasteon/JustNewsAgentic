@@ -15,8 +15,9 @@ Notes:
 - Use --dry-run to preview actions.
 
 Usage examples:
-  python3 scripts/mirror_agent_models.py --target /mnt/large_models/justnews --yes
-  python3 scripts/mirror_agent_models.py --target /mnt/large_models/justnews --dry-run
+    # Canonical target layout (recommended): /media/adra/Data/justnews/agents
+    python3 scripts/mirror_agent_models.py --target /media/adra/Data/justnews/agents --yes
+    python3 scripts/mirror_agent_models.py --target /media/adra/Data/justnews/agents --dry-run
 """
 
 from __future__ import annotations
@@ -119,15 +120,17 @@ def main(argv: list[str]) -> int:
 
     agents_root = Path(args.agents).resolve()
 
-    # Determine target: CLI --target wins, then DATA_DRIVE_TARGET env var, then default to /mnt/data/justnews
+    # Determine target: CLI --target wins, then DATA_DRIVE_TARGET env var, then default to
+    # the canonical data path which includes the `agents/` prefix so final model folders
+    # will be: /media/adra/Data/justnews/agents/<agent>/models
     env_target = os.environ.get('DATA_DRIVE_TARGET')
     if args.target:
         target_base = Path(args.target).resolve()
     elif env_target:
         target_base = Path(env_target).resolve()
     else:
-        # Default data drive path for this system
-        target_base = Path('/media/adra/data/justnews').resolve()
+        # Default canonical data drive path (includes agents/ prefix)
+        target_base = Path('/media/adra/Data/justnews/agents').resolve()
 
     if not args.dry_run and not args.yes:
         print("Refusing to run: pass --yes to perform actions (or use --dry-run to preview).")

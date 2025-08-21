@@ -55,8 +55,8 @@ except ImportError:
     hdbscan = None
 
 # PHASE 1 OPTIMIZATIONS APPLIED
-MODEL_NAME = "microsoft/DialoGPT-medium"
-MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
+MODEL_NAME = "distilgpt2"
+MODEL_PATH = os.environ.get("MODEL_PATH", "./models/distilgpt2")
 EMBEDDING_MODEL = os.environ.get("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")  # Lightweight embeddings
 OPTIMIZED_MAX_LENGTH = 1024  # Reduced from 2048 (clustering tasks don't need full context)
 OPTIMIZED_BATCH_SIZE = 4     # Memory-efficient for embeddings processing
