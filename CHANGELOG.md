@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-08-22 - DialoGPT Deprecation & Runtime Fixes
+
+### 🔧 DialoGPT Deprecation Completion  
+- **DialoGPT Deprecation Script**: Fixed and validated `scripts/deprecate_dialogpt.py` for safe DialoGPT→environment fallback migration
+- **Consistent Annotations**: All DialoGPT references now properly annotated as "DialoGPT (deprecated)" across codebase
+- **Environment Fallback**: Added `DIALOGPT_REPLACEMENT_MODEL` environment variable (default: `distilgpt2`) for runtime model selection
+- **Documentation**: Updated `.env.example` with DialoGPT replacement configuration
+- **Model Migration**: Repository already transitioned to specialized models (distilgpt2, FLAN-T5, etc.) replacing general DialoGPT usage
+
 ## [Unreleased] - 2025-08-22 - Runtime & Health-check fixes
 
 ### ✅ Runtime / Operations
