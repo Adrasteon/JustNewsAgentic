@@ -109,3 +109,12 @@ async def lifespan(app):
     logger.info("MCP_Bus is shutting down.")
 
 atexit.register(lambda: logger.info("MCP_Bus has exited."))
+
+# Attach lifespan context if available (defined above). Use router.lifespan_context to avoid
+# referencing lifespan before it is declared earlier in the module.
+try:
+    # starlette exposes router.lifespan_context to set an asynccontextmanager
+    app.router.lifespan_context = lifespan  # type: ignore[attr-defined]
+except Exception:
+    # If assigning fails, the module will still run with a default no-op lifespan
+    logger.debug("Could not attach custom lifespan to MCP Bus router; continuing without it.")

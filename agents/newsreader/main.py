@@ -40,8 +40,9 @@ class MCPBusClient:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Ensure the current package directory is on sys.path so sibling modules can be imported
+# This makes `from newsreader_agent import PracticalNewsReader` work when running the FastAPI app.
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from newsreader_agent import PracticalNewsReader
 

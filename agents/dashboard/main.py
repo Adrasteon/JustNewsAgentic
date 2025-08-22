@@ -7,6 +7,13 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import requests
 from contextlib import asynccontextmanager
+import sys
+import os
+
+# Ensure the current package directory is on sys.path so sibling modules can be imported
+# This makes `from config import load_config` work when running the FastAPI app directly.
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from config import load_config, save_config
 
 # Configure logging
@@ -15,7 +22,8 @@ logger = logging.getLogger("dashboard_agent")
 
 # Load configuration
 config = load_config()
-DASHBOARD_AGENT_PORT = config.get("dashboard_port", 8010)
+# Default dashboard port set to 8011 to avoid conflicts with other agents (e.g., balancer at 8010)
+DASHBOARD_AGENT_PORT = config.get("dashboard_port", 8011)
 MCP_BUS_URL = config.get("mcp_bus_url", "http://localhost:8000")
 
 class MCPBusClient:
@@ -48,11 +56,15 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    global ready
+    ready = True
     yield
     logger.info("Dashboard agent is shutting down.")
     save_config(config)
 
 app = FastAPI(lifespan=lifespan)
+
+ready = False
 
 class ToolCall(BaseModel):
     args: list
@@ -68,6 +80,16 @@ def get_status():
     except Exception as e:
         logger.error(f"An error occurred while fetching agent status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "agent": "dashboard"}
+
+
+@app.get("/ready")
+def ready_endpoint():
+    return {"ready": ready}
 
 @app.post("/send_command")
 def send_command(call: ToolCall):

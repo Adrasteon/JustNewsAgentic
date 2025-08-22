@@ -14,7 +14,7 @@ def load_config():
         with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as file:
             return json.load(file)
     return {
-        "dashboard_port": 8010,
+    "dashboard_port": 8011,
         "mcp_bus_url": "http://localhost:8000",
         "log_level": "INFO"
     }

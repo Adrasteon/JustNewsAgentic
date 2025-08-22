@@ -375,6 +375,13 @@ def health_check() -> Dict[str, str]:
     """Health check endpoint for MCP bus compliance."""
     return {"status": "ok", "agent": "balancer"}
 
+
+@app.get("/ready")
+def ready_check() -> Dict[str, Any]:
+    """Readiness endpoint for balancer."""
+    # Balancer doesn't have heavy model warmup in this trimmed setup; report ready=true
+    return {"ready": True}
+
 def check_mcp_bus_health() -> Dict[str, Any]:
     """Check MCP bus health by querying /health endpoint."""
     try:
@@ -435,4 +442,4 @@ def resource_status() -> Dict[str, Any]:
 
 if __name__ == "__main__":
     # Start FastAPI app for MCP bus integration
-    uvicorn.run(app, host="0.0.0.0", port=8009)
+    uvicorn.run(app, host="0.0.0.0", port=8010)
