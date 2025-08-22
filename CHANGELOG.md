@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-08-22 - Runtime & Health-check fixes
+
+### ✅ Runtime / Operations
+- Wire MCP Bus lifespan into the FastAPI app so readiness is reported correctly on startup (`agents/mcp_bus/main.py`).
+- Add consistent `/health` and `/ready` endpoints to `dashboard` and `balancer` agents for uniform service probes (`agents/dashboard/main.py`, `agents/balancer/balancer.py`).
+- Update `start_services_daemon.sh` to start MCP Bus from its new `agents/mcp_bus` location and ensure log paths point at `agents/mcp_bus`.
+- Fix several small import/path issues to make per-agent entrypoints import reliably when started from the repository root (`agents/newsreader/main.py`, others).
+
+### 🔎 Verification & Notes
+- Confirmed via automated health-sweep that MCP Bus now returns `{"ready": true}` and all agents expose `/health` and `/ready` (ports 8000—8011).
+- Stopped stale processes and restarted agents to ensure updated code was loaded.
+
+### 🛠️ How to test locally
+1. Start services: `./start_services_daemon.sh`
+2. Run the health-check sweep: `for p in {8000..8011}; do curl -sS http://127.0.0.1:$p/health; curl -sS http://127.0.0.1:$p/ready; done`
+
+
 ## [V2.19.0] - 2025-08-13 - **🚨 MAJOR BREAKTHROUGH: GPU CRASH ROOT CAUSE RESOLVED**
 
 ### 🏆 **Critical Discovery & Resolution**
