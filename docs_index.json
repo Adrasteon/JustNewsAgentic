@@ -25,12 +25,12 @@
     "snippet": "--- language: - en - fr - ro - de - multilingual tags: - text2text-generation widget: - text: \"Translate to German: My name is Arthur\" example_title: \"Translation\" - text: \"Please answer to the following question. Who is going to be the next Ballon d'or?\" example_title: \"Question Answering\" - text: \"Q: Can Geoffrey Hinton have a conversation with George Washington? Give the rationale before answer"
   },
   {
-    "path": "/home/adra/JustNewsAgentic/.cache/transformers/models--microsoft--DialoGPT-medium/snapshots/7b40bb0f92c45fefa957d088000d8648e5c7fa33/README.md",
+    "path": "/home/adra/JustNewsAgentic/.cache/transformers/models--microsoft--DialoGPT (deprecated)-medium/snapshots/7b40bb0f92c45fefa957d088000d8648e5c7fa33/README.md",
     "status": "CUR",
-    "snippet": "--- thumbnail: https://huggingface.co/front/thumbnails/dialogpt.png tags: - conversational license: mit --- ## A State-of-the-Art Large-scale Pretrained Response generation model (DialoGPT) DialoGPT is a SOTA large-scale pretrained dialogue response generation model for multiturn conversations. The [human evaluation results](https://github.com/dreasysnail/Dialogpt_dev#human-evaluation) indicate th"
+    "snippet": "--- thumbnail: https://huggingface.co/front/thumbnails/dialogpt.png tags: - conversational license: mit --- ## A State-of-the-Art Large-scale Pretrained Response generation model (DialoGPT (deprecated)) DialoGPT (deprecated) is a SOTA large-scale pretrained dialogue response generation model for multiturn conversations. The [human evaluation results](https://github.com/dreasysnail/Dialogpt_dev#human-evaluation) indicate th"
   },
   {
-    "path": "/home/adra/JustNewsAgentic/.cache/transformers/models--microsoft--DialoGPT-medium/snapshots/7b40bb0f92c45fefa957d088000d8648e5c7fa33/merges.txt",
+    "path": "/home/adra/JustNewsAgentic/.cache/transformers/models--microsoft--DialoGPT (deprecated)-medium/snapshots/7b40bb0f92c45fefa957d088000d8648e5c7fa33/merges.txt",
     "status": "CUR",
     "snippet": "#version: 0.2 \u0120 t \u0120 a h e i n r e o n \u0120t he e r \u0120 s a t \u0120 w \u0120 o e n \u0120 c i t i s a n o r e s \u0120 b e d \u0120 f in g \u0120 p o u \u0120a n a l a r \u0120t o \u0120 m \u0120o f \u0120 in \u0120 d \u0120 h \u0120an d i c a s l e \u0120t h i on o m l l en t \u0120 n \u0120 l s t \u0120 re v e \u0120 e r o l y \u0120b e \u0120 g \u0120 T c t \u0120 S i d o t \u0120 I u t e t \u0120 A \u0120 is \u0120 on i m a m o w a y a d s e \u0120th at \u0120 C i g \u0120f or a c \u0120 y v er u r \u0120 u l d \u0120s t \u0120 M ' s \u0120 he \u0120 it at ion it h i r c e \u0120"
   },
@@ -1085,7 +1085,7 @@
     "snippet": "#version: 0.2 \u0120 t \u0120 a h e i n r e o n \u0120t he e r \u0120 s a t \u0120 w \u0120 o e n \u0120 c i t i s a n o r e s \u0120 b e d \u0120 f in g \u0120 p o u \u0120a n a l a r \u0120t o \u0120 m \u0120o f \u0120 in \u0120 d \u0120 h \u0120an d i c a s l e \u0120t h i on o m l l en t \u0120 n \u0120 l s t \u0120 re v e \u0120 e r o l y \u0120b e \u0120 g \u0120 T c t \u0120 S i d o t \u0120 I u t e t \u0120 A \u0120 is \u0120 on i m a m o w a y a d s e \u0120th at \u0120 C i g \u0120f or a c \u0120 y v er u r \u0120 u l d \u0120s t \u0120 M ' s \u0120 he \u0120 it at ion it h i r c e \u0120"
   },
   {
-    "path": "/home/adra/JustNewsAgentic/models/synthesizer_v2/models--microsoft--DialoGPT-medium/snapshots/7b40bb0f92c45fefa957d088000d8648e5c7fa33/merges.txt",
+    "path": "/home/adra/JustNewsAgentic/models/synthesizer_v2/models--microsoft--DialoGPT (deprecated)-medium/snapshots/7b40bb0f92c45fefa957d088000d8648e5c7fa33/merges.txt",
     "status": "CUR",
     "snippet": "#version: 0.2 \u0120 t \u0120 a h e i n r e o n \u0120t he e r \u0120 s a t \u0120 w \u0120 o e n \u0120 c i t i s a n o r e s \u0120 b e d \u0120 f in g \u0120 p o u \u0120a n a l a r \u0120t o \u0120 m \u0120o f \u0120 in \u0120 d \u0120 h \u0120an d i c a s l e \u0120t h i on o m l l en t \u0120 n \u0120 l s t \u0120 re v e \u0120 e r o l y \u0120b e \u0120 g \u0120 T c t \u0120 S i d o t \u0120 I u t e t \u0120 A \u0120 is \u0120 on i m a m o w a y a d s e \u0120th at \u0120 C i g \u0120f or a c \u0120 y v er u r \u0120 u l d \u0120s t \u0120 M ' s \u0120 he \u0120 it at ion it h i r c e \u0120"
   },

@@ -11,11 +11,19 @@ import logging
 from contextlib import asynccontextmanager
 
 app = FastAPI()
+
 ready = False
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Register common shutdown endpoint (after logger is configured)
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for mcp_bus")
 
 agents = {}
 cb_state = {}

@@ -274,6 +274,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Register shutdown endpoint if available
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger = logging.getLogger(__name__)
+    logger.debug("shutdown endpoint not registered for scout/practical_newsreader_solution")
+
 @app.post("/analyze_image_url")
 async def analyze_image_url_endpoint(call: ToolCall):
     """Analyze image from URL for news content."""

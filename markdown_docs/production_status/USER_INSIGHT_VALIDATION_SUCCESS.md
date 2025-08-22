@@ -50,7 +50,7 @@ Rather than spending weeks building complex infrastructure, we achieved working 
 ✅ ACHIEVABLE CONFIGURATION:
 ├── Scout Agent (LLaMA-3-8B): 8.0GB
 ├── NewsReader (LLaVA-1.5 + INT8): 6.8GB ✅  
-├── Fact Checker (DialoGPT + INT8): 2.5GB
+├── Fact Checker (DialoGPT (deprecated) + INT8): 2.5GB
 ├── Other agents: 4.0GB
 ├── System buffer: 2.7GB  
 └── TOTAL: 24.0GB (Perfect fit!)

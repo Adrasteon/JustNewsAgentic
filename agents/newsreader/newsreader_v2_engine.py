@@ -216,14 +216,16 @@ class NewsReaderV2Engine:
                 logger.warning("Transformers not available - skipping LLaVA-Next")
                 return
                 
-            # For V2 compliance, we'll use a different model variant
+            # For V2 compliance, we'll use a configurable fallback model for LLaVA-Next.
+            # DialoGPT (deprecated) is deprecated; use NEWSREADER_FALLBACK_CONVERSATIONAL env var to override.
+            fallback_model = os.environ.get("NEWSREADER_FALLBACK_CONVERSATIONAL", "distilgpt2")
             self.models['llava_next'] = AutoModelForCausalLM.from_pretrained(
-                "microsoft/DialoGPT-medium",  # Placeholder for LLaVA-Next alternative
+                fallback_model,
                 cache_dir=self.config.cache_dir,
                 torch_dtype=torch.float16 if self.device.type == 'cuda' else torch.float32
             ).to(self.device)
             
-            logger.info("✅ LLaVA-Next variant loaded successfully")
+            logger.info("✅ LLaVA-Next variant loaded successfully (model=%s)", fallback_model)
             
         except Exception as e:
             logger.error(f"Error loading LLaVA-Next model: {e}")

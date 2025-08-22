@@ -346,6 +346,13 @@ async def validation_exception_handler(request, exc):
         },
     )
 
+# Register shutdown endpoint
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for balancer")
+
 # Custom error handler for HTTPException
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

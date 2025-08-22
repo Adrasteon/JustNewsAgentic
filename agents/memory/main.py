@@ -210,6 +210,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Register common shutdown endpoint
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for memory")
+
 @app.get("/health")
 def health():
     """Health check endpoint."""

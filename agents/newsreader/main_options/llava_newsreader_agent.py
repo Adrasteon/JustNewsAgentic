@@ -263,6 +263,14 @@ async def lifespan(app: FastAPI):
 # FastAPI app for MCP bus integration with lifespan handler
 app = FastAPI(lifespan=lifespan)
 
+# Register shutdown endpoint if available
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger = logging.getLogger(__name__)
+    logger.debug("shutdown endpoint not registered for llava_newsreader_agent")
+
 @app.post("/extract_news", response_model=NewsExtractionResponse)
 async def extract_news(request: NewsExtractionRequest):
     """Extract news content from URL"""

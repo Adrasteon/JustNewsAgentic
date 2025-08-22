@@ -130,10 +130,10 @@ This document provides comprehensive technical details about the JustNewsAgentic
 | **Analyst** | RoBERTa + BERT (TensorRT) | 2.3GB | ✅ Production | 730+ articles/sec |
 | **Scout V2** | 5 AI Models (BERT + RoBERTa + LLaVA) | 8.0GB | ✅ AI-First Architecture | News + Quality + Sentiment + Bias + Visual |
 | **NewsReader** | LLaVA-1.5-7B (INT8) | 6.8GB | ✅ Production | Screenshot + Visual Analysis |
-| **Fact Checker** | DialoGPT-medium | 2.5GB | ⏳ TensorRT Ready | Scout-Optimized |
-| **Synthesizer** | DialoGPT-medium + Embeddings | 3.0GB | ⏳ TensorRT Ready | Content Synthesis |
-| **Critic** | DialoGPT-medium | 2.5GB | ⏳ TensorRT Ready | Quality Assessment |
-| **Chief Editor** | DialoGPT-medium | 2.0GB | ⏳ TensorRT Ready | Orchestration |
+| **Fact Checker** | DialoGPT (deprecated)-medium | 2.5GB | ⏳ TensorRT Ready | Scout-Optimized |
+| **Synthesizer** | DialoGPT (deprecated)-medium + Embeddings | 3.0GB | ⏳ TensorRT Ready | Content Synthesis |
+| **Critic** | DialoGPT (deprecated)-medium | 2.5GB | ⏳ TensorRT Ready | Quality Assessment |
+| **Chief Editor** | DialoGPT (deprecated)-medium | 2.0GB | ⏳ TensorRT Ready | Orchestration |
 | **Memory** | Vector Embeddings | 1.5GB | ⏳ TensorRT Ready | Semantic Search |
 | **Reasoning** | Nucleoid (symbolic logic) | <1GB | ✅ Production | Fact validation, contradiction detection |
 | **Total System** | **Multi-Model Pipeline** | **29.6GB** | **RTX 3090 Optimized** | **Requires Optimization** |
@@ -333,7 +333,7 @@ stormed the building and killed the gunman..."
 
 ### Strategic Architecture Achievement
 **Intelligence-First Design**: Scout pre-filtering enables downstream optimization
-- **Fact Checker**: DialoGPT-large → medium (2.7GB saved) - Scout pre-filtering compensates
+- **Fact Checker**: DialoGPT (deprecated)-large → medium (2.7GB saved) - Scout pre-filtering compensates
 - **Synthesizer**: Lightweight embeddings + context optimization (1.5GB saved)
 - **Critic**: Context and batch optimization (1.2GB saved)  
 - **Chief Editor**: Orchestration optimization (1.0GB saved)

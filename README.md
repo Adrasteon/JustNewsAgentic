@@ -80,8 +80,8 @@ JustNewsAgentic V4 employs a **distributed multi-agent architecture** where spec
 | **Analyst** | Sentiment & bias analysis | TensorRT-optimized RoBERTa | ✅ Production |
 | **Fact Checker** | Claim verification & credibility | 5 AI models for verification | ✅ Production |
 | **Synthesizer** | Content clustering & synthesis | BERTopic + BART + FLAN-T5 | ✅ Production |
-| **Critic** | Quality assessment & review | DialoGPT-medium | 🔧 Integration |
-| **Chief Editor** | Workflow orchestration | DialoGPT-medium | 🔧 Integration |
+| **Critic** | Quality assessment & review | DialoGPT (deprecated)-medium | 🔧 Integration |
+| **Chief Editor** | Workflow orchestration | DialoGPT (deprecated)-medium | 🔧 Integration |
 | **Memory** | Semantic storage & retrieval | PostgreSQL + vector embeddings | ✅ Production |
 | **NewsReader** | Visual content analysis | LLaVA-1.5-7B (INT8) | ✅ Production |
 | **Reasoning** | Symbolic logic & validation | Nucleoid (AST parsing) | ✅ Production |
@@ -143,7 +143,7 @@ Each agent can be configured via its `config.json` file:
 
 ```json
 {
-  "model": "microsoft/DialoGPT-medium",
+  "model": "distilgpt2 (deprecated)",
   "gpu_enabled": true,
   "batch_size": 16,
   "training": {

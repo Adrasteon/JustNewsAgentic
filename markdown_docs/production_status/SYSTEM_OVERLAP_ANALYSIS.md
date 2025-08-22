@@ -56,7 +56,7 @@ After comprehensive analysis of the entire JustNewsAgentic system, **significant
 5. **Result Conflicts**: Different agents producing conflicting analyses
 
 ### Technical Debt:
-- **DialoGPT-medium overuse**: 5 agents using basic conversational model
+- **DialoGPT (deprecated)-medium overuse**: 5 agents using basic conversational model
 - **Limited GPU integration**: Only 2 of 10 agents use GPU effectively
 - **Inconsistent error handling**: No standard patterns across agents
 - **Mixed model strategies**: No coherent approach to AI model selection
@@ -176,7 +176,7 @@ Status: ✅ Unique specialization, well-implemented
 2. **Critic specialization**:
    - Implement logical fallacy detection
    - Add argument structure analysis
-   - Upgrade from DialoGPT to specialized models
+   - Upgrade from DialoGPT (deprecated) to specialized models
 
 ### 🟡 **MEDIUM PRIORITY (Month 2)**
 1. **GPU standardization across agents**

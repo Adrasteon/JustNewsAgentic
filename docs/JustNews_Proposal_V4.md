@@ -9,7 +9,7 @@ JustNews V4 introduces a revolutionary **Native GPU-Accelerated Architecture** t
 ### Challenges with V3 Architecture
 - **Model Corruption Issues**: Local model files prone to corruption and compatibility problems
 - **Docker Complexity**: Docker layers added functionality overhead without real benefits in Ubuntu environment
-- **Limited Scalability**: General-purpose models like DialoGPT unsuitable for specialized news analysis tasks
+- **Limited Scalability**: General-purpose models like DialoGPT (deprecated) unsuitable for specialized news analysis tasks
 - **Development Friction**: Complex debugging across multiple abstraction layers
 
 ### Market Opportunity
@@ -32,7 +32,7 @@ JustNews V4 introduces a revolutionary **Native GPU-Accelerated Architecture** t
 ### Two-Stage Specialized Pipeline
 
 #### Stage 1: Native GPU-Optimized Deployment (Current)
-- **Specialized Models**: Each agent uses task-specific models instead of general DialoGPT
+- **Specialized Models**: Each agent uses task-specific models instead of general DialoGPT (deprecated)
 - **Native GPU Integration**: Direct CUDA acceleration eliminates subprocess complexity
 - **Training System Integration**: Continuous model improvement through feedback loops
 - **Production Ready**: Achieved 730+ articles/sec performance with native TensorRT
@@ -47,7 +47,7 @@ JustNews V4 introduces a revolutionary **Native GPU-Accelerated Architecture** t
 
 #### **Synthesizer Agent**: Complete News Article Generation
 - **Purpose**: Generate complete and new news articles based on collected, verified, and collated information
-- **Models**: BERTopic (clustering) + BART (summarization) + T5 (text generation) + DialoGPT (refinement) + SentenceTransformer (embeddings)
+- **Models**: BERTopic (clustering) + BART (summarization) + T5 (text generation) + DialoGPT (deprecated) (refinement) + SentenceTransformer (embeddings)
 - **Function**: Takes verified facts from other agents and synthesizes comprehensive, coherent news articles
 - **Training**: Specialized for news article structure, style, and comprehensive coverage
 
@@ -130,7 +130,7 @@ The Reasoning Agent is a dedicated neuro-symbolic component for fact validation,
 ### Native Deployment Advantages
 - **4x Performance Boost**: TensorRT optimization delivers unprecedented inference speed on RTX 3090
 - **Zero Docker Overhead**: Ubuntu native deployment eliminates containerization complexity
-- **Specialized Model Efficiency**: Task-specific models outperform general DialoGPT alternatives
+- **Specialized Model Efficiency**: Task-specific models outperform general DialoGPT (deprecated) alternatives
 - **Native GPU Integration**: Direct CUDA acceleration with professional memory management
 - **Training System Integration**: Continuous improvement through production feedback loops
 
@@ -168,7 +168,7 @@ services:
 
 **Key Achievements:**
 - ✅ Native TensorRT integration achieving 730+ articles/sec
-- ✅ Specialized models replacing general DialoGPT where appropriate
+- ✅ Specialized models replacing general DialoGPT (deprecated) where appropriate
 - ✅ Training system integration with production validation
 - ✅ Ubuntu native deployment eliminating Docker overhead
 - ✅ Professional GPU memory management with crash-free operation
@@ -303,7 +303,7 @@ training_configs = {
 ## 6. Competitive Advantages
 
 ### Technical Superiority
-- **Specialized Models**: Task-specific optimization vs. general-purpose alternatives like DialoGPT
+- **Specialized Models**: Task-specific optimization vs. general-purpose alternatives like DialoGPT (deprecated)
 - **Continuous Learning**: Training system improves models with every news processing cycle
 - **Real-time Adaptation**: Respond to changing news landscape and analysis requirements
 - **Native Performance**: Ubuntu deployment eliminates Docker containerization overhead
@@ -353,7 +353,7 @@ training_configs = {
 
 ### Phase 3 Metrics (Complete Specialization) - 🎯 TARGET
 - 🎯 All agents using specialized models optimized for specific news analysis tasks
-- 🎯 100% independence from general-purpose models like DialoGPT
+- 🎯 100% independence from general-purpose models like DialoGPT (deprecated)
 - 🎯 Training system achieving <$500/month total infrastructure costs
 - 🎯 Specialized capabilities demonstrably superior to general alternatives
 
@@ -383,7 +383,7 @@ This approach transforms JustNews from a consumer of general AI services to a pr
 - **Performance Excellence**: Native deployment achieving 730+ articles/sec with specialized models
 - **Continuous Improvement**: Training system enabling ongoing optimization of all specialized functions
 - **Technical Independence**: Complete sovereignty over AI capabilities without external dependencies
-- **Specialized Superiority**: Task-specific models outperforming general alternatives like DialoGPT
+- **Specialized Superiority**: Task-specific models outperforming general alternatives like DialoGPT (deprecated)
 
 The phased implementation ensures continuous value delivery while building toward the ultimate goal: complete specialization independence with superior performance specifically optimized for news analysis tasks.
 

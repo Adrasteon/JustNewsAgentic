@@ -66,6 +66,13 @@ app = FastAPI(lifespan=lifespan)
 
 ready = False
 
+# Register shutdown endpoint
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for dashboard")
+
 class ToolCall(BaseModel):
     args: list
     kwargs: dict

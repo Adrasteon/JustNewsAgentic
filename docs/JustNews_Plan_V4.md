@@ -37,7 +37,7 @@ This document provides the detailed engineering plan for migrating JustNewsAgent
 ## 1. Migration Strategy Enhanced with Specialized Models
 
 ### Core Principles
-- **Specialized Model Architecture**: Task-specific models replace general DialoGPT where appropriate
+- **Specialized Model Architecture**: Task-specific models replace general DialoGPT (deprecated) where appropriate
 - **Native Ubuntu Deployment**: Eliminate Docker containerization overhead
 - **Training System Integration**: Continuous model improvement through production feedback
 - **Performance-First Design**: Achieve superior results through model specialization
@@ -47,7 +47,7 @@ This document provides the detailed engineering plan for migrating JustNewsAgent
 ```
 Phase 1: Native Specialized Foundation (COMPLETE)
 ├─ Ubuntu native deployment eliminating Docker dependencies
-├─ Specialized models replacing general DialoGPT implementations
+├─ Specialized models replacing general DialoGPT (deprecated) implementations
 ├─ Training system integration for continuous improvement  
 ├─ Achieve 4x+ performance improvement through specialization
 └─ Validate crash-free operation with professional GPU management
@@ -97,9 +97,9 @@ class SynthesizerV2Engine:
         # Model 3: T5 for text-to-text generation and neutralization
         self.models['t5'] = T5ForConditionalGeneration.from_pretrained("t5-small")
         
-        # Model 4: DialoGPT for conversational refinement (specialized use)
+        # Model 4: DialoGPT (deprecated) for conversational refinement (specialized use)
         self.models['dialogpt'] = AutoModelForCausalLM.from_pretrained(
-            "microsoft/DialoGPT-medium"
+            "distilgpt2 (deprecated)"
         )
         
         # Model 5: SentenceTransformer for semantic embeddings

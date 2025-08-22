@@ -38,7 +38,7 @@ pip install sentencepiece bertopic umap-learn textstat
 - ✅ **Advanced Clustering**: BERTopic + UMAP dimensionality reduction
 - ✅ **BART Summarization**: Neural abstractive summarization (231 chars)
 - ✅ **T5 Neutralization**: Bias removal and text neutralization (100 chars)
-- ✅ **DialoGPT Refinement**: Conversational text improvement (54 chars)
+- ✅ **DialoGPT (deprecated) Refinement**: Conversational text improvement (54 chars)
 - ✅ **Content Aggregation**: Multi-model synthesis pipeline (4 results)
 
 ### **3. Training System Integration** ✅ **COMPLETE**
@@ -171,7 +171,7 @@ add_training_feedback(
 - **Advanced Topic Modeling**: BERTopic-powered semantic clustering
 - **Neural Summarization**: BART-based abstractive summarization  
 - **Bias Neutralization**: T5-powered content neutralization
-- **Content Refinement**: DialoGPT conversational improvement
+- **Content Refinement**: DialoGPT (deprecated) conversational improvement
 - **Semantic Aggregation**: Multi-source content synthesis
 
 ### **Training System Benefits:**

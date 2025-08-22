@@ -3,7 +3,7 @@ GPU-accelerated tools for JustNews Critic Agent
 Based on proven GPUAcceleratedAnalyst pattern achieving 41.4-168.1 articles/sec
 
 Architecture:
-- DialoGPT-medium for content critique (355M parameters)
+- DialoGPT (deprecated)-medium for content critique (355M parameters)
 -            self.critique_pipeline = pipeline(
                 "text-classification",  # More appropriate for criticism tasks
                 model=model_name,
@@ -68,7 +68,7 @@ class GPUAcceleratedCritic:
     GPU-accelerated critic following proven analyst patterns
     
     Capabilities:
-    - Content critique using DialoGPT-medium (355M parameters)
+    - Content critique using DialoGPT (deprecated)-medium (355M parameters)
     - Quality assessment with GPU acceleration
     - Professional memory management preventing crashes
     - 8x+ performance improvement over CPU baseline
@@ -160,7 +160,7 @@ class GPUAcceleratedCritic:
         try:
             logger.info("📦 Loading GPU-optimized models...")
             
-            # TASK-SPECIFIC MODEL: Content quality and bias evaluation (replaces general DialoGPT)
+            # TASK-SPECIFIC MODEL: Content quality and bias evaluation (replaces general DialoGPT (deprecated))
             model_name = "unitary/unbiased-toxic-roberta"  # Specialized for content quality assessment
             
             # Create optimized text classification pipeline for criticism tasks
@@ -206,7 +206,7 @@ class GPUAcceleratedCritic:
         try:
             logger.info("💻 Loading CPU models (fallback mode)...")
             
-            # TASK-SPECIFIC MODEL: Content quality assessment (replaces general DialoGPT)
+            # TASK-SPECIFIC MODEL: Content quality assessment (replaces general DialoGPT (deprecated))
             model_name = "unitary/unbiased-toxic-roberta"  # Specialized for content quality assessment
             
             self.critique_pipeline = pipeline(

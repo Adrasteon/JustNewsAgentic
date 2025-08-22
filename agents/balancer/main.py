@@ -47,6 +47,14 @@ def call_tool(name: str, call: ToolCall) -> Dict[str, Any]:
 if HAS_FASTAPI:
     app = FastAPI(title="Balancer Agent")
 
+    # Register shutdown endpoint if available
+    try:
+        from agents.common.shutdown import register_shutdown_endpoint
+        register_shutdown_endpoint(app)
+    except Exception:
+        # No logger variable in this module's top-level scope before structlog resolution; safe no-op
+        pass
+
 
     class _ToolCallModel(BaseModel):
         args: list = []

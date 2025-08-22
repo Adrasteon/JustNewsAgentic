@@ -3,7 +3,7 @@ Synthesizer V3 Production Engine - Production-Ready Content Synthesis
 ================================================================
 
 Production Fixes Applied:
-1. ✅ DialoGPT REMOVED - Replaced with FLAN-T5 for better quality
+1. ✅ DialoGPT (deprecated) REMOVED - Replaced with FLAN-T5 for better quality
 2. ✅ T5 Legacy Warning FIXED - Modern tokenizer configuration  
 3. ✅ UMAP Clustering FIXED - Proper error handling and fallbacks
 4. ✅ BART Configuration OPTIMIZED - Dynamic parameters, no invalid flags
@@ -71,10 +71,10 @@ logger = logging.getLogger("synthesizer.v3_production")
 class SynthesizerV3Config:
     """Production Configuration for Synthesizer V3 Engine"""
     
-    # V3 Model configurations (DialoGPT REMOVED)
+    # V3 Model configurations (DialoGPT (deprecated) REMOVED)
     bertopic_model: str = "all-MiniLM-L6-v2"
     bart_model: str = "facebook/bart-large-cnn"
-    flan_t5_model: str = "google/flan-t5-base"  # REPLACEMENT for DialoGPT
+    flan_t5_model: str = "google/flan-t5-base"  # REPLACEMENT for DialoGPT (deprecated)
     embedding_model: str = "all-MiniLM-L6-v2"
     
     # Production generation parameters (CONFLICTS RESOLVED)
@@ -120,7 +120,7 @@ class SynthesizerV3ProductionEngine:
             # Load models in order of importance
             self._load_embedding_model()      # Core for clustering
             self._load_bart_model()          # Summarization
-            self._load_flan_t5_model()       # REPLACEMENT for DialoGPT
+            self._load_flan_t5_model()       # REPLACEMENT for DialoGPT (deprecated)
             self._load_bertopic_model()      # Advanced clustering
             
             logger.info("✅ Synthesizer V3 Production Engine initialized successfully")
@@ -238,7 +238,7 @@ class SynthesizerV3ProductionEngine:
             self.models['bart'] = None
     
     def _load_flan_t5_model(self):
-        """Load FLAN-T5 as DialoGPT REPLACEMENT with FIXED configuration"""
+        """Load FLAN-T5 as DialoGPT (deprecated) REPLACEMENT with FIXED configuration"""
         try:
             if not TRANSFORMERS_AVAILABLE:
                 logger.warning("Transformers not available - skipping FLAN-T5")
@@ -267,7 +267,7 @@ class SynthesizerV3ProductionEngine:
                 # REMOVED: All generation parameters (will be set per call)
             )
             
-            logger.info("✅ FLAN-T5 generation model loaded (DialoGPT replacement)")
+            logger.info("✅ FLAN-T5 generation model loaded (DialoGPT (deprecated) replacement)")
             
         except Exception as e:
             logger.error(f"Error loading FLAN-T5 model: {e}")
@@ -455,7 +455,7 @@ class SynthesizerV3ProductionEngine:
             return text[:max_chars] if len(text) > max_chars else text
 
     def neutralize_text_flan_t5(self, text: str) -> str:
-        """PRODUCTION FLAN-T5 neutralization (DialoGPT replacement)"""
+        """PRODUCTION FLAN-T5 neutralization (DialoGPT (deprecated) replacement)"""
         try:
             if not self.pipelines.get('flan_t5_generation'):
                 return self._fallback_neutralization(text)
@@ -488,7 +488,7 @@ class SynthesizerV3ProductionEngine:
             return self._fallback_neutralization(text)
     
     def refine_content_flan_t5(self, text: str, context: str = "news article") -> str:
-        """PRODUCTION FLAN-T5 refinement (DialoGPT replacement)"""
+        """PRODUCTION FLAN-T5 refinement (DialoGPT (deprecated) replacement)"""
         try:
             if not self.pipelines.get('flan_t5_generation'):
                 return self._fallback_refinement(text)

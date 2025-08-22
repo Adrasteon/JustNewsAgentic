@@ -22,7 +22,7 @@
 |-------|----------|-----------|---------|----------------------|
 | **Analyst** | 2.3GB | 2.3GB | 0GB | ✅ Already optimized (Native TensorRT) |
 | **Scout** | 8.0GB | 8.0GB | 0GB | ⏳ Future optimization (currently web crawling) |
-| **Fact Checker** | 4.0GB | 1.3GB | **2.7GB** | DialoGPT-large → medium + context opt |
+| **Fact Checker** | 4.0GB | 1.3GB | **2.7GB** | DialoGPT (deprecated)-large → medium + context opt |
 | **Synthesizer** | 3.0GB | 1.5GB | **1.5GB** | Lightweight embeddings + context opt |
 | **Critic** | 2.5GB | 1.3GB | **1.2GB** | Context window + batch optimization |
 | **Chief Editor** | 2.0GB | 1.0GB | **1.0GB** | Orchestration-focused optimization |
@@ -59,7 +59,7 @@ The breakthrough recognition was that Scout's ML-based content filtering allows 
 ### **Files Created for Deployment**
 ```
 optimized_model_configs/
-├── fact_checker_optimized.py      # DialoGPT-large → medium
+├── fact_checker_optimized.py      # DialoGPT (deprecated)-large → medium
 ├── synthesizer_optimized.py       # Lightweight embeddings + context opt
 ├── critic_optimized.py            # Context + batch optimization
 └── chief_editor_optimized.py      # Orchestration optimization

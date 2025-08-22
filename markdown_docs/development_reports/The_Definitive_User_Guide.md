@@ -57,10 +57,10 @@ JustNews Agentic V4 is a production-grade, multi-agent news analysis ecosystem d
 | Analyst       | RoBERTa/BERT TensorRT    | 8004  | Sentiment, bias, entity analysis     |
 | Scout         | LLaMA-3-8B, Crawl4AI     | 8002  | News discovery, deep/production crawl|
 | NewsReader    | LLaVA-1.5-7B (INT8)      | 8009  | Screenshot/image/DOM analysis        |
-| Fact Checker  | DialoGPT-medium          | 8003  | Fact validation                     |
-| Synthesizer   | DialoGPT-medium, Embeds  | 8005  | Clustering, synthesis               |
-| Critic        | DialoGPT-medium          | 8006  | Quality assessment                  |
-| Chief Editor  | DialoGPT-medium          | 8001  | Editorial orchestration             |
+| Fact Checker  | DialoGPT (deprecated)-medium          | 8003  | Fact validation                     |
+| Synthesizer   | DialoGPT (deprecated)-medium, Embeds  | 8005  | Clustering, synthesis               |
+| Critic        | DialoGPT (deprecated)-medium          | 8006  | Quality assessment                  |
+| Chief Editor  | DialoGPT (deprecated)-medium          | 8001  | Editorial orchestration             |
 | Memory        | Vector DB, Embeddings    | 8007  | Semantic search, storage            |
 | Reasoning     | Nucleoid, NetworkX       | 8008  | Symbolic logic, contradiction check |
 
@@ -171,13 +171,13 @@ python start_native_tensorrt_agent.py
 
 ### Fact Checker, Synthesizer, Critic, Chief Editor
 
-**Fact Checker:** Real-time claim validation (DialoGPT-medium)
+**Fact Checker:** Real-time claim validation (DialoGPT (deprecated)-medium)
 
-**Synthesizer:** Clustering, aggregation, feedback loops (DialoGPT-medium + embeddings)
+**Synthesizer:** Clustering, aggregation, feedback loops (DialoGPT (deprecated)-medium + embeddings)
 
-**Critic:** LLM-based critique, feedback logging (DialoGPT-medium)
+**Critic:** LLM-based critique, feedback logging (DialoGPT (deprecated)-medium)
 
-**Chief Editor:** Editorial orchestration (DialoGPT-medium)
+**Chief Editor:** Editorial orchestration (DialoGPT (deprecated)-medium)
 
 ### Memory Agent
 
@@ -209,7 +209,7 @@ Scout → NewsReader → Analyst → Fact Checker → Synthesizer → Critic →
 1. **Scout** discovers/crawls news (deep/production)
 2. **NewsReader** analyzes screenshots/DOM (visual + text)
 3. **Analyst** scores sentiment/bias (TensorRT)
-4. **Fact Checker** validates claims (DialoGPT)
+4. **Fact Checker** validates claims (DialoGPT (deprecated))
 5. **Synthesizer** clusters/aggregates (embeddings)
 6. **Critic** reviews quality (LLM-based)
 7. **Chief Editor** orchestrates workflow

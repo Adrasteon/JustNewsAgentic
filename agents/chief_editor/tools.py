@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("chief_editor.tools")
 
 def get_llama_model():
-    """Load optimized DialoGPT-medium model for orchestration tasks."""
+    """Load optimized DialoGPT (deprecated)-medium model for orchestration tasks."""
     if AutoModelForCausalLM is None or AutoTokenizer is None:
         raise ImportError("transformers library is not installed.")
     if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):

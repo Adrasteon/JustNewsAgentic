@@ -32,8 +32,9 @@ class GPUScoutInferenceEngine:
     - GPU acceleration with FP16 precision
     """
     
-    def __init__(self, model_path: str = "microsoft/DialoGPT-medium"):
-        self.model_path = model_path
+    def __init__(self, model_path: str = None):
+        # Default to env-configurable conversational model; DialoGPT (deprecated) is deprecated.
+        self.model_path = model_path or os.environ.get("SCOUT_CONVERSATIONAL_MODEL", "distilgpt2")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = None
         self.tokenizer = None
@@ -198,7 +199,7 @@ Respond with JSON format:
     def classify_news_content(self, text: str, url: str = "") -> Dict:
         """GPU-accelerated news content classification with intelligent fallback"""
         try:
-            # Since GPT-2/DialoGPT isn't great for structured output,
+            # Since GPT-2/DialoGPT (deprecated) isn't great for structured output,
             # prioritize our enhanced heuristic system which is working well
             logger.info("Using enhanced heuristic classification (primary)")
             result = self._heuristic_news_classification(text, url)

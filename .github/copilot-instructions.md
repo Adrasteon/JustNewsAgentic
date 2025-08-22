@@ -215,7 +215,7 @@ def gpu_context():
 - **Scout**: 8.0GB (LLaMA-3-8B + 5-model architecture)
 - **Analyst**: 2.3GB (TensorRT optimized) ✅ Production
 - **Synthesizer**: 3.0GB (4-model V3 stack) ✅ Production  
-- **Other Agents**: 2.0-2.5GB each (DialoGPT-medium)
+- **Other Agents**: 2.0-2.5GB each (DialoGPT (deprecated)-medium)
 - **Target Buffer**: 2-3GB for system stability
 
 ## Error Handling Standards

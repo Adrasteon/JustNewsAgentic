@@ -59,6 +59,13 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(title="Chief Editor Agent", lifespan=lifespan)
 
+# Register common shutdown endpoint
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for chief_editor")
+
 @app.get("/health")
 def health():
     return {"status": "ok"}

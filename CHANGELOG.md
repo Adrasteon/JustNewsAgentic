@@ -422,7 +422,7 @@ quantization_config = BitsAndBytesConfig(
 - **Production Ready**: Exceeds 3GB minimum target by 67% with conservative, low-risk optimizations
 
 ### 🚀 Successful Deployment Results
-- **Fact Checker**: DialoGPT-large → DialoGPT-medium deployed (2.7GB saved)
+- **Fact Checker**: DialoGPT (deprecated)-large → DialoGPT (deprecated)-medium deployed (2.7GB saved)
 - **Synthesizer**: Lightweight embeddings + context optimization deployed (1.5GB saved)
 - **Critic**: Context window and batch optimization deployed (1.2GB saved)
 - **Chief Editor**: Orchestration-focused optimization deployed (1.0GB saved)
@@ -457,7 +457,7 @@ quantization_config = BitsAndBytesConfig(
 - **Strategic Approach**: Leverages Scout pre-filtering for downstream model optimization
 
 ### 📊 Phase 1 Optimizations Ready
-- **Fact Checker**: DialoGPT-large → DialoGPT-medium (Scout pre-filtering enables downsizing)
+- **Fact Checker**: DialoGPT (deprecated)-large → DialoGPT (deprecated)-medium (Scout pre-filtering enables downsizing)
 - **Synthesizer**: Context optimization + lightweight embeddings configuration
 - **Critic**: Context window and batch size optimization for memory efficiency
 - **Chief Editor**: Orchestration-focused context and batch optimization
@@ -480,8 +480,8 @@ quantization_config = BitsAndBytesConfig(
 ### Strategic Pipeline Optimization
 - **Intelligence-First Design**: Scout agent with LLaMA-3-8B provides ML-based content pre-filtering
 - **Pipeline Efficiency**: Scout pre-filtering enables smaller downstream models while maintaining accuracy
-- **Fact Checker Optimization**: Reduced from DialoGPT-large (4.0GB) to DialoGPT-medium (2.5GB) due to Scout pre-filtering
-- **Chief Editor Optimization**: Specification alignment to DialoGPT-medium (2.0GB) for orchestration focus
+- **Fact Checker Optimization**: Reduced from DialoGPT (deprecated)-large (4.0GB) to DialoGPT (deprecated)-medium (2.5GB) due to Scout pre-filtering
+- **Chief Editor Optimization**: Specification alignment to DialoGPT (deprecated)-medium (2.0GB) for orchestration focus
 - **Memory Savings**: 3.5GB total memory saved through strategic right-sizing
 
 ### Optimized System Architecture (RTX 3090 24GB)
@@ -489,10 +489,10 @@ quantization_config = BitsAndBytesConfig(
 Agent Specifications (Production-Optimized):
 ├─ Analyst: 2.3GB (✅ Native TensorRT - 730+ articles/sec)
 ├─ Scout: 8.0GB (LLaMA-3-8B + self-learning - critical pre-filter)
-├─ Fact Checker: 2.5GB (DialoGPT-medium - Scout-optimized)
-├─ Synthesizer: 3.0GB (DialoGPT-medium + embeddings)
-├─ Critic: 2.5GB (DialoGPT-medium)
-├─ Chief Editor: 2.0GB (DialoGPT-medium - orchestration focus)  
+├─ Fact Checker: 2.5GB (DialoGPT (deprecated)-medium - Scout-optimized)
+├─ Synthesizer: 3.0GB (DialoGPT (deprecated)-medium + embeddings)
+├─ Critic: 2.5GB (DialoGPT (deprecated)-medium)
+├─ Chief Editor: 2.0GB (DialoGPT (deprecated)-medium - orchestration focus)  
 └─ Memory: 1.5GB (Vector embeddings)
 
 System Totals:
@@ -602,9 +602,9 @@ System Totals:
 
 ### Phase 1 GPU Expansion Complete
 - **Multi-Agent GPU Manager**: Professional memory allocation across RTX 3090 24GB VRAM
-- **Fact Checker GPU**: DialoGPT-large (774M params) with 4GB allocation, 8-item batches
+- **Fact Checker GPU**: DialoGPT (deprecated)-large (774M params) with 4GB allocation, 8-item batches
 - **Synthesizer GPU**: Sentence-transformers + clustering with 6GB allocation, 16-item batches  
-- **Critic GPU**: DialoGPT-medium (355M params) with 4GB allocation, 8-item batches
+- **Critic GPU**: DialoGPT (deprecated)-medium (355M params) with 4GB allocation, 8-item batches
 
 ### Performance Targets (Expected Implementation Results)
 - **System-Wide**: 200+ articles/sec with 4+ GPU agents (vs 41.4-168.1 single agent)

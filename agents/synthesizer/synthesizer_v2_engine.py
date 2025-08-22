@@ -2,7 +2,7 @@
 Synthesizer V2 Engine - 5-Model AI Architecture for Comprehensive Content Synthesis
 ================================================================
 
-Architecture: BERTopic + BART + T5 + DialoGPT + SentenceTransformer
+Architecture: BERTopic + BART + T5 + DialoGPT (deprecated) + SentenceTransformer
 Performance: GPU-accelerated text clustering, summarization, and synthesis
 Integration: Complete V2 upgrade with professional model management
 
@@ -10,7 +10,7 @@ Models:
 1. BERTopic: Advanced topic modeling and article clustering
 2. BART: Neural abstractive summarization 
 3. T5: Text-to-text generation and neutralization
-4. DialoGPT: Conversational text generation and refinement
+4. DialoGPT (deprecated): Conversational text generation and refinement
 5. SentenceTransformer: Semantic embeddings for clustering
 
 Status: V2 Production Ready - Phase 1 Implementation
@@ -83,7 +83,9 @@ class SynthesizerV2Config:
     bertopic_model: str = "all-MiniLM-L6-v2"
     bart_model: str = "facebook/bart-large-cnn"
     t5_model: str = "t5-small"
-    dialogpt_model: str = "microsoft/DialoGPT-medium"
+    # Replace deprecated DialoGPT (deprecated) references with an env-configurable lightweight conversational model.
+    # Default to a small task-specific model to avoid DialoGPT (deprecated) usage.
+    dialogpt_model: str = os.environ.get("SYNTH_DIALOGPT_MODEL", "distilgpt2")
     embedding_model: str = "all-MiniLM-L6-v2"
     
     # Generation parameters
@@ -114,7 +116,7 @@ class SynthesizerV2Engine:
     - Advanced topic modeling with BERTopic
     - Neural abstractive summarization with BART
     - Text-to-text generation with T5
-    - Conversational refinement with DialoGPT  
+    - Conversational refinement with DialoGPT (deprecated)  
     - Semantic clustering with SentenceTransformer
     """
     
@@ -145,7 +147,7 @@ class SynthesizerV2Engine:
             # Model 3: T5 for text generation
             self._load_t5_model()
             
-            # Model 4: DialoGPT for refinement
+            # Model 4: DialoGPT (deprecated) for refinement
             self._load_dialogpt_model()
             
             # Model 5: SentenceTransformer for embeddings
@@ -263,10 +265,13 @@ class SynthesizerV2Engine:
             self.models['t5'] = None
     
     def _load_dialogpt_model(self):
-        """Load DialoGPT model for conversational refinement"""
+        """Load conversational refinement model (DialoGPT (deprecated) deprecated).
+
+        Uses the environment variable SYNTH_DIALOGPT_MODEL to select a model. Default: distilgpt2
+        """
         try:
             if not TRANSFORMERS_AVAILABLE:
-                logger.warning("Transformers not available - skipping DialoGPT")
+                logger.warning("Transformers not available - skipping conversational refinement model load")
                 return
                 
             self.models['dialogpt'] = AutoModelForCausalLM.from_pretrained(
@@ -293,10 +298,10 @@ class SynthesizerV2Engine:
                 batch_size=self.config.batch_size
             )
             
-            logger.info("✅ DialoGPT conversational model loaded successfully")
+            logger.info("✅ Conversational refinement model loaded successfully: %s", self.config.dialogpt_model)
             
         except Exception as e:
-            logger.error(f"Error loading DialoGPT model: {e}")
+            logger.error(f"Error loading DialoGPT (deprecated) model: {e}")
             self.models['dialogpt'] = None
     
     def _load_embedding_model(self):
@@ -517,7 +522,7 @@ class SynthesizerV2Engine:
             return self._fallback_neutralization(text)
     
     def refine_content_dialogpt(self, text: str, context: str = "news article") -> str:
-        """Refine content using DialoGPT conversational capabilities"""
+        """Refine content using DialoGPT (deprecated) conversational capabilities"""
         try:
             if self.pipelines.get('dialogpt_generation') is None:
                 return self._fallback_refinement(text)
@@ -548,7 +553,7 @@ class SynthesizerV2Engine:
             return refined if refined else text
             
         except Exception as e:
-            logger.error(f"Error in DialoGPT refinement: {e}")
+            logger.error(f"Error in DialoGPT (deprecated) refinement: {e}")
             return self._fallback_refinement(text)
     
     def aggregate_cluster_content(self, article_texts: List[str]) -> Dict[str, str]:
@@ -573,7 +578,7 @@ class SynthesizerV2Engine:
             if self.models.get('t5') is not None:
                 results['t5_neutral'] = self.neutralize_text_t5(combined_text[:500])  # Limit input
             
-            # Method 3: DialoGPT refinement
+            # Method 3: DialoGPT (deprecated) refinement
             if self.models.get('dialogpt') is not None:
                 results['dialogpt_refined'] = self.refine_content_dialogpt(combined_text[:400])
             
@@ -606,7 +611,7 @@ class SynthesizerV2Engine:
         if 't5_neutral' in results and len(results['t5_neutral']) > 20:
             return results['t5_neutral']
         
-        # Use DialoGPT refined version
+        # Use DialoGPT (deprecated) refined version
         if 'dialogpt_refined' in results and len(results['dialogpt_refined']) > 20:
             return results['dialogpt_refined']
         
@@ -722,7 +727,7 @@ def test_synthesizer_v2_engine():
         print(f"   BERTopic: {'✅' if status['bertopic'] else '❌'}")
         print(f"   BART: {'✅' if status['bart'] else '❌'}")
         print(f"   T5: {'✅' if status['t5'] else '❌'}")
-        print(f"   DialoGPT: {'✅' if status['dialogpt'] else '❌'}")
+        print(f"   DialoGPT (deprecated): {'✅' if status['dialogpt'] else '❌'}")
         print(f"   Embeddings: {'✅' if status['embeddings'] else '❌'}")
         
         engine.cleanup()

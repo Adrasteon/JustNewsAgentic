@@ -177,6 +177,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="JustNews V4 Reasoning Agent (Nucleoid)", lifespan=lifespan)
 
+# Register shutdown endpoint if available
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for reasoning")
+
 # --- Nucleoid GitHub Integration ---
 class NucleoidEngine:
     """Wrapper for Nucleoid GitHub Python implementation."""

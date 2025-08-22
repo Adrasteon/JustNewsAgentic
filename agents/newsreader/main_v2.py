@@ -116,6 +116,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Register shutdown endpoint if available
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for newsreader_v2")
+
 # Pydantic models for V2 request/response
 class ToolCall(BaseModel):
     args: List[Any] = []

@@ -1,6 +1,6 @@
 # GPU-Accelerated Fact-Checker Agent Tools
 # Based on proven GPUAcceleratedAnalyst pattern
-# Expected Performance: 5-10x improvement with DialoGPT-large (774M params)
+# Expected Performance: 5-10x improvement with DialoGPT (deprecated)-large (774M params)
 
 import os
 import logging
@@ -19,9 +19,10 @@ except ImportError as e:
     AutoTokenizer = None
     pipeline = None
 
-# Configuration
-MODEL_NAME = "microsoft/DialoGPT-large"  # 774M parameters
-MODEL_PATH = os.environ.get("FACT_CHECKER_MODEL_PATH", "./models/dialogpt-large")
+# Configuration (DialoGPT (deprecated) deprecated)
+# Use FACT_CHECKER_MODEL_NAME to select a conversational model for verification tasks.
+MODEL_NAME = os.environ.get("FACT_CHECKER_MODEL_NAME", "distilgpt2")  # default to lightweight replacement
+MODEL_PATH = os.environ.get("FACT_CHECKER_MODEL_PATH", "./models/" + MODEL_NAME.replace('/', '_'))
 FEEDBACK_LOG = os.environ.get("FACT_CHECKER_FEEDBACK_LOG", "./feedback_fact_checker.log")
 
 # Configure logging
@@ -30,7 +31,7 @@ logger = logging.getLogger("fact_checker.gpu_tools")
 
 class GPUAcceleratedFactChecker:
     """
-    GPU-accelerated fact checking using DialoGPT-large (774M parameters)
+    GPU-accelerated fact checking using DialoGPT (deprecated)-large (774M parameters)
     
     Based on proven GPUAcceleratedAnalyst pattern:
     - Professional GPU memory management (4GB VRAM allocation)
@@ -66,10 +67,10 @@ class GPUAcceleratedFactChecker:
                 logger.info(f"✅ GPU Available: {gpu_name}")
                 logger.info(f"✅ GPU Memory: {gpu_memory:.1f} GB")
                 
-                # Load DialoGPT-large with GPU optimization
+                # Load DialoGPT (deprecated)-large with GPU optimization
                 logger.info(f"Loading {MODEL_NAME} for GPU acceleration...")
                 
-                # Use text-generation pipeline for DialoGPT (similar to analyst pattern)
+                # Use text-generation pipeline for DialoGPT (deprecated) (similar to analyst pattern)
                 self.fact_verification_pipeline = pipeline(
                     "text-generation",
                     model=MODEL_NAME,
@@ -181,7 +182,7 @@ class GPUAcceleratedFactChecker:
     
     def verify_claims_batch(self, claims: List[str], sources: List[str]) -> Dict[str, Any]:
         """
-        GPU-accelerated batch claim verification with DialoGPT-large
+        GPU-accelerated batch claim verification with DialoGPT (deprecated)-large
         """
     # top-level timing is handled within specialized methods
         try:
@@ -266,7 +267,7 @@ class GPUAcceleratedFactChecker:
         start_time = datetime.now()
         
         if hasattr(self, 'cpu_pipeline'):
-            # Use CPU DialoGPT pipeline
+            # Use CPU DialoGPT (deprecated) pipeline
             joined_sources = "\\n".join(sources[:2])  # Smaller batch for CPU
             results = {}
             

@@ -29,7 +29,7 @@
 ## 🔧 Successfully Deployed Optimizations
 
 ### **Fact Checker Agent**
-- **Model Change**: DialoGPT-large → DialoGPT-medium
+- **Model Change**: DialoGPT (deprecated)-large → DialoGPT (deprecated)-medium
 - **Strategic Rationale**: Scout pre-filtering reduces accuracy requirements
 - **Context Optimization**: 2048 → 1512 tokens (appropriate for news articles)
 - **Memory Savings**: **2.7GB** (4.0GB → 1.3GB)
@@ -62,7 +62,7 @@
 The key breakthrough was recognizing that Scout's ML-based pre-filtering enables smaller downstream models:
 
 1. **Scout Agent**: Pre-filters content with LLaMA-3-8B intelligence
-2. **Fact Checker**: Reduced to DialoGPT-medium (Scout ensures quality input)
+2. **Fact Checker**: Reduced to DialoGPT (deprecated)-medium (Scout ensures quality input)
 3. **Downstream Agents**: Optimized for Scout-filtered content
 4. **Result**: Maintained accuracy with dramatically reduced memory
 

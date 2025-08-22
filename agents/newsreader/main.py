@@ -85,6 +85,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Register common shutdown endpoint
+try:
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for newsreader")
+
 class ToolCall(BaseModel):
     args: List[Any]
     kwargs: Dict[str, Any]

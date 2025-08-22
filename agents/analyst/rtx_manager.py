@@ -251,8 +251,8 @@ class RTXManager:
             
             tokenizer_path = self.engine_config.get('tokenizer_dir', './models/tokenizer')
             if not Path(tokenizer_path).exists():
-                # Fallback to a default tokenizer
-                tokenizer_path = "microsoft/DialoGPT-medium"
+                # Fallback to a default lightweight tokenizer (DialoGPT (deprecated) deprecated)
+                tokenizer_path = os.environ.get('DEFAULT_TOKENIZER_PATH', 'distilgpt2')
             
             tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
             input_ids = tokenizer.encode(prompt, return_tensors='pt')
@@ -270,7 +270,7 @@ class RTXManager:
             
             tokenizer_path = self.engine_config.get('tokenizer_dir', './models/tokenizer')
             if not Path(tokenizer_path).exists():
-                tokenizer_path = "microsoft/DialoGPT-medium"
+                tokenizer_path = os.environ.get('DEFAULT_TOKENIZER_PATH', 'distilgpt2')
             
             tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
             response = tokenizer.decode(outputs[0], skip_special_tokens=True)

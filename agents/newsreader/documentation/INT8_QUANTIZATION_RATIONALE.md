@@ -73,9 +73,9 @@ GPU Memory Allocation (24GB Total):
 ├── Scout Agent (LLaMA-3-8B): 8.0GB
 ├── NewsReader (LLaVA INT8): 3.5GB ← 50% reduction
 ├── Analyst Agent (TensorRT): 2.3GB
-├── Fact Checker (DialoGPT): 2.5GB
+├── Fact Checker (DialoGPT (deprecated)): 2.5GB
 ├── Synthesizer (Embeddings): 3.0GB
-├── Critic (DialoGPT): 2.5GB
+├── Critic (DialoGPT (deprecated)): 2.5GB
 ├── Chief Editor: 2.0GB
 ├── Memory (Vectors): 1.5GB
 ├── System Buffer: 3.6GB ✅ SAFE

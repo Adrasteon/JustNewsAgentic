@@ -39,9 +39,10 @@ except ImportError:
 # Environment configuration
 FEEDBACK_LOG = os.environ.get("FACT_CHECKER_FEEDBACK_LOG", "./feedback_fact_checker.log")
 
-# Fallback configuration for legacy compatibility
-MODEL_NAME = "microsoft/DialoGPT-medium"
-MODEL_PATH = os.environ.get("MODEL_PATH", "./models/dialogpt-medium")
+# Fallback configuration for legacy compatibility (DialoGPT (deprecated) deprecated)
+# Use environment override FACT_CHECKER_CONVERSATIONAL_MODEL; default to a small, task-specific model
+MODEL_NAME = os.environ.get("FACT_CHECKER_CONVERSATIONAL_MODEL", "distilgpt2")
+MODEL_PATH = os.environ.get("MODEL_PATH", "./models/" + MODEL_NAME.replace('/', '_'))
 OPTIMIZED_MAX_LENGTH = 1512
 OPTIMIZED_BATCH_SIZE = 16
 

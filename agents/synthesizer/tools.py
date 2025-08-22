@@ -122,7 +122,7 @@ def get_synthesizer_v3_engine():
     return synthesizer_v3_engine
 
 def get_dialog_model():
-    """Load optimized DialoGPT-medium model with memory-efficient configuration."""
+    """Load optimized DialoGPT (deprecated)-medium model with memory-efficient configuration."""
     if AutoModelForCausalLM is None or AutoTokenizer is None:
         raise ImportError("transformers library is not installed.")
     if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):
@@ -303,7 +303,7 @@ def synthesize_content_v2(article_texts: List[str], synthesis_type: str = "aggre
             result["confidence"] = 0.85
             
         elif synthesis_type == "refine":
-            # Use DialoGPT refinement
+            # Use DialoGPT (deprecated) refinement
             refined_texts = []
             for text in article_texts:
                 refined = synthesizer_v2_engine.refine_content_dialogpt(text)
@@ -472,7 +472,7 @@ def synthesize_content_v3(article_texts: List[str], context: str = "news analysi
     Features:
     - BERTopic clustering with proper UMAP parameters
     - BART summarization with minimum text validation  
-    - FLAN-T5 neutralization and refinement (DialoGPT replacement)
+    - FLAN-T5 neutralization and refinement (DialoGPT (deprecated) replacement)
     - SentenceTransformers embeddings
     - Training system integration with feedback collection
     - Comprehensive error handling and fallbacks
