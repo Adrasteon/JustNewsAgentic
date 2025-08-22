@@ -32,11 +32,14 @@ TEXT_EXTS = {'.md', '.rst', '.txt', '.yaml', '.yml', '.json', '.ini', '.cfg'}
 # directories to exclude from scanning (model caches, large artifacts)
 EXCLUDE_DIRS = {'.git', '.cache', 'model_cache', 'models', 'archive_obsolete_files'}
 
-# patterns to replace: tuple(pattern, replacement_fn, description)
+# files to exclude from processing
+EXCLUDE_FILES = {'deprecate_dialogpt.py', 'DEPRECATE_DIALOGPT_README.md'}
+
+# patterns to replace: literal model strings to find and replace
 MODEL_LITERALS = [
-    ros.environ.get("DIALOGPT_REPLACEMENT_MODEL", "distilgpt2"),
-    ros.environ.get("DIALOGPT_REPLACEMENT_MODEL", "distilgpt2"),
-    ros.environ.get("DIALOGPT_REPLACEMENT_MODEL", "distilgpt2"),
+    "microsoft/DialoGPT-medium",
+    "microsoft/DialoGPT-large", 
+    "microsoft/DialoGPT",
 ]
 
 def find_files(root: Path) -> List[Path]:
@@ -45,6 +48,9 @@ def find_files(root: Path) -> List[Path]:
         if p.is_file():
             # skip excluded directories anywhere in the path
             if any(part in EXCLUDE_DIRS for part in p.parts):
+                continue
+            # skip excluded files
+            if p.name in EXCLUDE_FILES:
                 continue
             files.append(p)
     return files
@@ -90,12 +96,12 @@ def process_python_file(path: Path, apply: bool) -> Tuple[bool, List[str]]:
             changed = True
             notes.append(f"Replaced literal {lit} with env-driven fallback")
 
-    # Replace bare word "DialoGPT (deprecated)" in comments and docstrings: annotate as deprecated
-    if 'DialoGPT (deprecated)' in text:
-        # Only change occurrences outside code strings? Simpler: annotate common comment patterns
-        text = re.sub(r'(\bDialoGPT\b)', r'DialoGPT (deprecated) (deprecated)', text)
+    # Replace bare word "DialoGPT" in comments and docstrings: annotate as deprecated
+    if 'DialoGPT' in text and 'DialoGPT (deprecated)' not in text:
+        # Only annotate DialoGPT that's not already marked as deprecated
+        text = re.sub(r'\bDialoGPT\b(?!\s*\(deprecated\))', r'DialoGPT (deprecated)', text)
         changed = True
-        notes.append('Annotated DialoGPT (deprecated) mentions as deprecated')
+        notes.append('Annotated DialoGPT mentions as deprecated')
 
     if changed:
         # ensure import os exists
@@ -121,22 +127,29 @@ def process_text_file(path: Path, apply: bool) -> Tuple[bool, List[str]]:
     text = path.read_text(encoding='utf-8')
     changed = False
     notes = []
-    if 'DialoGPT (deprecated)' in text:
-        text2 = text.replace(os.environ.get("DIALOGPT_REPLACEMENT_MODEL", "distilgpt2"), 'distilgpt2 (deprecated)')
-        text2 = text2.replace(os.environ.get("DIALOGPT_REPLACEMENT_MODEL", "distilgpt2"), 'distilgpt2 (deprecated)')
-        text2 = text2.replace('DialoGPT (deprecated)', 'DialoGPT (deprecated) (deprecated)')
-        if text2 != text:
+    
+    # Replace model literals first
+    for lit in MODEL_LITERALS:
+        if lit in text:
+            text = text.replace(lit, 'distilgpt2 (deprecated)')
             changed = True
-            notes.append('Annotated DialoGPT (deprecated) mention(s) in text file')
-            if apply:
-                bak = path.with_suffix(path.suffix + '.bak')
-                if not bak.exists():
-                    path.rename(bak)
-                    path.write_text(text2, encoding='utf-8')
-                else:
-                    ts_bak = path.with_suffix(path.suffix + '.bak2')
-                    path.rename(ts_bak)
-                    path.write_text(text2, encoding='utf-8')
+            notes.append(f'Replaced model literal {lit} with distilgpt2 (deprecated)')
+    
+    # Annotate DialoGPT mentions that aren't already deprecated
+    if 'DialoGPT' in text and 'DialoGPT (deprecated)' not in text:
+        text = re.sub(r'\bDialoGPT\b(?!\s*\(deprecated\))', r'DialoGPT (deprecated)', text)
+        changed = True
+        notes.append('Annotated DialoGPT mention(s) as deprecated in text file')
+        
+    if changed and apply:
+        bak = path.with_suffix(path.suffix + '.bak')
+        if not bak.exists():
+            path.rename(bak)
+            path.write_text(text, encoding='utf-8')
+        else:
+            ts_bak = path.with_suffix(path.suffix + '.bak2')
+            path.rename(ts_bak)
+            path.write_text(text, encoding='utf-8')
     return changed, notes
 
 
@@ -150,7 +163,7 @@ def run(dry_run: bool = True) -> int:
                 continue
             with f.open('r', encoding='utf-8', errors='ignore') as fh:
                 data = fh.read()
-            if 'DialoGPT (deprecated)' in data or any(lit in data for lit in MODEL_LITERALS):
+            if 'DialoGPT' in data or any(lit in data for lit in MODEL_LITERALS):
                 total += 1
                 ok, notes = process_python_file(f, apply=not dry_run)
                 if ok:
@@ -158,7 +171,7 @@ def run(dry_run: bool = True) -> int:
         else:
             if f.suffix.lower() in TEXT_EXTS:
                 data = f.read_text(encoding='utf-8', errors='ignore')
-                if 'DialoGPT (deprecated)' in data:
+                if 'DialoGPT' in data:
                     total += 1
                     ok, notes = process_text_file(f, apply=not dry_run)
                     if ok:
@@ -166,7 +179,7 @@ def run(dry_run: bool = True) -> int:
 
     # report
     if dry_run:
-        print(f"Dry-run: found {total} files with DialoGPT (deprecated) references. No files modified.")
+        print(f"Dry-run: found {total} files with DialoGPT references. No files modified.")
     else:
         print(f"Applied changes to {len(changed_files)} files. Backups saved with .bak suffix where applicable.")
 
@@ -179,7 +192,7 @@ def run(dry_run: bool = True) -> int:
 
 
 def main():
-    p = argparse.ArgumentParser(description='Deprecate DialoGPT (deprecated) occurrences across workspace')
+    p = argparse.ArgumentParser(description='Deprecate DialoGPT occurrences across workspace')
     p.add_argument('--apply', action='store_true', help='Apply changes (writes files). Default: dry-run')
     args = p.parse_args()
     rc = run(dry_run=not args.apply)

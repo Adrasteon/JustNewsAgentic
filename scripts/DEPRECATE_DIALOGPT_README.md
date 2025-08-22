@@ -1,14 +1,14 @@
-Deprecate DialoGPT (deprecated) helper
+Deprecate DialoGPT helper
 ==========================
 
-This repository includes a small helper script `scripts/deprecate_dialogpt.py` to safely locate and optionally replace occurrences of DialoGPT (deprecated) model identifiers and mentions across the codebase.
+This repository includes a small helper script `scripts/deprecate_dialogpt.py` to safely locate and optionally replace occurrences of DialoGPT model identifiers and mentions across the codebase.
 
 What it does
-- Performs a dry-run by default and prints files that reference `DialoGPT (deprecated)` or `microsoft/DialoGPT (deprecated)-*`.
+- Performs a dry-run by default and prints files that reference `DialoGPT` or `microsoft/DialoGPT-*`.
 - When run with `--apply` it will:
-  - For Python files: replace quoted literal model ids like `"distilgpt2 (deprecated)"` with
+  - For Python files: replace quoted literal model ids like `"microsoft/DialoGPT-medium"` with
     `os.environ.get("DIALOGPT_REPLACEMENT_MODEL", "distilgpt2")` and add `import os` if missing.
-  - Annotate `DialoGPT (deprecated)` mentions in text files and docs as `DialoGPT (deprecated) (deprecated)` and replace model ids with `distilgpt2 (deprecated)`.
+  - Annotate `DialoGPT` mentions in text files and docs as `DialoGPT (deprecated)` and replace model ids with `distilgpt2 (deprecated)`.
   - Create simple backups of changed files with `.bak` (or `.bak2` if backups already exist).
 
 Usage
@@ -29,7 +29,7 @@ How to review & make a PR
 -------------------------
 1. Run the dry-run and inspect proposed files.
 2. Commit the changes from `--apply` on a feature branch, run tests and lint.
-3. Create a PR titled "Deprecate DialoGPT (deprecated): replace literals with env-driven fallback" and include this README as the PR description or attach the output of the dry-run.
+3. Create a PR titled "Deprecate DialoGPT: replace literals with env-driven fallback" and include this README as the PR description or attach the output of the dry-run.
 
 Notes & limitations
 -------------------
