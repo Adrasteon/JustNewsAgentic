@@ -36,14 +36,15 @@
       }
     },
     {
-      "command": "docker-compose up",
-      "label": "Build and Run Project",
+      "command": "./start_services_daemon.sh",
+      "label": "Build and Run Project (Docker deprecated)",
       "type": "shell",
       "group": "build",
       "isBackground": true,
-      "problemMatcher": [
-        "$docker-compose"
-      ]
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     }
   ]
 }

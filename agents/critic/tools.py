@@ -303,3 +303,13 @@ def _extract_citations(text: str) -> List[Dict[str, Any]]:
             })
     
     return citations
+
+
+def get_llama_model():
+    """Compatibility shim for tests that expect get_llama_model to exist.
+
+    Return a (model, tokenizer) tuple or (None, None). Tests typically
+    monkeypatch this function during unit tests; a lightweight shim
+    prevents AttributeError during collection.
+    """
+    return (None, None)

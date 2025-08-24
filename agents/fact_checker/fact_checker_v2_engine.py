@@ -18,18 +18,38 @@ import warnings
 from typing import Dict, List, Any
 from datetime import datetime
 import torch
-from transformers import (
-    pipeline,
-    logging as transformers_logging
-)
-from sentence_transformers import SentenceTransformer
+import importlib
+
+# Lazy import helpers to avoid importing heavy ML libraries at module import time
+def _import_transformers_module():
+    try:
+        mod = importlib.import_module("transformers")
+        # Try to silence transformers logging when available
+        try:
+            mod.logging.set_verbosity_error()
+        except Exception:
+            pass
+        return mod
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Transformers not available at import time: {e}")
+        return None
+
+
+def _import_sentence_transformer_class():
+    try:
+        mod = importlib.import_module("sentence_transformers")
+        return getattr(mod, "SentenceTransformer", None)
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"sentence_transformers not available at import time: {e}")
+        return None
 from pathlib import Path
 import numpy as np
 
-# Production-ready warning suppression
+# Production-ready warning suppression (silence when modules are present at runtime)
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch.*")
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers.*")
-transformers_logging.set_verbosity_error()
 
 # GPU cleanup integration
 try:
@@ -82,18 +102,23 @@ class FactCheckerV2Engine:
         """Model 1: DistilBERT-base for binary fact verification"""
         try:
             model_name = "distilbert-base-uncased"
-            
-            # Create fact verification pipeline - avoid meta tensors by not using device_map
-            self.pipelines['fact_verification'] = pipeline(
+            transformers_mod = _import_transformers_module()
+            if transformers_mod is None:
+                self.pipelines['fact_verification'] = None
+                return
+
+            pipeline_fn = getattr(transformers_mod, 'pipeline', None)
+            device = 0 if (self.device.type == "cuda") else -1
+            self.pipelines['fact_verification'] = pipeline_fn(
                 "text-classification",
                 model=model_name,
                 tokenizer=model_name,
-                device=0 if self.device.type == "cuda" else -1,
+                device=device,
                 return_all_scores=True
             )
-            
+
             logger.info("✅ Model 1: Fact verification (DistilBERT) loaded")
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to load fact verification model: {e}")
             self.pipelines['fact_verification'] = None
@@ -102,18 +127,23 @@ class FactCheckerV2Engine:
         """Model 2: RoBERTa-base for source credibility scoring"""
         try:
             model_name = "roberta-base"
-            
-            # Create credibility assessment pipeline
-            self.pipelines['credibility_assessment'] = pipeline(
+            transformers_mod = _import_transformers_module()
+            if transformers_mod is None:
+                self.pipelines['credibility_assessment'] = None
+                return
+
+            pipeline_fn = getattr(transformers_mod, 'pipeline', None)
+            device = 0 if (self.device.type == "cuda") else -1
+            self.pipelines['credibility_assessment'] = pipeline_fn(
                 "text-classification",
                 model=model_name,
                 tokenizer=model_name,
-                device=0 if self.device.type == "cuda" else -1,
+                device=device,
                 return_all_scores=True
             )
-            
+
             logger.info("✅ Model 2: Credibility assessment (RoBERTa) loaded")
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to load credibility assessment model: {e}")
             self.pipelines['credibility_assessment'] = None
@@ -149,12 +179,13 @@ class FactCheckerV2Engine:
                             model_dir = ensure_agent_model_exists(model_name, agent_cache)
                         except Exception:
                             pass
-                        if 'SentenceTransformer' in globals() and SentenceTransformer is not None:
+                        SentenceTransformerCls = _import_sentence_transformer_class()
+                        if SentenceTransformerCls is not None:
                             try:
                                 if model_dir:
-                                    self.models['evidence_retrieval'] = SentenceTransformer(str(model_dir), device=self.device)
+                                    self.models['evidence_retrieval'] = SentenceTransformerCls(str(model_dir), device=self.device)
                                 else:
-                                    self.models['evidence_retrieval'] = SentenceTransformer(
+                                    self.models['evidence_retrieval'] = SentenceTransformerCls(
                                         model_name,
                                         cache_folder=agent_cache,
                                         device=self.device

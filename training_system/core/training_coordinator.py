@@ -28,7 +28,20 @@ from dataclasses import dataclass
 from collections import deque
 import numpy as np
 import torch
-from transformers import Trainer, TrainingArguments
+import importlib
+
+# Lazy import placeholders for heavy training utilities
+_TRANSFORMERS_AVAILABLE = importlib.util.find_spec("transformers") is not None
+_PSYCOPG2_AVAILABLE = importlib.util.find_spec("psycopg2") is not None
+
+def _import_trainer_and_args():
+    try:
+        transformers_mod = importlib.import_module("transformers")
+        Trainer = getattr(transformers_mod, 'Trainer')
+        TrainingArguments = getattr(transformers_mod, 'TrainingArguments')
+        return Trainer, TrainingArguments
+    except Exception:
+        return None, None
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -619,8 +632,13 @@ class OnTheFlyTrainingCoordinator:
             # Create dataset
             dataset = IncrementalDataset(texts, labels, tokenizer)
             
-            # Training arguments for incremental learning
-            training_args = TrainingArguments(
+            # Training arguments for incremental learning (lazy import)
+            TrainerCls, TrainingArgumentsCls = _import_trainer_and_args()
+            if TrainerCls is None or TrainingArgumentsCls is None:
+                logger.warning("Transformers Trainer or TrainingArguments not available; skipping incremental update")
+                return False
+
+            training_args = TrainingArgumentsCls(
                 output_dir='/tmp/incremental_training',
                 num_train_epochs=1,  # Single epoch for incremental updates
                 per_device_train_batch_size=4,
@@ -631,15 +649,15 @@ class OnTheFlyTrainingCoordinator:
                 evaluation_strategy="no",
                 save_strategy="no"
             )
-            
+
             # Create trainer
-            trainer = Trainer(
+            trainer = TrainerCls(
                 model=torch_model,
                 args=training_args,
                 train_dataset=dataset,
                 tokenizer=tokenizer
             )
-            
+
             # Perform incremental training
             trainer.train()
             

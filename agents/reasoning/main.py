@@ -10,13 +10,17 @@ Dependencies: git, networkx, fastapi, pydantic, uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
+from agents.common.schemas import NeuralAssessment, ReasoningInput, PipelineResult
 from contextlib import asynccontextmanager
+import asyncio
 import os
 import sys
 import subprocess
 import json
 import logging
 import requests
+import importlib
+import importlib.util
 from datetime import datetime
 from pathlib import Path
 
@@ -156,24 +160,102 @@ class SimpleNucleoidImplementation:
 async def lifespan(app: FastAPI):
     # Startup logic
     logger.info("Reasoning agent is starting up.")
-    mcp_bus_client = MCPBusClient()
+
+    # Initialize engines during application startup instead of at import time
+    global engine, enhanced_engine
+    engine = None
+    enhanced_engine = None
+
     try:
-        # Register with the MCP Bus
-        mcp_bus_client.register_agent(
-            agent_name="reasoning",
-            agent_address=f"http://localhost:{REASONING_AGENT_PORT}",
-            tools=["validate_fact", "detect_contradiction", "symbolic_reasoning"]
-        )
-        logger.info("Registered tools with MCP Bus.")
+        engine = NucleoidEngine()
+        logger.info("✅ Reasoning Agent initialized successfully")
+
+        try:
+            from .enhanced_reasoning_architecture import EnhancedReasoningEngine
+            enhanced_engine = EnhancedReasoningEngine(nucleoid_engine=engine)
+            logger.info("✅ EnhancedReasoningEngine initialized and rules loaded")
+        except Exception as ee:
+            logger.warning(f"Could not initialize EnhancedReasoningEngine: {ee}")
+
     except Exception as e:
-        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-    
+        logger.error(f"❌ Failed to initialize Reasoning Agent: {e}")
+        engine = None
+        enhanced_engine = None
+
+    # MCP Bus registration with configurable retries and backoff
+    mcp_bus_client = MCPBusClient()
+    retries = int(os.environ.get("MCP_REGISTER_RETRIES", "3"))
+    backoff = float(os.environ.get("MCP_REGISTER_BACKOFF", "2.0"))
+    registered = False
+    for attempt in range(1, retries + 1):
+        try:
+            mcp_bus_client.register_agent(
+                agent_name="reasoning",
+                agent_address=f"http://localhost:{REASONING_AGENT_PORT}",
+                tools=["validate_fact", "detect_contradiction", "symbolic_reasoning"]
+            )
+            logger.info("Registered tools with MCP Bus.")
+            registered = True
+            break
+        except Exception as e:
+            logger.warning(f"MCP registration attempt {attempt} failed: {e}")
+            if attempt < retries:
+                sleep_time = backoff * attempt
+                logger.info(f"Retrying MCP registration in {sleep_time}s...")
+                await asyncio.sleep(sleep_time)
+            else:
+                logger.warning("MCP registration failed after retries; running in standalone mode.")
+
+    # Load preload rules if provided (after engine initialization)
+    preload_file = os.environ.get("REASONING_AGENT_PRELOAD")
+    if preload_file and Path(preload_file).exists():
+        if engine is None:
+            logger.warning("Preload rules present but engine not initialized; skipping preload")
+        else:
+            logger.info(f"Loading preloaded rules from {preload_file}")
+            try:
+                with open(preload_file, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        if line.startswith("RULE:"):
+                            engine.add_rule(line[5:].strip())
+                        elif line.startswith("FACT:"):
+                            try:
+                                fact_data = json.loads(line[5:].strip())
+                            except Exception:
+                                fact_data = {"statement": line[5:].strip()}
+                            engine.add_fact(fact_data)
+                logger.info("✅ Preloaded rules and facts loaded successfully")
+            except Exception as e:
+                logger.warning(f"Failed to load preloaded rules: {e}")
+
+    # Domain rules are loaded by EnhancedReasoningEngine if available
+
     global ready
     ready = True
+    logger.info("✅ Reasoning Agent startup complete")
+
     yield
-    
-    # Shutdown logic
+
+    # Shutdown logic (save state if engine available)
     logger.info("Reasoning agent is shutting down.")
+    if engine is not None:
+        try:
+            state_file = Path(__file__).parent / "reasoning_state.json"
+            state_data = {
+                "facts": engine.get_facts() if engine else {},
+                "rules": engine.get_rules() if engine else [],
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            with open(state_file, "w") as f:
+                json.dump(state_data, f, indent=2)
+            logger.info(f"✅ Reasoning state saved to {state_file}")
+        except Exception as e:
+            logger.warning(f"Failed to save reasoning state: {e}")
+
+    logger.info("✅ Reasoning Agent shutdown complete")
 
 app = FastAPI(title="JustNews V4 Reasoning Agent (Nucleoid)", lifespan=lifespan)
 
@@ -224,15 +306,40 @@ class NucleoidEngine:
             if python_path not in sys.path:
                 sys.path.insert(0, python_path)
             
-            try:
-                # Import the Nucleoid class using proper module path
-                from nucleoid.nucleoid import Nucleoid
-                self.nucleoid = Nucleoid()
-                logger.info("✅ Nucleoid GitHub implementation loaded successfully")
-                return
-                
-            except ImportError as e:
-                logger.warning(f"GitHub implementation import failed: {e}, using fallback...")
+                # Attempt a file-based import first to avoid static-analysis issues
+                module_file = None
+                candidate = Path(python_path) / "nucleoid" / "nucleoid.py"
+                if candidate.exists():
+                    module_file = candidate
+                else:
+                    # Try to find any matching file under the python path
+                    matches = list(Path(python_path).rglob("nucleoid.py"))
+                    if matches:
+                        module_file = matches[0]
+
+                if module_file:
+                    try:
+                        spec = importlib.util.spec_from_file_location("nucleoid_runtime_nucleoid", str(module_file))
+                        module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(module)  # type: ignore[attr-defined]
+                        NucleoidClass = getattr(module, "Nucleoid", None)
+                        if NucleoidClass:
+                            self.nucleoid = NucleoidClass()
+                            logger.info("✅ Nucleoid GitHub implementation loaded successfully (file import)")
+                            return
+                    except Exception as e:
+                        logger.warning(f"File-based import of Nucleoid failed: {e}")
+
+                # As a last resort try package import (may still raise ImportError)
+                try:
+                    module = importlib.import_module("nucleoid.nucleoid")
+                    NucleoidClass = getattr(module, "Nucleoid", None)
+                    if NucleoidClass:
+                        self.nucleoid = NucleoidClass()
+                        logger.info("✅ Nucleoid GitHub implementation loaded successfully (package import)")
+                        return
+                except Exception as e:
+                    logger.warning(f"Package import of nucleoid.nucleoid failed: {e}, using fallback...")
                 
                 # Final fallback
                 self.nucleoid = SimpleNucleoidImplementation()
@@ -403,14 +510,58 @@ class NucleoidEngine:
         
         return False
 
-# Initialize Nucleoid engine
-engine = None
-try:
-    engine = NucleoidEngine()
-    logger.info("✅ Reasoning Agent initialized successfully")
-except Exception as e:
-    logger.error(f"❌ Failed to initialize Reasoning Agent: {e}")
-    engine = None
+# Initialize Nucleoid engine (deferred to the FastAPI lifespan startup)
+# Use runtime-safe accessors so other modules can obtain the engine without
+# causing heavy import-time initialization.
+engine: Optional[Any] = None
+enhanced_engine: Optional[Any] = None
+
+
+def get_engine(block: bool = False, timeout: Optional[float] = None) -> Optional[Any]:
+    """Return the global Nucleoid engine instance if available.
+
+    Args:
+        block: If True, block until the engine is available or timeout is reached.
+        timeout: Maximum seconds to wait when blocking. None means wait indefinitely.
+
+    Returns:
+        The engine instance or None if not available / timed out.
+    """
+    global engine
+    if engine is not None:
+        return engine
+    if not block:
+        return None
+
+    import time
+    start = time.time()
+    while True:
+        if engine is not None:
+            return engine
+        if timeout is not None and (time.time() - start) >= float(timeout):
+            return None
+        time.sleep(0.1)
+
+
+def get_enhanced_engine(block: bool = False, timeout: Optional[float] = None) -> Optional[Any]:
+    """Return the global EnhancedReasoningEngine if available.
+
+    Same semantics as get_engine().
+    """
+    global enhanced_engine
+    if enhanced_engine is not None:
+        return enhanced_engine
+    if not block:
+        return None
+
+    import time
+    start = time.time()
+    while True:
+        if enhanced_engine is not None:
+            return enhanced_engine
+        if timeout is not None and (time.time() - start) >= float(timeout):
+            return None
+        time.sleep(0.1)
 
 # --- Pydantic Models ---
 class ToolCall(BaseModel):
@@ -450,31 +601,144 @@ def log_feedback(event: str, details: Dict[str, Any]):
     except Exception as e:
         logger.warning(f"Failed to log feedback: {e}")
 
+
+def _ingest_neural_assessment(assessment: NeuralAssessment) -> List[str]:
+    """Convert a NeuralAssessment into a list of statements/facts for Nucleoid.
+
+    This centralizes mapping logic so it's easy to test and evolve.
+    """
+    stmts: List[str] = []
+    # Map extracted claims directly as statements
+    for claim in assessment.extracted_claims:
+        stmts.append(str(claim))
+
+    # Map evidence matches as facts (simple representation)
+    for em in assessment.evidence_matches:
+        # Each evidence match may include {source, match_score, snippet}
+        src = em.get("source") or em.get("source_url") or "unknown_source"
+        score = em.get("score", em.get("match_score", 0.0))
+        stmts.append(f'evidence_from_{src} = {score}')
+
+    # Add source credibility and confidence as facts
+    if assessment.source_credibility is not None:
+        stmts.append(f'source_credibility = {float(assessment.source_credibility)}')
+    stmts.append(f'fact_checker_confidence = {float(assessment.confidence)}')
+
+    return stmts
+
+
+@app.post("/pipeline/validate")
+def pipeline_validate(payload: ReasoningInput) -> Dict[str, Any]:
+    """Run the three-stage pipeline: fact checker (neural) -> reasoning -> integrated decision.
+
+    This endpoint accepts a standardized NeuralAssessment payload so other agents
+    (or tests) can call the pipeline deterministically.
+    """
+    eng = get_engine()
+    if not eng:
+        raise HTTPException(status_code=503, detail="Nucleoid engine not available")
+
+    try:
+        assessment = payload.assessment
+
+        # Stage 1 (ingest) - convert neural assessment to statements
+        statements = _ingest_neural_assessment(assessment)
+
+        # Temporarily add statements to the engine (do not persist them long-term)
+        added_ids = []
+        for stmt in statements:
+            try:
+                eng.add_fact({"statement": stmt})
+            except Exception:
+                # best-effort, continue
+                pass
+
+        # Stage 2 - reasoning validation
+        # Prefer enhanced engine when available for richer validation
+        eeng = get_enhanced_engine()
+        if eeng is not None:
+            try:
+                logic_res = eeng.validate_news_claim_with_context(
+                    claim=assessment.extracted_claims[0] if assessment.extracted_claims else "",
+                    article_metadata=payload.article_metadata or {}
+                )
+            except Exception:
+                logic_res = None
+        else:
+            logic_res = None
+
+        if logic_res is None:
+            # Fallback: aggregate evaluate on current facts + rules
+            test_statements = list(eng.facts_store.values()) + eng.rules_store
+            contradiction_res = eng.evaluate_contradiction([str(s) for s in test_statements])
+            logic_res = {
+                "logical_validation": {
+                    "consistency_check": "PASS" if not contradiction_res.get("has_contradictions") else "FAIL",
+                    "rule_compliance": "UNKNOWN",
+                    "temporal_validity": True
+                },
+                "orchestration_decision": {
+                    "consensus_confidence": assessment.confidence,
+                    "escalation_required": False,
+                    "recommended_action": "REVIEW" if contradiction_res.get("has_contradictions") else "APPROVE"
+                }
+            }
+
+        # Stage 3 - integrated decision
+        overall_confidence = float(assessment.confidence) * 0.6 + float(logic_res.get("orchestration_decision", {}).get("consensus_confidence", 0.0)) * 0.4
+        final = {
+            "version": "1.0",
+            "overall_confidence": overall_confidence,
+            "verification_status": logic_res.get("orchestration_decision", {}).get("recommended_action", "UNKNOWN"),
+            "explanation": logic_res.get("logical_validation", {}),
+            # Use model_dump() for Pydantic v2 compatibility; fall back to dict() when unavailable
+            "neural_assessment": (assessment.model_dump() if hasattr(assessment, "model_dump") else assessment.dict()),
+            "logical_validation": logic_res.get("logical_validation", {}),
+            "processing_summary": {
+                "fact_checker_confidence": assessment.confidence,
+                "reasoning_validation": logic_res.get("orchestration_decision", {}).get("consensus_confidence", 0.0),
+                "final_recommendation": logic_res.get("orchestration_decision", {}).get("recommended_action", "UNKNOWN")
+            }
+        }
+
+        # Log pipeline outcome
+        log_feedback("pipeline_run", {
+            "final_overall_confidence": final["overall_confidence"],
+            "verification_status": final["verification_status"]
+        })
+
+        return {"success": True, "result": final}
+
+    except Exception as e:
+        log_feedback("pipeline_error", {"error": str(e)})
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- API Endpoints ---
 @app.post("/add_fact")
 def add_fact_endpoint(call: ToolCall):
     """Add a fact to the reasoning system."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
-    
     try:
         # Extract fact from args or kwargs
         if call.args:
             fact_data = call.args[0] if isinstance(call.args[0], dict) else {"statement": str(call.args[0])}
         else:
             fact_data = call.kwargs.get("fact", call.kwargs.get("data", {}))
-        
-        result = engine.add_fact(fact_data)
-        
+
+        result = eng.add_fact(fact_data)
+
         # Log feedback
         log_feedback("add_fact", {
             "fact_data": fact_data,
             "result": str(result),
             "success": True
         })
-        
-        return {"success": True, "result": result, "fact_id": len(engine.facts_store)}
-        
+
+        return {"success": True, "result": result, "fact_id": len(eng.facts_store)}
+
     except Exception as e:
         error_msg = str(e)
         log_feedback("add_fact_error", {
@@ -486,34 +750,34 @@ def add_fact_endpoint(call: ToolCall):
 @app.post("/add_facts")
 def add_facts_endpoint(call: ToolCall):
     """Add multiple facts to the reasoning system."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
-    
     try:
         # Extract facts from args or kwargs
         if call.args and isinstance(call.args[0], list):
             facts_list = call.args[0]
         else:
             facts_list = call.kwargs.get("facts", [])
-        
+
         results = []
         for fact_data in facts_list:
             if isinstance(fact_data, dict):
-                result = engine.add_fact(fact_data)
+                result = eng.add_fact(fact_data)
                 results.append(result)
             else:
-                result = engine.add_fact({"statement": str(fact_data)})
+                result = eng.add_fact({"statement": str(fact_data)})
                 results.append(result)
-        
+
         # Log feedback
         log_feedback("add_facts", {
             "facts_count": len(facts_list),
             "results": [str(r) for r in results],
             "success": True
         })
-        
+
         return {"success": True, "count": len(results), "results": results}
-        
+
     except Exception as e:
         error_msg = str(e)
         log_feedback("add_facts_error", {
@@ -525,30 +789,30 @@ def add_facts_endpoint(call: ToolCall):
 @app.post("/add_rule")
 def add_rule_endpoint(call: ToolCall):
     """Add a logical rule."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
-    
     try:
         # Extract rule from args or kwargs
         if call.args:
             rule = str(call.args[0])
         else:
             rule = call.kwargs.get("rule", "")
-        
+
         if not rule:
             raise ValueError("Rule cannot be empty")
-        
-        result = engine.add_rule(rule)
-        
+
+        result = eng.add_rule(rule)
+
         # Log feedback
         log_feedback("add_rule", {
             "rule": rule,
             "result": str(result),
             "success": True
         })
-        
-        return {"success": True, "result": result, "rule_count": len(engine.rules_store)}
-        
+
+        return {"success": True, "result": result, "rule_count": len(eng.rules_store)}
+
     except Exception as e:
         error_msg = str(e)
         log_feedback("add_rule_error", {
@@ -560,30 +824,30 @@ def add_rule_endpoint(call: ToolCall):
 @app.post("/query")
 def query_endpoint(call: ToolCall):
     """Execute a symbolic reasoning query."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
-    
     try:
         # Extract query from args or kwargs
         if call.args:
             query = str(call.args[0])
         else:
             query = call.kwargs.get("query", "")
-        
+
         if not query:
             raise ValueError("Query cannot be empty")
-        
-        result = engine.query(query)
-        
+
+        result = eng.query(query)
+
         # Log feedback
         log_feedback("query", {
             "query": query,
             "result": str(result),
             "success": True
         })
-        
+
         return {"success": True, "result": result, "query": query}
-        
+
     except Exception as e:
         error_msg = str(e)
         log_feedback("query_error", {
@@ -595,9 +859,9 @@ def query_endpoint(call: ToolCall):
 @app.post("/evaluate")
 def evaluate_endpoint(call: ToolCall):
     """Evaluate contradictions and logical consistency."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
-    
     try:
         # Extract evaluation request
         if call.args and isinstance(call.args[0], list):
@@ -608,11 +872,11 @@ def evaluate_endpoint(call: ToolCall):
             statements = call.kwargs.get("statements", [])
             if not statements:
                 # Evaluate all current facts and rules
-                statements = list(engine.facts_store.values()) + engine.rules_store
-        
+                statements = list(eng.facts_store.values()) + eng.rules_store
+
         if not statements:
             return {"success": True, "result": "No statements to evaluate"}
-        
+
         # Convert non-string statements to strings
         str_statements = []
         for stmt in statements:
@@ -623,9 +887,9 @@ def evaluate_endpoint(call: ToolCall):
                     str_statements.append(json.dumps(stmt))
             else:
                 str_statements.append(str(stmt))
-        
-        result = engine.evaluate_contradiction(str_statements)
-        
+
+        result = eng.evaluate_contradiction(str_statements)
+
         # Log feedback
         log_feedback("evaluate", {
             "statements_count": len(str_statements),
@@ -633,9 +897,9 @@ def evaluate_endpoint(call: ToolCall):
             "contradictions_count": len(result.get("contradictions", [])),
             "success": True
         })
-        
+
         return {"success": True, "result": result}
-        
+
     except Exception as e:
         error_msg = str(e)
         log_feedback("evaluate_error", {
@@ -647,43 +911,47 @@ def evaluate_endpoint(call: ToolCall):
 @app.get("/facts")
 def get_facts():
     """Retrieve all stored facts."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
-    
-    return {"facts": engine.get_facts(), "count": len(engine.facts_store)}
+
+    return {"facts": eng.get_facts(), "count": len(eng.facts_store)}
 
 @app.get("/rules")
 def get_rules():
     """Retrieve all stored rules."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
-    
-    return {"rules": engine.get_rules(), "count": len(engine.rules_store)}
+
+    return {"rules": eng.get_rules(), "count": len(eng.rules_store)}
 
 @app.get("/status")
 def get_status():
     """Get reasoning engine status."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         return {
             "status": "unavailable",
             "nucleoid_available": False,
             "facts_count": 0,
             "rules_count": 0
         }
-    
+
     return {
         "status": "ok",
         "nucleoid_available": True,
-        "facts_count": len(engine.facts_store),
-        "rules_count": len(engine.rules_store),
-        "session_id": engine.session_id
+        "facts_count": len(eng.facts_store),
+        "rules_count": len(eng.rules_store),
+        "session_id": eng.session_id
     }
 
 @app.get("/health")
 def health():
     """Health check endpoint."""
-    status = "ok" if engine else "unavailable"
-    return {"status": status, "nucleoid_available": engine is not None}
+    eng = get_engine()
+    status = "ok" if eng else "unavailable"
+    return {"status": status, "nucleoid_available": eng is not None}
 
 @app.get("/ready")
 def ready_endpoint():
@@ -731,7 +999,8 @@ def call_tool(request: Dict[str, Any]):
 @app.post("/validate_claim")
 def validate_claim(call: ToolCall):
     """Validate a news claim against known facts and rules."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
     
     try:
@@ -751,23 +1020,33 @@ def validate_claim(call: ToolCall):
         
         # Get existing statements
         existing_statements = []
-        for fact in engine.facts_store.values():
+        for fact in eng.facts_store.values():
             if isinstance(fact, dict) and "statement" in fact:
                 existing_statements.append(fact["statement"])
-        existing_statements.extend(engine.rules_store)
-        
-        # Add the claim and check for contradictions
-        test_statements = existing_statements + [claim]
-        contradiction_result = engine.evaluate_contradiction(test_statements)
-        
-        # Determine validation result
-        validation_result = {
-            "claim": claim,
-            "context": context,
-            "valid": not contradiction_result["has_contradictions"],
-            "contradictions": contradiction_result["contradictions"],
-            "confidence": 1.0 - (len(contradiction_result["contradictions"]) * 0.2)
-        }
+        existing_statements.extend(eng.rules_store)
+
+        # Prefer the enhanced engine for validation if available
+        eeng = get_enhanced_engine()
+        if eeng is not None:
+            try:
+                validation_result = eeng.validate_news_claim_with_context(claim, context)
+            except Exception:
+                # Fallback to legacy contradiction evaluation below
+                validation_result = None
+
+        if eeng is None or validation_result is None:
+            # Add the claim and check for contradictions using legacy engine
+            test_statements = existing_statements + [claim]
+            contradiction_result = eng.evaluate_contradiction(test_statements)
+            
+            # Determine validation result
+            validation_result = {
+                "claim": claim,
+                "context": context,
+                "valid": not contradiction_result["has_contradictions"],
+                "contradictions": contradiction_result["contradictions"],
+                "confidence": 1.0 - (len(contradiction_result["contradictions"]) * 0.2)
+            }
         
         # Log feedback
         log_feedback("validate_claim", {
@@ -790,46 +1069,49 @@ def validate_claim(call: ToolCall):
 @app.post("/explain_reasoning")
 def explain_reasoning(call: ToolCall):
     """Provide explainable reasoning for a query or validation."""
-    if not engine:
+    eng = get_engine()
+    if not eng:
         raise HTTPException(status_code=503, detail="Nucleoid engine not available")
-    
+
     try:
         # Extract query
         if call.args:
             query = str(call.args[0])
         else:
             query = call.kwargs.get("query", "")
-        
+
         if not query:
             raise ValueError("Query cannot be empty")
-        
-        # Execute query and provide explanation
-        result = engine.query(query)
-        
-        # Generate explanation
+
+        # Execute query and provide explanation; prefer enhanced_engine context if available
+        result = eng.query(query)
+
+        # Generate explanation (include enhanced_engine cues when present)
+        eeng = get_enhanced_engine()
         explanation = {
             "query": query,
             "result": result,
             "reasoning_steps": [
                 f"1. Executed query: '{query}'",
-                f"2. Applied {len(engine.rules_store)} logical rules",
-                f"3. Checked against {len(engine.facts_store)} known facts",
+                f"2. Applied {len(eng.rules_store)} logical rules",
+                f"3. Checked against {len(eng.facts_store)} known facts",
                 f"4. Result: {result}"
             ],
-            "facts_used": list(engine.facts_store.keys()),
-            "rules_applied": engine.rules_store,
-            "confidence": 0.8 if result else 0.2
+            "facts_used": list(eng.facts_store.keys()),
+            "rules_applied": eng.rules_store,
+            "confidence": 0.8 if result else 0.2,
+            "enhanced_available": eeng is not None
         }
-        
+
         # Log feedback
         log_feedback("explain_reasoning", {
             "query": query,
             "result": str(result),
             "explanation_provided": True
         })
-        
+
         return {"success": True, "result": explanation}
-        
+
     except Exception as e:
         error_msg = str(e)
         log_feedback("explain_reasoning_error", {
@@ -838,91 +1120,7 @@ def explain_reasoning(call: ToolCall):
         })
         raise HTTPException(status_code=500, detail=error_msg)
 
-# --- Startup and Shutdown Events ---
-@app.on_event("startup")
-def startup_event():
-    """Initialize reasoning agent on startup."""
-    logger.info("🧠 Reasoning Agent starting up...")
-    
-    # Load preloaded rules if available
-    preload_file = os.environ.get("REASONING_AGENT_PRELOAD")
-    if preload_file and Path(preload_file).exists():
-        logger.info(f"Loading preloaded rules from {preload_file}")
-        try:
-            with open(preload_file, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line.startswith("RULE:"):
-                        engine.add_rule(line[5:].strip())
-                    elif line.startswith("FACT:"):
-                        fact_data = json.loads(line[5:].strip())
-                        engine.add_fact(fact_data)
-            logger.info("✅ Preloaded rules and facts loaded successfully")
-        except Exception as e:
-            logger.warning(f"Failed to load preloaded rules: {e}")
-    
-    # Load news domain rules
-    _load_news_domain_rules()
-    
-    logger.info("✅ Reasoning Agent startup complete")
-
-def _load_news_domain_rules():
-    """Load domain-specific rules for news analysis."""
-    if not engine:
-        return
-    
-    try:
-        # Basic news validation rules
-        news_rules = [
-            # Source credibility rules
-            "if source_type == 'government' then credibility = 0.9",
-            "if source_type == 'academic' then credibility = 0.8",
-            "if source_type == 'news_agency' then credibility = 0.7",
-            "if source_type == 'blog' then credibility = 0.3",
-            
-            # Temporal consistency rules
-            "if event_date > current_date then validity = false",
-            "if publication_date < event_date then temporal_flag = true",
-            
-            # Basic fact checking rules
-            "if claim_type == 'statistical' and source_provided == false then verify_needed = true",
-            "if claim_type == 'quote' and source_provided == false then verify_needed = true"
-        ]
-        
-        for rule in news_rules:
-            try:
-                engine.add_rule(rule)
-            except Exception as e:
-                logger.warning(f"Failed to load rule '{rule}': {e}")
-        
-        logger.info(f"✅ Loaded {len(news_rules)} news domain rules")
-        
-    except Exception as e:
-        logger.warning(f"Failed to load news domain rules: {e}")
-
-@app.on_event("shutdown")
-def shutdown_event():
-    """Cleanup on shutdown."""
-    logger.info("🧠 Reasoning Agent shutting down...")
-    
-    # Save current state if needed
-    try:
-        state_file = Path(__file__).parent / "reasoning_state.json"
-        state_data = {
-            "facts": engine.get_facts() if engine else {},
-            "rules": engine.get_rules() if engine else [],
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-        with open(state_file, "w") as f:
-            json.dump(state_data, f, indent=2)
-        
-        logger.info(f"✅ Reasoning state saved to {state_file}")
-        
-    except Exception as e:
-        logger.warning(f"Failed to save reasoning state: {e}")
-    
-    logger.info("✅ Reasoning Agent shutdown complete")
+# Startup/shutdown logic is handled by the lifespan context manager above.
 
 # --- Main Entry Point ---
 if __name__ == "__main__":

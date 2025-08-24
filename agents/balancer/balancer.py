@@ -59,17 +59,31 @@ else:
 def get_device() -> int:
     return 0 if torch.cuda.is_available() else -1
 
-# Model initialization (JustNews conventions)
+# Lazy pipeline getters to avoid heavy model loads during import/pytest collection
+_sentiment_pipeline = None
+_bias_pipeline = None
+_summarization_pipeline = None
+_neutralization_pipeline = None
+_quote_extraction_pipeline = None
+
 def get_sentiment_pipeline():
+    global _sentiment_pipeline
+    if _sentiment_pipeline is not None:
+        return _sentiment_pipeline
     try:
-        return pipeline("sentiment-analysis", model="cardiffnlp/twitter-roberta-base-sentiment-latest", device=get_device())
+        _sentiment_pipeline = pipeline("sentiment-analysis", model="cardiffnlp/twitter-roberta-base-sentiment-latest", device=get_device())
+        return _sentiment_pipeline
     except Exception as e:
         logger.error("model_load_error", model="sentiment", error=str(e), status="error")
         raise RuntimeError(f"Failed to load sentiment model: {e}")
 
 def get_bias_pipeline():
+    global _bias_pipeline
+    if _bias_pipeline is not None:
+        return _bias_pipeline
     try:
-        return pipeline("text-classification", model="martin-ha/toxic-comment-model", device=get_device())
+        _bias_pipeline = pipeline("text-classification", model="martin-ha/toxic-comment-model", device=get_device())
+        return _bias_pipeline
     except Exception as e:
         logger.error("model_load_error", model="bias", error=str(e), status="error")
         raise RuntimeError(f"Failed to load bias model: {e}")
@@ -122,9 +136,9 @@ def get_fact_checker_pipelines():
                     sentence_transformer = None
 
         return {
-            "distilbert": pipeline("text-classification", model="distilbert-base-uncased", device=get_device()),
-            "roberta": pipeline("text-classification", model="roberta-base", device=get_device()),
-            "bert_large": pipeline("text-classification", model="bert-large-uncased", device=get_device()),
+            "distilbert": lambda: pipeline("text-classification", model="distilbert-base-uncased", device=get_device()),
+            "roberta": lambda: pipeline("text-classification", model="roberta-base", device=get_device()),
+            "bert_large": lambda: pipeline("text-classification", model="bert-large-uncased", device=get_device()),
             "sentence_transformer": sentence_transformer,
             # spaCy NER would be loaded separately if needed
         }
@@ -133,22 +147,34 @@ def get_fact_checker_pipelines():
         raise RuntimeError(f"Failed to load fact checker models: {e}")
 
 def get_summarization_pipeline():
+    global _summarization_pipeline
+    if _summarization_pipeline is not None:
+        return _summarization_pipeline
     try:
-        return pipeline("summarization", model="facebook/bart-large-cnn", device=get_device())
+        _summarization_pipeline = pipeline("summarization", model="facebook/bart-large-cnn", device=get_device())
+        return _summarization_pipeline
     except Exception as e:
         logger.error("model_load_error", model="summarization", error=str(e), status="error")
         raise RuntimeError(f"Failed to load summarization model: {e}")
 
 def get_neutralization_pipeline():
+    global _neutralization_pipeline
+    if _neutralization_pipeline is not None:
+        return _neutralization_pipeline
     try:
-        return pipeline("text2text-generation", model="google/flan-t5-base", device=get_device())
+        _neutralization_pipeline = pipeline("text2text-generation", model="google/flan-t5-base", device=get_device())
+        return _neutralization_pipeline
     except Exception as e:
         logger.error("model_load_error", model="neutralization", error=str(e), status="error")
         raise RuntimeError(f"Failed to load neutralization model: {e}")
 
 def get_quote_extraction_pipeline():
+    global _quote_extraction_pipeline
+    if _quote_extraction_pipeline is not None:
+        return _quote_extraction_pipeline
     try:
-        return pipeline("token-classification", model="Jean-Baptiste/roberta-large-ner-quotations", device=get_device())
+        _quote_extraction_pipeline = pipeline("token-classification", model="Jean-Baptiste/roberta-large-ner-quotations", device=get_device())
+        return _quote_extraction_pipeline
     except Exception as e:
         logger.error("model_load_error", model="quote_extraction", error=str(e), status="error")
         raise RuntimeError(f"Failed to load quote extraction model: {e}")

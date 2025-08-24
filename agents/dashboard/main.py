@@ -102,7 +102,11 @@ def ready_endpoint():
 def send_command(call: ToolCall):
     """Send a command to another agent."""
     try:
-        response = requests.post(f"{MCP_BUS_URL}/call", json=call.dict())
+        # Use model_dump() for Pydantic v2 compatibility; fall back to dict() when unavailable
+        response = requests.post(
+            f"{MCP_BUS_URL}/call",
+            json=(call.model_dump() if hasattr(call, "model_dump") else call.dict()),
+        )
         response.raise_for_status()
         return response.json()
     except Exception as e:

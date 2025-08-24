@@ -33,7 +33,7 @@ The reasoning agent integrates the complete Nucleoid Python implementation from 
    - Health monitoring
    - Error handling and logging
 
-3. **`test_reasoning_agent.py`** - Complete test suite
+3. **`tests/integration/test_reasoning_agent.py`** - Complete integration test suite
    - Unit tests for all components
    - Integration tests with API endpoints
    - MCP bus communication validation
@@ -265,7 +265,7 @@ networkx==3.2.1
 ### Comprehensive Test Suite
 ```bash
 cd /home/adra/JustNewsAgentic/agents/reasoning
-python test_reasoning_agent.py
+pytest -q tests/integration/test_reasoning_agent.py
 ```
 
 **Test Coverage**:

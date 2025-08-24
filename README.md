@@ -55,13 +55,14 @@ JustNewsAgentic V4 is a production-ready, multi-agent news analysis system that 
    ```
 
 3. **Start the system**
-   ```bash
-   # Docker multi-agent deployment
-   docker-compose up --build
-   
-   # Or native GPU deployment
-   ./start_services_daemon.sh
-   ```
+  ```bash
+  # NOTE: Docker deployment is deprecated in this repository. The native
+  # start script is the supported path and provides a more reliable
+  # local development experience (no containers required).
+  # Deprecated: docker-compose up --build
+  # Supported: ./start_services_daemon.sh
+  ./start_services_daemon.sh
+  ```
 
 4. **Verify system health**
    ```bash

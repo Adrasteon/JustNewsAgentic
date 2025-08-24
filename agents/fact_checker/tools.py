@@ -48,28 +48,47 @@ FEEDBACK_LOG = os.environ.get("FACT_CHECKER_FEEDBACK_LOG", "./feedback_fact_chec
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("fact_checker.tools")
 
-# Online Training Integration
+# Online Training Integration (deferred)
 try:
+    # Import training system symbols but DO NOT call initialize_online_training() here.
+    # Initializing the online training coordinator can trigger DB connections / background
+    # threads which we must avoid at import time (it can block test collection).
     from training_system import (
         initialize_online_training, get_training_coordinator,
         add_training_feedback, add_user_correction
     )
     ONLINE_TRAINING_AVAILABLE = True
-    
-    # Initialize online training for Fact Checker with 30-example threshold
-    initialize_online_training(update_threshold=30)  # Update after 30 examples for fact checking
-    logger.info("🎓 Online Training enabled for Fact Checker V2")
-    
+    # Defer actual initialization to runtime to avoid heavy side-effects during import/collection
+    def _ensure_online_training_initialized():
+        try:
+            initialize_online_training(update_threshold=30)
+            logger.info("🎓 Online Training enabled for Fact Checker V2 (initialized)")
+        except Exception as _e:
+            logger.warning("⚠️ Failed to initialize online training at runtime: %s", _e)
+
 except ImportError:
     ONLINE_TRAINING_AVAILABLE = False
     logger.warning("⚠️ Online Training not available for Fact Checker V2")
 
-# Initialize V2 Engine on module load
-if FACT_CHECKER_V2_AVAILABLE:
-    initialize_fact_checker_v2()
-    logger.info("🚀 Fact Checker V2 Engine initialized with 5 AI models")
-else:
-    logger.warning("⚠️ Running in fallback mode - V2 engine unavailable")
+# NOTE: Avoid initializing the heavy V2 engine at import time. Some callers (and pytest)
+# import this module during collection; initializing models (transformers, spaCy,
+# SentenceTransformers) here can trigger downloads and long-running operations.
+# Provide a helper to initialize on-demand instead.
+def ensure_fact_checker_engine_initialized():
+    """Ensure the global Fact Checker V2 engine is initialized (runtime)."""
+    try:
+        if FACT_CHECKER_V2_AVAILABLE:
+            # initialize_fact_checker_v2() may be expensive; call only when needed
+            try:
+                initialize_fact_checker_v2()
+                logger.info("🚀 Fact Checker V2 Engine initialized (deferred)")
+            except Exception as e:
+                logger.warning("Failed to initialize Fact Checker V2 Engine at runtime: %s", e)
+        else:
+            logger.warning("⚠️ Running in fallback mode - V2 engine unavailable")
+    except NameError:
+        # initialize_fact_checker_v2 not available in scope; ignore
+        logger.debug("initialize_fact_checker_v2 not available; skipping deferred init")
 
 def log_feedback(event: str, details: dict):
     """Universal feedback logging for Fact Checker operations"""
@@ -90,6 +109,13 @@ def verify_claim(claim: str, context: str = "", source_url: str = "") -> dict:
         Comprehensive fact-check analysis with verification scores
     """
     try:
+        # Ensure runtime initialization when first needed
+        if 'ensure_fact_checker_engine_initialized' in globals():
+            try:
+                ensure_fact_checker_engine_initialized()
+            except Exception:
+                pass
+
         if FACT_CHECKER_V2_AVAILABLE:
             # Use V2 Engine with 5 AI models
             engine = get_fact_checker_engine()
@@ -113,20 +139,28 @@ def verify_claim(claim: str, context: str = "", source_url: str = "") -> dict:
                 }
                 
                 # Online Training: Add prediction feedback for continuous improvement
+                if ONLINE_TRAINING_AVAILABLE and ' _ensure_online_training_initialized' not in globals():
+                    # If available, ensure online training is initialized at runtime before using it
+                    try:
+                        _ensure_online_training_initialized()
+                    except Exception:
+                        pass
                 if ONLINE_TRAINING_AVAILABLE:
-                    verification_confidence = verification.get("confidence", 0.5)
-                    credibility_confidence = credibility.get("confidence", 0.5)
-                    avg_confidence = (verification_confidence + credibility_confidence) / 2
-                    
-                    # Add training feedback (actual_output would come from user feedback)
-                    add_training_feedback(
-                        agent_name="fact_checker",
-                        task_type="fact_verification",
-                        input_text=claim,
-                        predicted_output=verification.get("classification", "unknown"),
-                        actual_output=verification.get("classification", "unknown"),  # This would be corrected by user feedback
-                        confidence=avg_confidence
-                    )
+                    try:
+                        verification_confidence = verification.get("confidence", 0.5)
+                        credibility_confidence = credibility.get("confidence", 0.5)
+                        avg_confidence = (verification_confidence + credibility_confidence) / 2
+                        # Add training feedback (actual_output would come from user feedback)
+                        add_training_feedback(
+                            agent_name="fact_checker",
+                            task_type="fact_verification",
+                            input_text=claim,
+                            predicted_output=verification.get("classification", "unknown"),
+                            actual_output=verification.get("classification", "unknown"),  # This would be corrected by user feedback
+                            confidence=avg_confidence
+                        )
+                    except Exception as _e:
+                        logger.debug("Online training feedback submission failed: %s", _e)
                 
                 log_feedback("claim_verified_v2", {
                     "verification_score": verification.get("verification_score", 0.5),
@@ -161,6 +195,13 @@ def comprehensive_fact_check(article_text: str, source_url: str = "", metadata: 
         Complete fact-checking analysis with multiple model outputs
     """
     try:
+        # Ensure runtime initialization when first needed
+        if 'ensure_fact_checker_engine_initialized' in globals():
+            try:
+                ensure_fact_checker_engine_initialized()
+            except Exception:
+                pass
+
         if FACT_CHECKER_V2_AVAILABLE:
             # Use V2 Engine comprehensive analysis
             engine = get_fact_checker_engine()
@@ -191,6 +232,47 @@ def comprehensive_fact_check(article_text: str, source_url: str = "", metadata: 
             "assessment": "error",
             "error": str(e),
             "v2_analysis": False
+        }
+
+
+def to_neural_assessment(comprehensive_result: dict) -> dict:
+    """Convert a comprehensive_fact_check result into the standardized NeuralAssessment dict.
+
+    This is a helper so the Fact Checker can produce the shared schema used by reasoning.
+    """
+    try:
+        # Normalize extracted_claims to a list of strings (claim texts)
+        raw_claims = comprehensive_result.get("claims_analysis", {}).get("extracted_claims", [])
+        normalized_claims = []
+        for c in raw_claims:
+            if isinstance(c, dict):
+                # prefer explicit 'text' field, then 'claim' or fallback to str()
+                text = c.get("text") or c.get("claim") or str(c)
+                normalized_claims.append(text)
+            else:
+                normalized_claims.append(str(c))
+
+        assessment = {
+            "version": "1.0",
+            "confidence": float(comprehensive_result.get("overall_score", 0.5)),
+            "source_credibility": float(comprehensive_result.get("credibility_assessment", {}).get("credibility_score", 0.5) if comprehensive_result.get("credibility_assessment") else 0.5),
+            "extracted_claims": normalized_claims,
+            "evidence_matches": comprehensive_result.get("evidence_matches", []),
+            "processing_metadata": {
+                "models_used": comprehensive_result.get("models_used", []),
+                "timestamp": comprehensive_result.get("processing_timestamp") or comprehensive_result.get("timestamp")
+            }
+        }
+        return assessment
+    except Exception as e:
+        logger.warning(f"Failed to convert to neural assessment: {e}")
+        return {
+            "version": "1.0",
+            "confidence": 0.5,
+            "source_credibility": 0.5,
+            "extracted_claims": [],
+            "evidence_matches": [],
+            "processing_metadata": {}
         }
 
 def detect_contradictions(text_passages: List[str]) -> dict:

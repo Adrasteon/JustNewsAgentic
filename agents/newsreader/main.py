@@ -153,7 +153,8 @@ async def extract_news_content(url: str, screenshot_path: str = None) -> Dict[st
         agent = PracticalNewsReader()
     
     result = await agent.process_news_url(url, screenshot_path)
-    return result.dict()
+    # Use model_dump() for Pydantic v2 compatibility; fall back to dict() when unavailable
+    return (result.model_dump() if hasattr(result, "model_dump") else result.dict())
 
 async def capture_webpage_screenshot(url: str, output_path: str = "page_llava.png") -> str:
     """Capture webpage screenshot"""

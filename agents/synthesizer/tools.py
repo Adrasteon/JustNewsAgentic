@@ -67,51 +67,79 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("synthesizer.tools")
 
 # Online Training Integration
+# Import training symbols but defer initialization until runtime to avoid
+# network/DB activity during import-time (pytest collection).
 try:
     from training_system import (
         initialize_online_training, add_training_feedback, add_user_correction
     )
-    ONLINE_TRAINING_AVAILABLE = True
-    
-    # Initialize online training for Synthesizer with 40-example threshold
-    initialize_online_training(update_threshold=40)  # Update after 40 examples for synthesis tasks
-    logger.info("🎓 Online Training enabled for Synthesizer V2")
-    
+    initialize_online_training = initialize_online_training
+    add_training_feedback = add_training_feedback
+    add_user_correction = add_user_correction
+    ONLINE_TRAINING_AVAILABLE = False
 except ImportError:
+    initialize_online_training = None
+    add_training_feedback = None
+    add_user_correction = None
     ONLINE_TRAINING_AVAILABLE = False
     logger.warning("⚠️ Online Training not available for Synthesizer")
 
-# Initialize Synthesizer Engines globally
+# runtime flag to avoid repeated initialization
+_online_training_initialized = False
+
+def _ensure_online_training_initialized(update_threshold: int = 40) -> None:
+    """Lazily initialize the online training system.
+
+    Call this from FastAPI lifespan or on first use to avoid heavy work at import time.
+    """
+    global _online_training_initialized, ONLINE_TRAINING_AVAILABLE
+    if _online_training_initialized:
+        return
+    if initialize_online_training is None:
+        ONLINE_TRAINING_AVAILABLE = False
+        _online_training_initialized = True
+        return
+    try:
+        initialize_online_training(update_threshold=update_threshold)
+        ONLINE_TRAINING_AVAILABLE = True
+        logger.info("🎓 Online Training lazily initialized for Synthesizer V2")
+    except Exception as e:
+        ONLINE_TRAINING_AVAILABLE = False
+        logger.warning(f"⚠️ Online Training failed to initialize at runtime: {e}")
+    finally:
+        _online_training_initialized = True
+
+# Initialize Synthesizer Engines globally (deferred)
 synthesizer_v2_engine = None
 synthesizer_v3_engine = None
+_synthesizer_engines_initialized = False
 
-# V2 Engine Initialization
-if SYNTHESIZER_V2_AVAILABLE:
-    try:
-        synthesizer_v2_engine = SynthesizerV2Engine()
-        logger.info("🚀 Synthesizer V2 Engine initialized")
-        status = synthesizer_v2_engine.get_model_status()
-        logger.info(f"📊 Model Status: {status['total_models']}/5 models loaded")
-        for model, loaded in status.items():
-            if model != 'total_models':
-                logger.info(f"   {'✅' if loaded else '❌'} {model}")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize Synthesizer V2 Engine: {e}")
-        synthesizer_v2_engine = None
+def ensure_synthesizer_engines_initialized():
+    """Lazily initialize available synthesizer engines at runtime.
 
-# V3 Production Engine Initialization
-if SYNTHESIZER_V3_AVAILABLE:
-    try:
-        synthesizer_v3_engine = SynthesizerV3ProductionEngine()
-        logger.info("🚀 Synthesizer V3 Production Engine initialized")
-        status = synthesizer_v3_engine.get_model_status()
-        logger.info(f"📊 V3 Production Status: {status['total_models']} models loaded")
-        for model, loaded in status.items():
-            if model != 'total_models' and isinstance(loaded, bool):
-                logger.info(f"   {'✅' if loaded else '❌'} {model}")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize Synthesizer V3 Production Engine: {e}")
-        synthesizer_v3_engine = None
+    This avoids heavy model downloads during import and allows test
+    collection to remain fast and hermetic.
+    """
+    global _synthesizer_engines_initialized, synthesizer_v2_engine, synthesizer_v3_engine
+    if _synthesizer_engines_initialized:
+        return
+    _synthesizer_engines_initialized = True
+
+    if SYNTHESIZER_V2_AVAILABLE and synthesizer_v2_engine is None:
+        try:
+            synthesizer_v2_engine = SynthesizerV2Engine()
+            logger.info("🚀 Synthesizer V2 Engine lazily initialized")
+        except Exception as e:
+            logger.error(f"❌ Failed to lazily initialize Synthesizer V2 Engine: {e}")
+            synthesizer_v2_engine = None
+
+    if SYNTHESIZER_V3_AVAILABLE and synthesizer_v3_engine is None:
+        try:
+            synthesizer_v3_engine = SynthesizerV3ProductionEngine()
+            logger.info("🚀 Synthesizer V3 Production Engine lazily initialized")
+        except Exception as e:
+            logger.error(f"❌ Failed to lazily initialize Synthesizer V3 Production Engine: {e}")
+            synthesizer_v3_engine = None
 
 def get_synthesizer_v2_engine():
     """Get V2 engine instance"""
@@ -162,6 +190,23 @@ def get_embedding_model():
             from agents.common.embedding import get_shared_embedding_model
             return get_shared_embedding_model(EMBEDDING_MODEL, cache_folder=agent_cache)
 
+    def get_llama_model():
+        """Compatibility shim for tests that expect get_llama_model to exist.
+
+        Returns a pair (model, tokenizer) or (None, None) when not available.
+        Tests typically monkeypatch this, so a simple shim prevents AttributeError
+        during collection.
+        """
+        return (None, None)
+
+    def get_mistral_model():
+        """Compatibility shim for tests that expect get_mistral_model to exist.
+
+        Returns a pair (model, tokenizer) or (None, None) when not available.
+        Tests typically monkeypatch this, so a simple shim prevents AttributeError
+        during collection.
+        """
+        return (None, None)
 def log_feedback(event: str, details: dict):
     """Log feedback for continual learning and retraining."""
     with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:

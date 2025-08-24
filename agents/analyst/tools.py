@@ -31,36 +31,66 @@ logging.basicConfig(
 )
 logger = logging.getLogger("analyst.tools")
 
-# Online Training Integration
+# Online Training Integration (deferred)
 try:
     from training_system import (
         initialize_online_training, get_training_coordinator,
         add_training_feedback
     )
-    ONLINE_TRAINING_AVAILABLE = True
-    
-    # Initialize online training for Analyst with 35-example threshold
-    initialize_online_training(update_threshold=35)  # Update after 35 examples for Analyst
-    logger.info("🎓 Online Training enabled for Analyst V2")
-    
+    initialize_online_training = initialize_online_training
+    get_training_coordinator = get_training_coordinator
+    add_training_feedback = add_training_feedback
+    ONLINE_TRAINING_AVAILABLE = False
 except ImportError:
+    initialize_online_training = None
+    get_training_coordinator = None
+    add_training_feedback = None
     ONLINE_TRAINING_AVAILABLE = False
     logger.warning("⚠️ Online Training not available for Analyst V2")
+
+# runtime guard
+_online_training_initialized = False
+
+def _ensure_online_training_initialized(update_threshold: int = 35) -> None:
+    """Lazily initialize the online training coordinator for Analyst."""
+    global _online_training_initialized, ONLINE_TRAINING_AVAILABLE
+    if _online_training_initialized:
+        return
+    if initialize_online_training is None:
+        ONLINE_TRAINING_AVAILABLE = False
+        _online_training_initialized = True
+        return
+    try:
+        initialize_online_training(update_threshold=update_threshold)
+        ONLINE_TRAINING_AVAILABLE = True
+        logger.info("🎓 Online Training lazily initialized for Analyst V2")
+    except Exception as e:
+        ONLINE_TRAINING_AVAILABLE = False
+        logger.warning(f"⚠️ Analyst online training failed to initialize at runtime: {e}")
+    finally:
+        _online_training_initialized = True
 
 # Suppress specific warnings for production deployment
 warnings.filterwarnings("ignore", category=UserWarning, module="torch")
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
 
-# Import specialized NLP dependencies with fallback handling
-try:
-    import spacy
-    from spacy import displacy
-    HAS_SPACY = True
-    logger.info("✅ spaCy available for specialized NER")
-except ImportError as e:
-    logger.warning(f"⚠️ spaCy not available: {e}")
-    HAS_SPACY = False
-    spacy = None
+# Detect availability of specialized NLP dependencies without importing them
+import importlib.util
+
+_spacy_spec = importlib.util.find_spec("spacy")
+HAS_SPACY = _spacy_spec is not None
+
+# Provide a lightweight helper to call spaCy.explain() when needed without
+# importing spaCy at module import time (avoids triggering spacy CLI imports
+# and their deprecation warnings during pytest collection).
+def _spacy_explain(label: str) -> str:
+    try:
+        if not HAS_SPACY:
+            return label
+        import spacy as _spacy_module
+        return _spacy_module.explain(label) or label
+    except Exception:
+        return label
 
 # Import numerical analysis dependencies  
 try:
@@ -74,19 +104,28 @@ except ImportError as e:
     np = None
     stats = None
 
-# Import transformers only if needed for fallback
-try:
-    from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
-    import torch
-    HAS_TRANSFORMERS = True
-    logger.info("✅ Transformers available for NER fallback")
-except ImportError as e:
-    logger.warning(f"⚠️ Transformers not available: {e}")
-    HAS_TRANSFORMERS = False
-    AutoTokenizer = None
-    AutoModelForTokenClassification = None
-    pipeline = None
-    torch = None
+_transformers_spec = importlib.util.find_spec("transformers")
+HAS_TRANSFORMERS = _transformers_spec is not None
+_torch_spec = importlib.util.find_spec("torch")
+_TORCH_AVAILABLE = _torch_spec is not None
+if HAS_TRANSFORMERS:
+    logger.info("✅ Transformers package available for potential NER fallback")
+else:
+    logger.warning("⚠️ Transformers package not available; NER fallback disabled")
+
+# Lazy import helpers for heavy external libraries
+def _import_transformers_pipeline():
+    """Import transformers.pipeline and torch lazily and return (pipeline, torch)
+
+    Returns (pipeline_fn, torch_module) or (None, None) on failure.
+    """
+    try:
+        from transformers import pipeline as _pipeline
+        import torch as _torch
+        return _pipeline, _torch
+    except Exception as e:
+        logger.warning(f"Could not import transformers pipeline: {e}")
+        return None, None
 
 # Configuration and constants
 FEEDBACK_LOG = os.environ.get("ANALYST_FEEDBACK_LOG", "feedback_analyst.log")
@@ -96,6 +135,23 @@ NER_FALLBACK_MODEL = "dbmdz/bert-large-cased-finetuned-conll03-english"
 # Global model instances for efficiency
 _spacy_nlp = None
 _ner_pipeline = None
+
+def ensure_spacy_model_loaded():
+    """Load spaCy model lazily to avoid import-time downloads during tests."""
+    global _spacy_nlp
+    if _spacy_nlp is not None:
+        return _spacy_nlp
+    if not HAS_SPACY:
+        return None
+    try:
+        import importlib
+        spacy_module = importlib.import_module('spacy')
+        _spacy_nlp = spacy_module.load(SPACY_MODEL)
+        logger.info(f"✅ Loaded spaCy model: {SPACY_MODEL}")
+        return _spacy_nlp
+    except Exception as e:
+        logger.warning(f"Could not load {SPACY_MODEL}: {e}")
+        return None
 
 def log_feedback(event: str, details: Dict[str, Any]) -> None:
     """
@@ -132,20 +188,17 @@ def get_spacy_model():
     if not HAS_SPACY:
         logger.warning("spaCy not available, using fallback NER")
         return None
-        
-    if _spacy_nlp is None:
-        try:
-            _spacy_nlp = spacy.load(SPACY_MODEL)
-            logger.info(f"✅ Loaded spaCy model: {SPACY_MODEL}")
-        except OSError as e:
-            logger.warning(f"Could not load {SPACY_MODEL}: {e}")
-            logger.info("To install: python -m spacy download en_core_web_sm")
-            return None
-        except Exception as e:
-            logger.error(f"Error loading spaCy model: {e}")
-            return None
-            
-    return _spacy_nlp
+
+    return ensure_spacy_model_loaded()
+
+def get_mistral_model():
+    """Compatibility shim for tests that expect get_mistral_model to exist.
+
+    Return a (model, tokenizer) tuple or (None, None) when not available.
+    Tests monkeypatch this during unit tests, so a lightweight shim prevents
+    AttributeError during collection.
+    """
+    return (None, None)
 
 def get_ner_pipeline():
     """
@@ -155,24 +208,28 @@ def get_ner_pipeline():
         HuggingFace NER pipeline or None if unavailable
     """
     global _ner_pipeline
-    
+
     if not HAS_TRANSFORMERS:
         logger.warning("Transformers not available for NER fallback")
         return None
-        
+
     if _ner_pipeline is None:
+        pipeline_fn, torch_mod = _import_transformers_pipeline()
+        if pipeline_fn is None:
+            return None
         try:
-            _ner_pipeline = pipeline(
+            device = 0 if (torch_mod is not None and getattr(torch_mod, 'cuda', None) and torch_mod.cuda.is_available()) else -1
+            _ner_pipeline = pipeline_fn(
                 "ner",
                 model=NER_FALLBACK_MODEL,
                 aggregation_strategy="simple",
-                device=0 if torch and torch.cuda.is_available() else -1
+                device=device
             )
             logger.info(f"✅ Loaded NER pipeline: {NER_FALLBACK_MODEL}")
         except Exception as e:
             logger.error(f"Error loading NER pipeline: {e}")
             return None
-            
+
     return _ner_pipeline
 
 # =============================================================================
@@ -268,7 +325,7 @@ def identify_entities(text: str) -> List[Dict[str, Any]]:
                     "start": ent.start_char,
                     "end": ent.end_char,
                     "confidence": 0.9,  # Default confidence for spaCy
-                    "description": spacy.explain(ent.label_) if spacy else ent.label_
+                    "description": _spacy_explain(ent.label_) if HAS_SPACY else ent.label_
                 })
             processing_method = "spacy"
             
