@@ -16,6 +16,7 @@ For bias detection, use Scout V2 Agent endpoints:
 # main.py for Critic Agent
 import logging
 from fastapi import FastAPI, HTTPException
+from agents.common.info import register_info_endpoint
 from pydantic import BaseModel
 from datetime import datetime
 import os
@@ -69,6 +70,24 @@ async def lifespan(app: FastAPI):
     logger.info("Critic agent is shutting down.")
 
 app = FastAPI(lifespan=lifespan)
+
+try:
+    register_info_endpoint(app, "critic", probes=[
+        {"method": "GET", "path": "/health"},
+        {"method": "GET", "path": "/ready"},
+        {"method": "POST", "path": "/critique_synthesis"},
+        {"method": "POST", "path": "/critique_neutrality"},
+        {"method": "POST", "path": "/critique_content_gpu"},
+        {"method": "POST", "path": "/get_critic_performance"},
+        {"method": "POST", "path": "/log_feedback"},
+    ])
+except Exception:
+    logger.debug("/info endpoint registration failed for critic")
+    try:
+        from agents.common.info import register_shutdown_trace_handlers
+        register_shutdown_trace_handlers(app, 'critic')
+    except Exception:
+        logger.debug("shutdown trace handlers not registered for critic")
 
 # Register shutdown endpoint if available
 try:

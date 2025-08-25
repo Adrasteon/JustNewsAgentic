@@ -12,7 +12,7 @@ import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import torch
 from transformers import (
     LlavaProcessor, 
@@ -354,4 +354,5 @@ if __name__ == "__main__":
     else:
         # Run FastAPI server (NewsReader agent port)
         import uvicorn
-        uvicorn.run(app, host="0.0.0.0", port=8009)
+        port = int(os.environ.get("NEWSREADER_AGENT_PORT", 8009))
+        uvicorn.run(app, host="0.0.0.0", port=port)

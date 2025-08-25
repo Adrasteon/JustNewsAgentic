@@ -7,6 +7,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from agents.common.info import register_info_endpoint
 from pydantic import BaseModel
 import requests
 
@@ -89,6 +90,26 @@ async def lifespan(app: FastAPI):
     logger.info("Analyst agent is shutting down.")
 
 app = FastAPI(lifespan=lifespan)
+
+try:
+    register_info_endpoint(app, "analyst", probes=[
+        {"method": "GET", "path": "/health"},
+        {"method": "GET", "path": "/ready"},
+        {"method": "POST", "path": "/identify_entities"},
+        {"method": "POST", "path": "/analyze_text_statistics"},
+        {"method": "POST", "path": "/extract_key_metrics"},
+        {"method": "POST", "path": "/analyze_content_trends"},
+        {"method": "POST", "path": "/log_feedback"},
+    ])
+except Exception:
+    logger.debug("/info endpoint registration failed for analyst")
+
+# Ensure shutdown trace handlers are registered (best-effort)
+try:
+    from agents.common.info import register_shutdown_trace_handlers
+    register_shutdown_trace_handlers(app, 'analyst')
+except Exception:
+    logger.debug("shutdown trace handlers not registered for analyst")
 
 # Register shutdown endpoint if available
 try:

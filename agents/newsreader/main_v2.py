@@ -116,6 +116,30 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+try:
+    from agents.common.info import register_info_endpoint
+    try:
+        register_info_endpoint(app, "newsreader-v2", probes=[
+            {"method": "GET", "path": "/health"},
+            {"method": "POST", "path": "/process_article_content"},
+            {"method": "POST", "path": "/analyze_content_structure"},
+            {"method": "POST", "path": "/extract_multimedia_content"},
+            {"method": "POST", "path": "/extract_news_from_url"},
+            {"method": "POST", "path": "/capture_webpage_screenshot"},
+            {"method": "POST", "path": "/analyze_image_with_llava"},
+            {"method": "GET", "path": "/v2/capabilities"},
+            {"method": "GET", "path": "/v2/status"},
+        ])
+    except Exception:
+        logger.debug("/info endpoint registration failed for newsreader-v2")
+    try:
+        from agents.common.info import register_shutdown_trace_handlers
+        register_shutdown_trace_handlers(app, 'newsreader-v2')
+    except Exception:
+        logger.debug("shutdown trace handlers not registered for newsreader-v2")
+except Exception:
+    logger.debug("agents.common.info not available; skipping /info for newsreader-v2")
+
 # Register shutdown endpoint if available
 try:
     from agents.common.shutdown import register_shutdown_endpoint

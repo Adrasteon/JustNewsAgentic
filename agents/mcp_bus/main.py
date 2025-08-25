@@ -126,3 +126,25 @@ try:
 except Exception:
     # If assigning fails, the module will still run with a default no-op lifespan
     logger.debug("Could not attach custom lifespan to MCP Bus router; continuing without it.")
+
+try:
+    # Explicit probes for the bus itself
+    from agents.common.info import register_info_endpoint
+    try:
+        register_info_endpoint(app, "mcp_bus", probes=[
+            {"method": "GET", "path": "/health"},
+            {"method": "GET", "path": "/ready"},
+            {"method": "GET", "path": "/agents"},
+            {"method": "POST", "path": "/register"},
+            {"method": "POST", "path": "/call"},
+        ])
+    except Exception:
+        logger.debug("/info endpoint registration failed for mcp_bus")
+    try:
+        # Register persistent shutdown trace handlers so CI runs capture shutdown events
+        from agents.common.info import register_shutdown_trace_handlers
+        register_shutdown_trace_handlers(app, 'mcp_bus')
+    except Exception:
+        logger.debug("shutdown trace handlers not registered for mcp_bus")
+except Exception:
+    logger.debug("agents.common.info not available; skipping /info for mcp_bus")

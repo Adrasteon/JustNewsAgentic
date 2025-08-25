@@ -24,6 +24,7 @@ from PIL import Image
 import requests
 from fastapi import FastAPI
 from pydantic import BaseModel
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -361,4 +362,5 @@ if __name__ == "__main__":
     else:
         # Run FastAPI server (NewsReader agent port)
         import uvicorn
-        uvicorn.run(app, host="0.0.0.0", port=8009)
+    port = int(os.environ.get("NEWSREADER_AGENT_PORT", 8009))
+    uvicorn.run(app, host="0.0.0.0", port=port)

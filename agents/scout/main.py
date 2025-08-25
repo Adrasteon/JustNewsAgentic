@@ -62,6 +62,30 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+try:
+    from agents.common.info import register_info_endpoint
+    try:
+        register_info_endpoint(app, "scout", probes=[
+            {"method": "GET", "path": "/health"},
+            {"method": "GET", "path": "/ready"},
+            {"method": "POST", "path": "/discover_sources"},
+            {"method": "POST", "path": "/crawl_url"},
+            {"method": "POST", "path": "/deep_crawl_site"},
+            {"method": "POST", "path": "/enhanced_deep_crawl_site"},
+            {"method": "POST", "path": "/production_crawl_ultra_fast"},
+            {"method": "POST", "path": "/get_production_crawler_info"},
+            {"method": "POST", "path": "/log_feedback"},
+        ])
+    except Exception:
+        logger.debug("/info endpoint registration failed for scout")
+    try:
+        from agents.common.info import register_shutdown_trace_handlers
+        register_shutdown_trace_handlers(app, 'scout')
+    except Exception:
+        logger.debug("shutdown trace handlers not registered for scout")
+except Exception:
+    logger.debug("agents.common.info is not available; skipping /info registration for scout")
+
 # Register shutdown endpoint if available
 try:
     from agents.common.shutdown import register_shutdown_endpoint

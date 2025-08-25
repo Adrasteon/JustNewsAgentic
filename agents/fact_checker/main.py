@@ -4,6 +4,7 @@ Main file for the Fact-Checker Agent.
 # main.py for Fact-Checker Agent
 import logging
 from fastapi import FastAPI, HTTPException
+from agents.common.info import register_info_endpoint
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from datetime import datetime
@@ -58,6 +59,26 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(lifespan=lifespan)
+
+try:
+    register_info_endpoint(app, "fact_checker", probes=[
+        {"method": "GET", "path": "/health"},
+        {"method": "GET", "path": "/ready"},
+        {"method": "POST", "path": "/validate_is_news"},
+        {"method": "POST", "path": "/verify_claims"},
+        {"method": "POST", "path": "/validate_claims"},
+        {"method": "POST", "path": "/validate_is_news_gpu"},
+        {"method": "POST", "path": "/verify_claims_gpu"},
+        {"method": "GET", "path": "/performance/stats"},
+        {"method": "POST", "path": "/log_feedback"},
+    ])
+except Exception:
+    logger.debug("/info endpoint registration failed for fact_checker")
+    try:
+        from agents.common.info import register_shutdown_trace_handlers
+        register_shutdown_trace_handlers(app, 'fact_checker')
+    except Exception:
+        logger.debug("shutdown trace handlers not registered for fact_checker")
 
 # Register shutdown endpoint if available
 try:

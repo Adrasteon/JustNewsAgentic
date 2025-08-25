@@ -47,6 +47,24 @@ def call_tool(name: str, call: ToolCall) -> Dict[str, Any]:
 if HAS_FASTAPI:
     app = FastAPI(title="Balancer Agent")
 
+    try:
+        from agents.common.info import register_info_endpoint
+        try:
+            register_info_endpoint(app, "balancer", probes=[
+                {"method": "GET", "path": "/health"},
+                {"method": "POST", "path": "/call"},
+            ])
+        except Exception:
+            pass
+        try:
+                # Ensure shutdown trace handlers are registered (best-effort)
+                from agents.common.info import register_shutdown_trace_handlers
+                register_shutdown_trace_handlers(app, 'balancer')
+        except Exception:
+            pass
+    except Exception:
+        pass
+
     # Register shutdown endpoint if available
     try:
         from agents.common.shutdown import register_shutdown_endpoint

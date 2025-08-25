@@ -165,7 +165,13 @@ def test_batch_performance(articles: List[str], batch_size: int = 32, base_url: 
         total_bias_time = sum(bias_times)
         results['bias_throughput'] = len(articles) / total_bias_time
     
-    return results
+    # Basic sanity assertions to make this a proper pytest test (do not return values)
+    assert isinstance(results, dict), "Expected a results dict"
+    assert results.get('total_articles') == len(articles), "total_articles mismatch"
+    assert 'total_time' in results and isinstance(results['total_time'], (int, float)), "Missing or invalid total_time"
+    assert 'errors' in results, "Missing errors key in results"
+    # Ensure the test fails if there were any processing errors
+    assert len(results['errors']) == 0, f"Processing errors encountered: {results['errors'][:3]}"
 
 def print_performance_report(results: Dict):
     """Print comprehensive performance report"""

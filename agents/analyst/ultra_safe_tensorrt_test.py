@@ -5,40 +5,53 @@ Final validation for completely clean, warning-free operation
 """
 
 import sys
-import os
 import logging
 import time
 from typing import List, Optional, Dict, Any
-import json
+import pytest
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Optional CUDA/PyCUDA driver. Import at module-level inside try/except so static
+# linters don't report unresolved imports in environments without pycuda.
+try:
+    import pycuda.driver as _pycuda_driver  # type: ignore
+    HAS_PYCUDA = True
+except Exception:
+    _pycuda_driver = None  # type: ignore
+    HAS_PYCUDA = False
+
 def safe_gpu_init():
     """Safely initialize GPU with proper CUDA context management"""
+    # If pycuda isn't installed, bail out early (the tests will skip)
+    if not HAS_PYCUDA:
+        logger.warning("pycuda not available; skipping GPU initialization")
+        return None, None
+
     try:
-        import pycuda.driver as cuda
-        
+        cuda = _pycuda_driver
+
         # Initialize CUDA driver
         cuda.init()
         logger.info("✅ CUDA driver initialized")
-        
+
         # Check GPU availability
         device_count = cuda.Device.count()
         logger.info(f"✅ Found {device_count} CUDA devices")
-        
+
         # Get device info
         device = cuda.Device(0)
         logger.info(f"✅ Using device: {device.name()}")
-        
+
         # Get memory info
         context = device.make_context()
         free_mem, total_mem = cuda.mem_get_info()
         logger.info(f"✅ GPU Memory: {free_mem/1024**3:.1f}GB free / {total_mem/1024**3:.1f}GB total")
-        
+
         return context, device
-        
+
     except Exception as e:
         logger.error(f"❌ GPU initialization failed: {e}")
         return None, None
@@ -60,12 +73,11 @@ def test_native_tensorrt_clean():
     
     cuda_context = None
     
-    try:
-        # Initialize GPU safely
-        cuda_context, device = safe_gpu_init()
-        if cuda_context is None:
-            logger.error("❌ Failed to initialize GPU context")
-            return False
+    # Initialize GPU safely; if CUDA/pycuda isn't available in this environment,
+    # skip this test rather than failing.
+    cuda_context, device = safe_gpu_init()
+    if cuda_context is None:
+        pytest.skip("CUDA/pycuda not available in this environment")
         
         # Import and initialize TensorRT engine with context management
         from native_tensorrt_engine import NativeTensorRTInferenceEngine
@@ -138,32 +150,32 @@ def test_native_tensorrt_clean():
                     print(f"  Article {i}: Sentiment={s_str}, Bias={b_str}")
             
             # Memory check
-            import pycuda.driver as cuda
-            free_mem, total_mem = cuda.mem_get_info()
-            memory_used = (total_mem - free_mem) / 1024**3
-            print(f"\n💾 GPU Memory Used: {memory_used:.1f}GB")
+            if HAS_PYCUDA and _pycuda_driver is not None:
+                free_mem, total_mem = _pycuda_driver.mem_get_info()
+                memory_used = (total_mem - free_mem) / 1024**3
+                print(f"\n💾 GPU Memory Used: {memory_used:.1f}GB")
             
+    try:
+        # Import and initialize TensorRT engine with context management
+        from native_tensorrt_engine import NativeTensorRTInferenceEngine
+
+        logger.info("🔄 Initializing Native TensorRT Engine...")
+
+        with NativeTensorRTInferenceEngine(engines_dir="tensorrt_engines") as engine:
+            logger.info("✅ Engine initialized successfully")
+
+            # No hard assertions here — the fact we reached this point without
+            # exceptions is a good signal. Keep a lightweight sanity check.
+            engine_info = engine.get_engine_info()
+            assert isinstance(engine_info, dict), "Engine info should be a dict"
+
+            # Batch processing sanity check (should not raise)
+            sentiment_results = engine.score_sentiment_batch(["test article"])
+            bias_results = engine.score_bias_batch(["test article"])
+            assert len(sentiment_results) == len(bias_results) == 1
+
         logger.info("✅ Engine context manager completed successfully")
-        
-        # Final memory check after cleanup
-        free_mem_final, _ = cuda.mem_get_info()
-        memory_freed = (free_mem_final - free_mem) / 1024**3
-        if memory_freed > 0:
-            print(f"🔄 Memory freed during cleanup: {memory_freed:.3f}GB")
-        
-        print("\n" + "="*80)
-        print("🎉 ULTRA-SAFE TENSORRT TEST COMPLETED SUCCESSFULLY!")
-        print("✅ No crashes, no warnings, completely clean operation")
-        print("="*80)
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"❌ Test failed with error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-        
+
     finally:
         # Ensure CUDA context cleanup
         if cuda_context is not None:
@@ -174,7 +186,10 @@ def test_native_tensorrt_clean():
                 logger.warning(f"⚠️ Context cleanup warning: {e}")
 
 def performance_comparison_test():
-    """Compare native TensorRT performance with baseline"""
+    """Compare native TensorRT performance with baseline
+
+    This test will be skipped in environments without CUDA/pycuda.
+    """
     print("\n" + "="*80)
     print("📈 PERFORMANCE COMPARISON - NATIVE TENSORRT vs BASELINE")
     print("="*80)
@@ -190,52 +205,27 @@ def performance_comparison_test():
     
     cuda_context = None
     
+    # Initialize GPU
+    cuda_context, device = safe_gpu_init()
+    if cuda_context is None:
+        pytest.skip("CUDA/pycuda not available in this environment")
+
     try:
-        # Initialize GPU
-        cuda_context, device = safe_gpu_init()
-        if cuda_context is None:
-            return False
-        
         from native_tensorrt_engine import NativeTensorRTInferenceEngine
-        
+
         with NativeTensorRTInferenceEngine(engines_dir="tensorrt_engines") as engine:
-            print(f"\n🔄 Testing with {len(test_articles)} articles...")
-            
-            # Native TensorRT performance test
+            # Basic timing run — this primarily verifies the code path executes.
             start_time = time.time()
             sentiment_results = engine.score_sentiment_batch(test_articles)
             bias_results = engine.score_bias_batch(test_articles)
             end_time = time.time()
-            
+
             native_time = end_time - start_time
-            native_throughput = len(test_articles) / native_time
-            
-            print(f"✅ Native TensorRT Results:")
-            print(f"   Time: {native_time:.3f}s")
-            print(f"   Throughput: {native_throughput:.1f} articles/sec")
-            
-            # Calculate improvement vs baseline (151.4 articles/sec from previous tests)
-            baseline_throughput = 151.4
-            improvement_factor = native_throughput / baseline_throughput
-            
-            print(f"\n📊 Performance Comparison:")
-            print(f"   Baseline (HuggingFace GPU): {baseline_throughput:.1f} articles/sec")
-            print(f"   Native TensorRT: {native_throughput:.1f} articles/sec")
-            print(f"   Improvement Factor: {improvement_factor:.2f}x")
-            
-            if improvement_factor >= 4.0:
-                print("🎉 PERFORMANCE TARGET ACHIEVED: >4x improvement!")
-            elif improvement_factor >= 3.0:
-                print("✅ Excellent performance: >3x improvement")
-            else:
-                print("📈 Good performance improvement achieved")
-            
-            return True
-            
-    except Exception as e:
-        logger.error(f"❌ Performance test failed: {e}")
-        return False
-        
+            native_throughput = len(test_articles) / max(native_time, 1e-6)
+
+            assert len(sentiment_results) == len(bias_results) == len(test_articles)
+            assert native_throughput > 0
+
     finally:
         if cuda_context is not None:
             try:
@@ -247,21 +237,20 @@ def performance_comparison_test():
 if __name__ == "__main__":
     print("🚀 Starting Ultra-Safe TensorRT Validation")
     print("Goal: Completely clean, warning-free operation with maximum performance")
-    
-    # Run basic functionality test
-    if test_native_tensorrt_clean():
+
+    exit_code = 0
+    try:
+        test_native_tensorrt_clean()
         print("\n✅ Basic functionality test passed!")
-        
-        # Run performance comparison
-        if performance_comparison_test():
-            print("\n🎉 ALL TESTS COMPLETED SUCCESSFULLY!")
-            print("✅ Native TensorRT system validated:")
-            print("   - No crashes or warnings")
-            print("   - Clean CUDA context management")
-            print("   - Maximum performance achieved")
-            print("   - Production-ready system confirmed")
-        else:
-            print("\n⚠️ Performance test had issues")
-    else:
-        print("\n❌ Basic functionality test failed")
-        sys.exit(1)
+    except Exception as e:
+        logger.error(f"❌ Basic functionality test failed: {e}")
+        exit_code = 1
+
+    try:
+        performance_comparison_test()
+        print("\n✅ Performance comparison passed!")
+    except Exception as e:
+        logger.error(f"⚠️ Performance comparison had issues: {e}")
+        # keep exit code as-is (don't override a prior failure)
+
+    sys.exit(exit_code)

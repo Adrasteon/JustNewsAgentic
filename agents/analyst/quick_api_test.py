@@ -16,11 +16,8 @@ def test_agent_api():
     # Test health endpoint
     try:
         response = requests.get(f"{base_url}/health", timeout=5)
-        if response.status_code == 200:
-            print("✅ Health check: PASSED")
-        else:
-            print(f"❌ Health check failed: {response.status_code}")
-            return False
+        assert response.status_code == 200, f"Health check failed: {response.status_code}"
+        print("✅ Health check: PASSED")
     except Exception as e:
         print(f"❌ Health check error: {e}")
         return False
@@ -32,11 +29,9 @@ def test_agent_api():
             "kwargs": {}
         }
         response = requests.post(f"{base_url}/score_sentiment", json=test_data, timeout=10)
-        if response.status_code == 200:
-            result = response.json()
-            print(f"✅ Sentiment scoring: {result}")
-        else:
-            print(f"❌ Sentiment scoring failed: {response.status_code}")
+        assert response.status_code == 200, f"Sentiment scoring failed: {response.status_code}"
+        result = response.json()
+        print(f"✅ Sentiment scoring: {result}")
     except Exception as e:
         print(f"❌ Sentiment scoring error: {e}")
     
@@ -47,16 +42,13 @@ def test_agent_api():
             "kwargs": {}
         }
         response = requests.post(f"{base_url}/score_bias", json=test_data, timeout=10)
-        if response.status_code == 200:
-            result = response.json()
-            print(f"✅ Bias scoring: {result}")
-        else:
-            print(f"❌ Bias scoring failed: {response.status_code}")
+        assert response.status_code == 200, f"Bias scoring failed: {response.status_code}"
+        result = response.json()
+        print(f"✅ Bias scoring: {result}")
     except Exception as e:
         print(f"❌ Bias scoring error: {e}")
     
     print("\n🎉 API test completed!")
-    return True
 
 if __name__ == "__main__":
     test_agent_api()

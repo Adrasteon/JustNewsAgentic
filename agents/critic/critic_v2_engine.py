@@ -226,8 +226,9 @@ class CriticV2Engine:
                     device=0 if self.device.type == 'cuda' else -1,
                     top_k=None
                 )
-            except:
+            except Exception as e:
                 # Fallback to base RoBERTa
+                logger.debug(f"roberta bias pipeline unavailable, falling back to model: {e}")
                 self.models['roberta'] = RobertaForSequenceClassification.from_pretrained(
                     self.config.roberta_model,
                     cache_dir=self.config.cache_dir,
@@ -346,8 +347,9 @@ class CriticV2Engine:
                     try:
                         from agents.common.embedding import get_shared_embedding_model
                         self.models['embeddings'] = get_shared_embedding_model(self.config.embedding_model, cache_folder=agent_cache, device=self.device)
-                    except Exception:
+                    except Exception as e2:
                         # Last resort: leave as None and allow higher-level fallbacks
+                        logger.debug(f"Unable to load critic embedding model: {e2}")
                         self.models['embeddings'] = None
 
             # Attempt to move to GPU where supported

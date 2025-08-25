@@ -14,6 +14,7 @@ except Exception:
 
 import psycopg2
 from fastapi import FastAPI, HTTPException
+from agents.common.info import register_info_endpoint
 from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 import asyncio
@@ -41,10 +42,13 @@ storage_queue: "asyncio.Queue[dict]" = None
 storage_executor: ThreadPoolExecutor = None
 
 # Environment variables
-POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
-POSTGRES_DB = os.environ.get("POSTGRES_DB")
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "localhost")
+# Default DB name for JustNews deployments
+POSTGRES_DB = os.environ.get("POSTGRES_DB", "justnews")
 POSTGRES_USER = os.environ.get("POSTGRES_USER")
 POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
+# Optional explicit port for Postgres; default to 5432 when not provided
+POSTGRES_PORT = int(os.environ.get("POSTGRES_PORT", 5432))
 MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
@@ -93,6 +97,7 @@ def get_db_connection():
             database=POSTGRES_DB,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
+            port=POSTGRES_PORT,
             options='-c search_path=public'
         )
         logger.info("Database connection established successfully.")
@@ -209,6 +214,29 @@ async def lifespan(app: FastAPI):
         pass
 
 app = FastAPI(lifespan=lifespan)
+
+try:
+    register_info_endpoint(app, "memory", probes=[
+        {"method": "GET", "path": "/health"},
+        {"method": "GET", "path": "/ready"},
+        {"method": "POST", "path": "/save_article"},
+        {"method": "GET", "path": "/get_article/{article_id}"},
+        {"method": "POST", "path": "/vector_search_articles"},
+        {"method": "POST", "path": "/log_training_example"},
+        {"method": "POST", "path": "/store_article"},
+        {"method": "GET", "path": "/metrics"},
+    ])
+except Exception:
+    logger.debug("/info endpoint registration failed for memory")
+except Exception:
+    logger.debug("/info endpoint registration failed for memory")
+
+# Ensure shutdown trace handlers are registered (best-effort)
+try:
+    from agents.common.info import register_shutdown_trace_handlers
+    register_shutdown_trace_handlers(app, 'memory')
+except Exception:
+    logger.debug("shutdown trace handlers not registered for memory")
 
 # Register common shutdown endpoint
 try:

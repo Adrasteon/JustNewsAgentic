@@ -1,0 +1,38 @@
+name: Build Postgres 16 + pgvector
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'dev/postgres-16-pgvector/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build image
+        run: |
+          docker build -t justnews/postgres:16-pgvector ./dev/postgres-16-pgvector
+
+      - name: (Optional) Push to registry
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+            echo "Pushing image to registry as $DOCKERHUB_USERNAME"
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            docker tag justnews/postgres:16-pgvector ${DOCKERHUB_USERNAME}/justnews-postgres:16-pgvector
+            docker push ${DOCKERHUB_USERNAME}/justnews-postgres:16-pgvector
+          else
+            echo "DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set; skipping push"
+          fi

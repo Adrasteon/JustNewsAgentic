@@ -30,12 +30,16 @@ def test_direct_functions():
         
         print("\n🎉 All direct function tests passed!")
         print(f"📊 Results: Sentiment={sentiment_score:.3f}, Bias={bias_score:.3f}")
-        
-        return True
-        
+        # Pytest expects tests to assert rather than return values
+        assert isinstance(sentiment_score, float)
+        assert isinstance(bias_score, float)
+        assert 0.0 <= sentiment_score <= 1.0
+        assert 0.0 <= bias_score <= 1.0
+
     except Exception as e:
         logger.error(f"❌ Direct function test failed: {e}")
-        return False
+        # Re-raise so pytest records the failure
+        raise
 
 if __name__ == "__main__":
     success = test_direct_functions()

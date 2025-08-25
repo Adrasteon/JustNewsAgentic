@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 from typing import Dict, Optional
+import os
 
 # Enable CUDA optimizations for maximum performance
 torch.backends.cudnn.benchmark = True
@@ -371,4 +372,5 @@ if __name__ == "__main__":
         asyncio.run(main())
     else:
         # FastAPI server mode
-        uvicorn.run(app, host="0.0.0.0", port=8009)
+        port = int(os.environ.get("NEWSREADER_AGENT_PORT", 8009))
+        uvicorn.run(app, host="0.0.0.0", port=port)

@@ -185,3 +185,14 @@ agents/reasoning/nucleoid_repo/
 
 # Cache directories
 .cache/
+
+# Local dev overrides and secret artifacts
+# Individual env files for different environments
+.env.local
+.env.*.local
+
+# Single-use test DB password saved by helpers (only created when --save used)
+logs/last_test_db_password.txt
+
+# Local docker-compose for Postgres used by live-run orchestration
+dev/docker-compose.postgres.yml

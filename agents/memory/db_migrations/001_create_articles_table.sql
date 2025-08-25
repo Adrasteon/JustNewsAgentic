@@ -12,8 +12,5 @@ CREATE TABLE articles (
 );
 
 -- Recreate the article_vectors table with a foreign key to articles
-CREATE TABLE article_vectors (
-    id SERIAL PRIMARY KEY,
-    article_id INT REFERENCES articles(id) ON DELETE CASCADE,
-    vector NUMERIC[] NOT NULL
-);
+-- Note: article_vectors is created in a later migration (003) using the pgvector VECTOR type.
+-- This migration intentionally does not recreate article_vectors to avoid conflicts.

@@ -4,6 +4,7 @@ Main file for the Chief Editor Agent.
 # main.py for Chief Editor Agent
 import logging
 from fastapi import FastAPI, HTTPException
+from agents.common.info import register_info_endpoint
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import os
@@ -58,6 +59,25 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(title="Chief Editor Agent", lifespan=lifespan)
+
+try:
+    register_info_endpoint(app, "chief_editor", probes=[
+        {"method": "GET", "path": "/health"},
+        {"method": "GET", "path": "/ready"},
+        {"method": "POST", "path": "/request_story_brief"},
+        {"method": "POST", "path": "/publish_story"},
+        {"method": "POST", "path": "/coordinate_editorial_workflow"},
+        {"method": "POST", "path": "/manage_content_lifecycle"},
+    ])
+except Exception:
+    logger.debug("/info endpoint registration failed for chief_editor")
+
+# Ensure shutdown trace handlers are registered (best-effort)
+try:
+    from agents.common.info import register_shutdown_trace_handlers
+    register_shutdown_trace_handlers(app, 'chief_editor')
+except Exception:
+    logger.debug("shutdown trace handlers not registered for chief_editor")
 
 # Register common shutdown endpoint
 try:

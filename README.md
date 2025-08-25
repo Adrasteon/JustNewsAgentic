@@ -316,6 +316,41 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - **PostgreSQL** - Robust database foundation
 - **FastAPI** - High-performance API framework
 
+## Local development: .env (quick start)
+
+For local developer workflows we provide a simple, safe `.env` flow so you can run the full stack without committing secrets.
+
+1. Copy the example `.env` and edit values you need (ports, DB host/user, etc.):
+
+```bash
+cp .env.example .env
+```
+
+2. Export the variables into your current shell using the safe loader. Important: the loader must be *sourced* (it uses `return`):
+
+```bash
+# From the project root
+source scripts/load_env.sh .env
+# or
+. scripts/load_env.sh .env
+```
+
+3. Start the local orchestrator which will source `.env` if present and start the MCP bus and agents:
+
+```bash
+./scripts/start_all.sh
+```
+
+4. Run tests in the development conda environment (example):
+
+```bash
+conda run --name justnews-v2-prod pytest -q
+```
+
+Security & production notes
+- `.env` is gitignored; do NOT commit secrets. The local loader sanitizes values and forbids command substitutions.
+- For production deployments, use a root-owned secure file (for example `/etc/justnews/global.env` with mode 600) or a secret manager such as Vault with agent templating — see `deploy/systemd` for examples and helper scripts.
+
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/Adrasteon/JustNewsAgentic/issues)

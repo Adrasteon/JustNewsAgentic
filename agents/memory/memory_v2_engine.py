@@ -50,15 +50,15 @@ except ImportError:
 
 # Vector Database Libraries
 try:
-    import chromadb
-    from chromadb.config import Settings
+    import chromadb  # type: ignore
+    from chromadb.config import Settings  # type: ignore
     CHROMADB_AVAILABLE = True
 except ImportError:
     CHROMADB_AVAILABLE = False
     logging.warning("ChromaDB not available - using fallback storage")
 
 try:
-    import faiss
+    import faiss  # type: ignore
     FAISS_AVAILABLE = True
 except ImportError:
     FAISS_AVAILABLE = False
@@ -88,7 +88,8 @@ VECTOR_DB_PATH = os.environ.get("MEMORY_V2_VECTOR_DB", "./memory_v2_vectordb")
 POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "localhost")
 POSTGRES_DB = os.environ.get("POSTGRES_DB", "justnews")
 POSTGRES_USER = os.environ.get("POSTGRES_USER", "justnews_user")
-POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "your_password")
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "password123")
+POSTGRES_PORT = int(os.environ.get("POSTGRES_PORT", 5432))
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 # Default to enforcing Postgres in production; operator can set MEMORY_V2_FORCE_POSTGRES=false for dev
@@ -276,8 +277,8 @@ class MemoryV2Engine:
                     top_k=None  # Updated: Use top_k=None for consistency
                 )
                 logger.info("✅ BERT fallback model loaded successfully")
-            except:
-                logger.warning("❌ BERT model loading failed - using basic classification")
+            except Exception as e:
+                logger.warning(f"❌ BERT model loading failed - using basic classification: {e}")
                 self.models['bert'] = None
     
     def _load_embedding_model(self):
@@ -308,9 +309,9 @@ class MemoryV2Engine:
             try:
                 if self.device.type == 'cuda' and hasattr(self.models['embeddings'], 'to'):
                     self.models['embeddings'] = self.models['embeddings'].to(self.device)
-            except Exception:
+            except Exception as e:
                 # Ignore device transfer failures and continue on CPU
-                logger.debug("Unable to move embedding model to CUDA device; continuing on CPU")
+                logger.debug(f"Unable to move embedding model to CUDA device; continuing on CPU: {e}")
             
             # Validate embedding dimension
             test_embedding = self.models['embeddings'].encode(["test"])
@@ -338,7 +339,8 @@ class MemoryV2Engine:
                     name="memory_v2_collection"
                 )
                 logger.info("✅ Connected to existing ChromaDB collection")
-            except:
+            except Exception as e:
+                logger.debug(f"ChromaDB get_collection failed, creating new: {e}")
                 self.chroma_collection = self.chroma_client.create_collection(
                     name="memory_v2_collection",
                     metadata={"hnsw:space": "cosine"}
@@ -420,6 +422,7 @@ class MemoryV2Engine:
                     database=POSTGRES_DB,
                     user=POSTGRES_USER,
                     password=POSTGRES_PASSWORD,
+                    port=POSTGRES_PORT,
                     cursor_factory=RealDictCursor
                 )
             

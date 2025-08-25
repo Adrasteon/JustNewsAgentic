@@ -173,4 +173,4 @@ def analyze_image_content(image_path: str) -> Dict[str, str]:
     return agent.extract_content_with_llava(image_path)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8009)
+    uvicorn.run(app, host="0.0.0.0", port=NEWSREADER_AGENT_PORT)

@@ -10,7 +10,7 @@ Dependencies: git, networkx, fastapi, pydantic, uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
-from agents.common.schemas import NeuralAssessment, ReasoningInput, PipelineResult
+from agents.common.schemas import NeuralAssessment, ReasoningInput
 from contextlib import asynccontextmanager
 import asyncio
 import os
@@ -102,8 +102,8 @@ class SimpleNucleoidImplementation:
                         result = self._evaluate_expression(right_side)
                         if result is not None:
                             return result
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"evaluate_expression failed: {e}")
             
             return {"success": False, "message": f"Unknown variable: {statement}"}
         
@@ -111,7 +111,8 @@ class SimpleNucleoidImplementation:
         if any(op in statement for op in ["==", "!=", ">", "<", ">=", "<="]):
             try:
                 return self._evaluate_boolean(statement)
-            except:
+            except Exception as e:
+                logger.debug(f"evaluate_boolean failed: {e}")
                 return {"success": False, "message": "Could not evaluate boolean expression"}
         
         return {"success": False, "message": "Unknown statement type"}
@@ -126,7 +127,8 @@ class SimpleNucleoidImplementation:
             # Simple evaluation (be careful in production!)
             result = eval(expression)
             return result
-        except:
+        except Exception as e:
+            logger.debug(f"_evaluate_expression error: {e}")
             return None
     
     def _evaluate_boolean(self, statement):
@@ -142,7 +144,8 @@ class SimpleNucleoidImplementation:
             # Evaluate the boolean expression
             result = eval(statement)
             return result
-        except:
+        except Exception as e:
+            logger.debug(f"_evaluate_boolean error: {e}")
             return False
     
     def run(self, statement):
@@ -259,6 +262,45 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="JustNews V4 Reasoning Agent (Nucleoid)", lifespan=lifespan)
 
+try:
+    from agents.common.info import register_info_endpoint
+    try:
+        register_info_endpoint(app, "reasoning")
+    except Exception:
+        logger.debug("/info endpoint registration failed for reasoning")
+    try:
+        from agents.common.info import register_shutdown_trace_handlers
+        register_shutdown_trace_handlers(app, 'reasoning')
+    except Exception:
+        logger.debug("shutdown trace handlers not registered for reasoning")
+except Exception:
+    logger.debug("agents.common.info not available; skipping /info for reasoning")
+    
+try:
+    # Overwrite with an explicit probe list to be authoritative for the validator
+    from agents.common.info import register_info_endpoint as _reg_info
+    try:
+        _reg_info(app, "reasoning", probes=[
+            {"method": "GET", "path": "/health"},
+            {"method": "GET", "path": "/ready"},
+            {"method": "POST", "path": "/pipeline/validate"},
+            {"method": "POST", "path": "/add_fact"},
+            {"method": "POST", "path": "/add_facts"},
+            {"method": "POST", "path": "/add_rule"},
+            {"method": "POST", "path": "/query"},
+            {"method": "POST", "path": "/evaluate"},
+            {"method": "GET", "path": "/facts"},
+            {"method": "GET", "path": "/rules"},
+            {"method": "GET", "path": "/status"},
+            {"method": "POST", "path": "/call"},
+            {"method": "POST", "path": "/validate_claim"},
+            {"method": "POST", "path": "/explain_reasoning"},
+        ])
+    except Exception:
+        logger.debug("/info explicit registration failed for reasoning")
+except Exception:
+    pass
+
 # Register shutdown endpoint if available
 try:
     from agents.common.shutdown import register_shutdown_endpoint
@@ -366,6 +408,10 @@ class NucleoidEngine:
             self.facts_store[fact_id] = fact_data
             
             # Create Nucleoid statement
+            if self.nucleoid is None:
+                # Defensive fallback to local simple implementation
+                self.nucleoid = SimpleNucleoidImplementation()
+
             if "statement" in fact_data:
                 # Direct statement execution
                 result = self.nucleoid.run(fact_data["statement"])
@@ -394,7 +440,10 @@ class NucleoidEngine:
         try:
             # Store rule for retrieval
             self.rules_store.append(rule)
-            
+            # Ensure nucleoid exists
+            if self.nucleoid is None:
+                self.nucleoid = SimpleNucleoidImplementation()
+
             # Execute rule in Nucleoid
             result = self.nucleoid.run(rule)
             

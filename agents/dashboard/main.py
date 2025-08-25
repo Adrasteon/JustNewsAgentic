@@ -64,6 +64,31 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+try:
+    from agents.common.info import register_info_endpoint
+    try:
+        register_info_endpoint(app, "dashboard")
+    except Exception:
+        logger.debug("/info endpoint registration failed for dashboard")
+except Exception:
+    logger.debug("agents.common.info not available; skipping /info for dashboard")
+    
+try:
+    # Ensure the dashboard advertises authoritative probes
+    from agents.common.info import register_info_endpoint as _reg_info
+    try:
+        _reg_info(app, "dashboard", probes=[
+            {"method": "GET", "path": "/health"},
+            {"method": "GET", "path": "/ready"},
+            {"method": "GET", "path": "/get_status"},
+            {"method": "POST", "path": "/send_command"},
+            {"method": "GET", "path": "/agents"},
+        ])
+    except Exception:
+        logger.debug("/info explicit registration failed for dashboard")
+except Exception:
+    pass
+
 ready = False
 
 # Register shutdown endpoint

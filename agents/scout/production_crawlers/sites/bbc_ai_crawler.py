@@ -93,7 +93,8 @@ class ProductionBBCCrawler:
                     await elements.first.click(timeout=1000)
                     await asyncio.sleep(0.5)  # Brief pause
                     logger.debug(f"Dismissed modal: {selector}")
-            except:
+            except Exception as e:
+                logger.debug(f"Could not dismiss modal {selector}: {e}")
                 continue  # Ignore failures, keep trying
     
     async def extract_fast_content(self, page) -> Dict[str, str]:
@@ -125,7 +126,8 @@ class ProductionBBCCrawler:
                                 content_text += text + " "
                         if len(content_text) > 100:
                             break
-                except:
+                except Exception as e:
+                    logger.debug(f"Error extracting paragraph text for selector {selector}: {e}")
                     continue
             
             # Fallback to headline extraction
@@ -144,7 +146,8 @@ class ProductionBBCCrawler:
                         if headline and len(headline) > 10:
                             content_text = headline
                             break
-                    except:
+                    except Exception as e:
+                        logger.debug(f"Error checking content_text length: {e}")
                         continue
             
             return {
@@ -256,7 +259,8 @@ class ProductionBBCCrawler:
                             urls.append(href)
                             if len(urls) >= max_urls:
                                 break
-                except:
+                except Exception as e:
+                    logger.debug(f"Error extracting href from link element: {e}")
                     continue
             
             await browser_instance.close()

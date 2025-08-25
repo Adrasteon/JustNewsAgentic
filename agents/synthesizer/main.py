@@ -4,6 +4,7 @@ Main file for the Synthesizer Agent.
 # main.py for Synthesizer Agent
 import logging
 from fastapi import FastAPI, HTTPException
+from agents.common.info import register_info_endpoint
 from pydantic import BaseModel
 import os
 import requests
@@ -60,6 +61,25 @@ async def lifespan(app: FastAPI):
     logger.info("Synthesizer agent is shutting down.")
 
 app = FastAPI(lifespan=lifespan)
+
+try:
+    register_info_endpoint(app, "synthesizer", probes=[
+        {"method": "GET", "path": "/health"},
+        {"method": "GET", "path": "/ready"},
+        {"method": "POST", "path": "/aggregate_cluster"},
+        {"method": "POST", "path": "/cluster_articles"},
+        {"method": "POST", "path": "/neutralize_text"},
+        {"method": "POST", "path": "/synthesize_news_articles_gpu"},
+        {"method": "POST", "path": "/get_synthesizer_performance"},
+        {"method": "POST", "path": "/log_feedback"},
+    ])
+except Exception:
+    logger.debug("/info endpoint registration failed for synthesizer")
+    try:
+        from agents.common.info import register_shutdown_trace_handlers
+        register_shutdown_trace_handlers(app, 'synthesizer')
+    except Exception:
+        logger.debug("shutdown trace handlers not registered for synthesizer")
 
 # Register shutdown endpoint if available
 try:
